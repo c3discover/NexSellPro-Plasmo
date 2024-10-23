@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+:root,
+#plasmo-google-sidebar:host {
+  --plasmo-google-sidebar-width: 400px;
+}
+body.plasmo-google-sidebar-show,
+body.plasmo-google-sidebar-show * {
+  max-width: calc(100vw - var(--plasmo-google-sidebar-width));
+}
+
+#plasmo-google-sidebar {
+  position: fixed;
+  z-index: 240;
+  top: 0px;
+  right: 0px;
+}
+#sidebar {
+  position: absolute;
+  font-family: "Montserrat", sans-serif;
+  background-color: #1b141d;
+  width: var(--plasmo-google-sidebar-width);
+  height: 100vh;
+  transition: all 0.5s ease;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+#sidebar.open {
+  left: calc(var(--plasmo-google-sidebar-width) * -1);
+  overflow: auto;
+  background-color: #4d505e;
+}
+
+#sidebar.closed {
+  left: 0px;
+}
+
+.sidebar-toggle {
+  position: fixed;
+  right: 25px;
+  top: 0px;
+  background: #d7d7d7;
+  padding: 5px;
+}
+#sidebar h1 {
+  font-size: 20px;
+  color: #000000;
+  /* font bold */
+  font-weight: bold;
+  /* font family */
+}
+/* Crisper button with multiple shadows and more defined lines */
+.shadow-inner-crisp {
+  box-shadow: 
+    inset 3px 3px 5px rgba(0, 0, 0, 0.5),   /* Darker, smaller inner shadow */
+    inset -3px -3px 5px rgba(255, 255, 255, 0.2),  /* Light highlight on the opposite edge */
+    0 2px 4px rgba(0, 0, 0, 0.8); /* Outer shadow to add more depth */
+  border: 3px solid #2c2c2c; /* Darker border to define button edges */
+  border-radius: 10px; /* Rounded corners */
+}
+/* Ensure spin buttons for number inputs are always visible */
+input[type="number"] {
+  -webkit-appearance: number-input;
+  -moz-appearance: number-input;
+  appearance: number-input;
+}
+
+/* For WebKit browsers (Chrome, Safari) */
+input[type="number"]::-webkit-inner-spin-button, 
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: inner-spin-button;
+  opacity: 1; /* Always visible */
+}
+
+/* For Firefox */
+input[type="number"]::-moz-spin-button {
+  -moz-appearance: inner-spin-button;
+  opacity: 1; /* Always visible */
+}

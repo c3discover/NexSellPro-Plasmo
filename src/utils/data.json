@@ -1,0 +1,470 @@
+{
+    "fulfillmentTypeClassification": null,
+    "ebooks": null,
+    "primaryOffer": {
+        "warranty": null
+    },
+    "blitzItem": null,
+    "giftingEligibility": false,
+    "shipAsIs": false,
+    "subscription": {
+        "showSubscriptionModule": false,
+        "subscriptionEligible": false,
+        "subscriptionTransactable": false,
+        "subscriptionSubmessage": "NONE"
+    },
+    "subscriptionEligible": false,
+    "showSubscriptionModule": false,
+    "buyBoxSuppression": false,
+    "discounts": null,
+    "rewards": null,
+    "promoDiscount": null,
+    "showFulfillmentLink": false,
+    "additionalOfferCount": 2,
+    "legalRestriction": false,
+    "shippingRestriction": false,
+    "availabilityStatus": "IN_STOCK",
+    "averageRating": 4.4,
+    "associatedBundleId": null,
+    "suppressReviews": false,
+    "brand": "Roku",
+    "brandUrl": "/search?q=Roku&facet=brand:Roku",
+    "badges": {
+        "flags": null,
+        "labels": null,
+        "tags": [],
+        "groups": []
+    },
+    "rhPath": "20000:21000:21002:21110:21266",
+    "aaiaBrandId": null,
+    "manufacturerProductId": "829610005225",
+    "productTypeId": "5667",
+    "tireSize": null,
+    "tireLoadIndex": null,
+    "tireSpeedRating": null,
+    "viscosity": null,
+    "motorOilType": null,
+    "model": "4802RW",
+    "buyNowEligible": true,
+    "petRxEligible": null,
+    "petRx": {
+        "eligible": false,
+        "singleDispense": null
+    },
+    "vision": {
+        "visionCenterApproved": false,
+        "ageGroup": "Adult"
+    },
+    "earlyAccessEvent": false,
+    "isEarlyAccessItem": false,
+    "annualEvent": false,
+    "eventAttributes": {
+        "priceFlip": false,
+        "specialBuy": false
+    },
+    "isWplusMember": false,
+    "showBuyWithWplus": false,
+    "preOrder": {
+        "isPreOrder": false,
+        "releaseDate": null
+    },
+    "ozarkAttributes": {
+        "shippingPromise": "NATIONAL_CARRIER",
+        "exactAddress": false
+    },
+    "canonicalUrl": "/ip/Roku-Ultra-4K-HDR-Dolby-Vision-Streaming-Device-and-Roku-Voice-Remote-Pro-with-Rechargeable-Battery/732533305",
+    "catalogSellerId": 101208883,
+    "sellerReviewCount": 125,
+    "sellerAverageRating": 3.608,
+    "category": {
+        "categoryPathId": "0:3944:77622:7549938:1229631:1085065",
+        "path": [
+            {
+                "name": "Electronics",
+                "url": "/cp/electronics/3944"
+            },
+            {
+                "name": "Home Audio & Theater",
+                "url": "/cp/home-audio-theater/77622"
+            },
+            {
+                "name": "Home Theater",
+                "url": "/cp/home-theater/7549938"
+            },
+            {
+                "name": "Media Players & Recorders",
+                "url": "/cp/media-players-recorders/1229631"
+            },
+            {
+                "name": "Streaming Devices",
+                "url": "/cp/streaming-devices/1085065"
+            }
+        ]
+    },
+    "classType": "REGULAR",
+    "classId": "19",
+    "fulfillmentTitle": "title_shipToHome_date_free_delivery",
+    "shortDescription": "Meet the ultimate streaming player, Roku Ultra. It’s the fastest and most powerful Roku player ever and now includes our best remote. Enjoy a cinematic experience as you watch what you love in spectacular 4K and Dolby Vision picture with immersive Dolby Atmos sound. Get fast, seamless TV streaming in any room in the house thanks to our best Wi-Fi with up to 50% more range—or choose to wire up over Ethernet. Start streaming channels including Disney+, Prime Video, Max, Apple TV+, Netflix, Sling, and Hulu in a snap with a lightning fast interface. Say “Hey Roku” from across the couch to power up your TV, control your streaming, and even find your lost remote. Use the rechargeable remote to quickly search and type with your voice, enjoy headphone mode, and set shortcuts for your favorite channels. Plus, enjoy easy voice control with Siri, Alexa, and Google Assistant.",
+    "fulfillmentType": "MARKETPLACE",
+    "fulfillmentBadge": null,
+    "checkStoreAvailabilityATC": false,
+    "checkAvailabilityGlobalDFS": false,
+    "fulfillmentLabel": null,
+    "fulfillmentOptions": [
+        {
+            "__typename": "ShippingOptionV2",
+            "type": "SHIPPING",
+            "selected": false,
+            "intent": true,
+            "availableQuantity": 12,
+            "maxOrderQuantity": 12,
+            "orderLimit": 12,
+            "speedDetails": {
+                "fulfillmentBadge": null,
+                "deliveryDate": "2024-08-02T21:59:00.000Z",
+                "orderCutoffTime": null,
+                "fulfillmentPrice": null,
+                "freeFulfillment": true,
+                "wPlusEligible": false
+            },
+            "locationText": "Sacramento, 95829",
+            "availabilityStatus": "IN_STOCK",
+            "subscriptionSubmessage": "NONE",
+            "inventoryStatus": null,
+            "restricted": false
+        },
+        {
+            "__typename": "PickupOptionV2",
+            "type": "PICKUP",
+            "selected": false,
+            "intent": false,
+            "availableQuantity": null,
+            "maxOrderQuantity": null,
+            "orderLimit": null,
+            "speedDetails": null,
+            "locationText": "Sacramento Supercenter",
+            "availabilityStatus": "NOT_AVAILABLE",
+            "subscriptionSubmessage": "NONE",
+            "inventoryStatus": null,
+            "productLocation": null,
+            "storeName": null,
+            "checkStoreAvailability": false
+        },
+        {
+            "__typename": "DeliveryOptionV2",
+            "type": "DELIVERY",
+            "selected": false,
+            "intent": false,
+            "availableQuantity": null,
+            "maxOrderQuantity": null,
+            "orderLimit": null,
+            "restricted": null,
+            "speedDetails": null,
+            "locationText": "Sacramento, 95829",
+            "availabilityStatus": "NOT_AVAILABLE",
+            "subscriptionSubmessage": "NONE",
+            "deliveryTier": null
+        }
+    ],
+    "hasSellerBadge": false,
+    "hasCarePlans": true,
+    "hasHomeServices": null,
+    "itemType": null,
+    "id": "24JI19NGOGCL",
+    "primaryUsItemId": null,
+    "conditionType": "New",
+    "imageInfo": {
+        "allImages": [
+            {
+                "id": "3657F8D29ACC47F59361D9DC9FD95D13",
+                "url": "https://i5.walmartimages.com/seo/Roku-Ultra-4K-HDR-Dolby-Vision-Streaming-Device-and-Roku-Voice-Remote-Pro-with-Rechargeable-Battery_88a97405-4aed-4dd9-a4c9-ef39cba4d44e.18ba4dd162d9172c038a9448dfe92883.jpeg",
+                "zoomable": true
+            },
+            {
+                "id": "EAF88C8B6FAF41DF9918409905D1417A",
+                "url": "https://i5.walmartimages.com/asr/c632f23b-81fc-4436-b130-eccd54748d77.7cb908fc67f668e55f4d7b3c3ca535d4.jpeg",
+                "zoomable": true
+            },
+            {
+                "id": "C8A063BC100B4DB883F84981C9D54378",
+                "url": "https://i5.walmartimages.com/asr/77c80b64-9a5d-4d0d-9900-bbcf66e6b32a.d2326916b9253557cbe52ccd1c9af41c.jpeg",
+                "zoomable": true
+            },
+            {
+                "id": "A9330CF03F57464EBF0112809EF0E191",
+                "url": "https://i5.walmartimages.com/asr/391d5bf3-b762-46a4-93d7-701e915a6341.5226b0aafcba4b302fcdb82b706c66d5.jpeg",
+                "zoomable": true
+            },
+            {
+                "id": "D2AB7905D4AD468387619591611FAB41",
+                "url": "https://i5.walmartimages.com/asr/71d72d6b-b198-4808-a9aa-2eda7b929e65.fe42919a4ee62bb321f2709484c1d1b4.jpeg",
+                "zoomable": true
+            },
+            {
+                "id": "DF7423E3EE4B4F078B32A481F80F38D3",
+                "url": "https://i5.walmartimages.com/asr/d8cd34cf-1edb-4d8d-9d2b-8b6115306624.3018560cc7560dc570ca0cc2b0c3b65c.png",
+                "zoomable": true
+            },
+            {
+                "id": "CF6B522F9DCE463C8721B7F00D4AF911",
+                "url": "https://i5.walmartimages.com/asr/c296db4c-0ed5-462f-9d4e-239e07639d4e.1cbd179ef7159b88f8c040cb2934840b.jpeg",
+                "zoomable": true
+            },
+            {
+                "id": "7A23E2D7F8AD486CBE0869AF697AFF9F",
+                "url": "https://i5.walmartimages.com/asr/2ab06a39-e0bc-43ba-a7d3-26d79ce06c97.fa9ca62ad4e0490c6812552d20dfb51d.jpeg",
+                "zoomable": true
+            },
+            {
+                "id": "E64388D0E5944AF8BDE85CE605B51186",
+                "url": "https://i5.walmartimages.com/asr/f56c052f-07a0-4b62-a006-33d73c62738a.103acc6a32cecbba5083124e690dbe66.jpeg",
+                "zoomable": true
+            },
+            {
+                "id": "EA6E9757F9CD40F1917B0CBCE4D15C23",
+                "url": "https://i5.walmartimages.com/asr/de8110fd-8f01-4962-ba70-47bf6428d680.25cd41bd000cfa47be7e6f7d97fc41f9.jpeg",
+                "zoomable": true
+            },
+            {
+                "id": "267C3700A52A4C998DA8ECE14894C4B9",
+                "url": "https://i5.walmartimages.com/asr/fc6a91e1-32fc-4379-b169-762807f14271.c6d9d5ff2e64a1894fe01126e32cb0f8.jpeg",
+                "zoomable": true
+            }
+        ],
+        "thumbnailUrl": "https://i5.walmartimages.com/seo/Roku-Ultra-4K-HDR-Dolby-Vision-Streaming-Device-and-Roku-Voice-Remote-Pro-with-Rechargeable-Battery_88a97405-4aed-4dd9-a4c9-ef39cba4d44e.18ba4dd162d9172c038a9448dfe92883.jpeg"
+    },
+    "location": {
+        "postalCode": "95829",
+        "stateOrProvinceCode": "CA",
+        "city": "Sacramento",
+        "storeIds": [
+            "3081"
+        ],
+        "addressId": null,
+        "intent": "SHIPPING",
+        "mpPickupLocation": null,
+        "pickupLocation": {
+            "storeId": "3081",
+            "accessPointId": null,
+            "accessType": null
+        }
+    },
+    "name": "Roku Ultra 4K/HDR/Dolby Vision Streaming Device and Roku Voice Remote Pro with Rechargeable Battery",
+    "personalizable": false,
+    "externalInfo": null,
+    "numberOfReviews": 1402,
+    "orderMinLimit": 1,
+    "orderLimit": 12,
+    "weightIncrement": 1,
+    "offerId": "BC235D6F63E93E6BAF7D05B59E8D1DB4",
+    "offerType": "ONLINE_ONLY",
+    "priceInfo": {
+        "priceDisplayCodes": {
+            "clearance": null,
+            "eligibleForAssociateDiscount": null,
+            "finalCostByWeight": null,
+            "priceDisplayCondition": null,
+            "reducedPrice": null,
+            "rollback": null,
+            "submapType": null,
+            "isB2BPrice": false
+        },
+        "currentPrice": {
+            "price": 96.99,
+            "priceString": "$96.99",
+            "variantPriceString": "$96.99",
+            "currencyUnit": "USD",
+            "bestValue": null,
+            "priceDisplay": "$96.99"
+        },
+        "wasPrice": null,
+        "comparisonPrice": null,
+        "unitPrice": null,
+        "savings": null,
+        "savingsAmount": null,
+        "secondaryOfferBoost": null,
+        "shipPrice": null,
+        "isPriceReduced": false,
+        "priceReducedDisplay": null,
+        "subscriptionPrice": null,
+        "priceRange": {
+            "minPrice": null,
+            "maxPrice": null,
+            "priceString": null,
+            "currencyUnit": null,
+            "denominations": null
+        },
+        "listPrice": null,
+        "capType": null,
+        "walmartFundedAmount": null,
+        "wPlusEarlyAccessPrice": null,
+        "additionalFees": {
+            "dutyFee": {
+                "price": null,
+                "priceString": null
+            },
+            "shippingAndImportFee": {
+                "price": null,
+                "priceString": null
+            },
+            "estimatedTotalPrice": {
+                "price": null,
+                "priceString": null
+            },
+            "countryName": null
+        }
+    },
+    "returnPolicy": {
+        "returnable": true,
+        "freeReturns": true,
+        "returnWindow": {
+            "value": 15,
+            "unitType": "Day"
+        },
+        "returnPolicyText": "Free 15-day returns",
+        "returnPolicyCondition": null,
+        "holidayReturnEnabled": false
+    },
+    "fsaEligibleInd": false,
+    "sellerId": "6CD2504B70FE4D93B89FC426901360CA",
+    "sellerName": "ibrahim soueidan",
+    "sellerDisplayName": "Platinum Trading",
+    "sellerStoreFrontURL": null,
+    "secondaryOfferPrice": {
+        "currentPrice": {
+            "priceType": null,
+            "priceString": "$99.00",
+            "price": 99
+        }
+    },
+    "semStoreData": null,
+    "shippingOption": {
+        "availabilityStatus": "AVAILABLE",
+        "slaTier": null,
+        "deliveryDate": "2024-08-02T21:59:00.000Z",
+        "maxDeliveryDate": null,
+        "shipMethod": "STANDARD",
+        "shipPrice": {
+            "price": 0,
+            "priceString": "$0.00",
+            "variantPriceString": null,
+            "currencyUnit": null,
+            "bestValue": null
+        },
+        "internationalShipping": null
+    },
+    "type": "Streaming Media Players",
+    "pickupOption": {
+        "slaTier": null,
+        "accessTypes": [],
+        "availabilityStatus": null,
+        "storeName": null,
+        "storeId": null
+    },
+    "salesUnit": "EACH",
+    "usItemId": "732533305",
+    "transactableOfferCount": 3,
+    "maxRewardAmongAllVariants": null,
+    "variantCriteria": [],
+    "variants": [],
+    "groupMetaData": null,
+    "upc": "829610005225",
+    "wfsEnabled": false,
+    "wfsProviderName": null,
+    "sellerType": "EXTERNAL",
+    "ironbankCategory": "Electronics Other",
+    "snapEligible": false,
+    "promoData": [],
+    "showAddOnServices": true,
+    "addOnServices": [
+        {
+            "serviceType": "CAREPLAN",
+            "serviceTitle": "Protect your purchase",
+            "serviceSubTitle": "Get the best value on product protection including fast repairs or replacements.",
+            "serviceProviders": [],
+            "groups": [
+                {
+                    "groupType": "WPP",
+                    "groupTitle": "Walmart Protection Plan by Allstate",
+                    "assetUrl": "https://i5.walmartimages.com/seo/2-Year-Protection-Plan-For-Gps-Radio-Electronics-80-99-99_b04b2969-4200-4781-9f3a-3da0ccca5d4d.06e6f536cfdbec82e8b0108a6488901d.jpeg",
+                    "shortDescription": "<p>Get years of protection for just pennies a day.</p><p><b>Plan covers:</b></p><ul><li>Mechanical & Electrical Failures</li><li>Item Failures During Normal Use, or from Normal Wear & Tear</li><li>Other Common Malfunctions</li></ul><p><b>Plan includes:</b></p><ul><li>24/7 Customer Support</li><li>Easy Online Claims</li><li>Fast Repairs or Replacements</li></ul><p><b>Protect it today. Enjoy it for years.</b></p><p>Simply add a Walmart Protection Plan to your order and checkout as usual. There is no need to register your plan for it to be active. We?ll send plan details to your email address after purchase.</p><p><b>Award-winning protection backed by Allstate</b></p><p>Allstate has been protecting people and the things they love most for over 85 years. So you know your purchase is in good hands.</p>",
+                    "unavailabilityReason": null,
+                    "nearByStores": null,
+                    "services": [
+                        {
+                            "name": "2-Year",
+                            "displayName": "2-Year plan - $10.00",
+                            "offerId": "70DCCE0FFFF84DFEAFD8245E932F172B",
+                            "usItemId": "610566780",
+                            "selectedDisplayName": "Walmart Protection Plan by Allstate - 2-Year",
+                            "serviceMetaData": null,
+                            "currentPrice": {
+                                "price": 10,
+                                "priceString": "$10.00"
+                            },
+                            "giftEligible": true,
+                            "offerIdList": []
+                        },
+                        {
+                            "name": "3-Year",
+                            "displayName": "3-Year plan - $12.00",
+                            "offerId": "400B10CEAAD04A9683900B547DAE7770",
+                            "usItemId": "443163969",
+                            "selectedDisplayName": "Walmart Protection Plan by Allstate - 3-Year",
+                            "serviceMetaData": null,
+                            "currentPrice": {
+                                "price": 12,
+                                "priceString": "$12.00"
+                            },
+                            "giftEligible": true,
+                            "offerIdList": []
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "productLocation": null,
+    "zeekitData": null,
+    "experienceType": null,
+    "redirect": {
+        "replacedByItemId": "",
+        "replacedByProductId": "",
+        "replacedByProductUrlText": ""
+    },
+    "langUrls": null,
+    "pac": null,
+    "fulfillmentSummary": [
+        {
+            "fulfillment": "DELIVERY",
+            "storeId": "0",
+            "deliveryDate": "2024-08-02T21:59:00.000Z",
+            "sla": {
+                "unitOfMeasure": "DAY",
+                "measurementValue": 3
+            },
+            "calculatedSlaDays": 3,
+            "fulfillmentMethods": [
+                "UNSCHEDULED"
+            ],
+            "fulfillmentBadge": null,
+            "isFreeForWPlus": null
+        }
+    ],
+    "availableFulfillmentOptions": [
+        "UNSCHEDULED_DELIVERY"
+    ],
+    "showExploreOtherConditionsCTA": false,
+    "isPreowned": false,
+    "preownedCondition": "New",
+    "newConditionProductId": null,
+    "displayOfferLevelImage": false,
+    "availabilityInNearbyStore": null,
+    "gender": null,
+    "mhmdFlag": false,
+    "specialInstruction": false,
+    "selectedVariantIds": [],
+    "variantProductIdMap": {},
+    "imageMap": {},
+    "variantsMap": {}
+}
