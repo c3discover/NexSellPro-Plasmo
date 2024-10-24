@@ -382,41 +382,35 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
             </thead>
 
             <tbody className="bg-white divide-y divide-gray-200">
-
-            {capturedData && capturedData.length > 0 ? (
-  capturedData.map((item, index) => {
-    // Log fulfillment options for inspection
-    console.log('Fulfillment Options for seller:', item.sellerName, JSON.stringify(item.fulfillmentOptions, null, 2));
-
-    return (
-      <tr key={index}>
-        <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
-          {item.sellerName || "-"}
-        </td>
-        <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
-          {item.priceInfo?.currentPrice?.price || "-"}
-        </td>
-        <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
-          {item.sellerName === "Walmart.com" ? (
-            <span className="bg-yellow-100 text-red-700 font-bold border border-red-500 rounded-lg px-1">
-              WFS
-            </span>
-          ) : item.wfsEnabled ? (
-            "✔️"
-          ) : (
-            "❌"
-          )}
-        </td>
-      </tr>
-    );
-  })
-) : (
-  <tr>
-    <td colSpan={3} className="px-2 py-2 text-center text-xs border-2 border-black bg-white">
-      No data available
-    </td>
-  </tr>
-)}
+              {capturedData && capturedData.length > 0 ? (
+                capturedData.map((item, index) => (
+                  <tr key={index}>
+                    <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
+                      {item.sellerName || "-"}
+                    </td>
+                    <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
+                      {item.priceInfo?.currentPrice?.price || "-"}
+                    </td>
+                    <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
+                      {item.sellerName === "Walmart.com" ? (
+                        <span className="bg-yellow-100 text-red-700 font-bold border border-red-500 rounded-lg px-1">
+                          WFS
+                        </span>
+                      ) : item.wfsEnabled ? (
+                        "✔️"
+                      ) : (
+                        "❌"
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="px-2 py-2 text-center text-xs border-2 border-black bg-white">
+                    No data available
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
