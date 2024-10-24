@@ -8,7 +8,6 @@ interface VariationsProps {
 // Function to fetch variant data using the product's `usItemId`
 async function fetchVariantData(usItemID: string) {
   const url = `https://www.walmart.com/ip/${usItemID}`;
-  console.log(`Fetching URL: ${url}`);
 
   try {
     const response = await fetch(url);
@@ -24,7 +23,6 @@ async function fetchVariantData(usItemID: string) {
       const jsonData = JSON.parse(dataScript.textContent || "{}");
 
       // Log the jsonData to inspect its structure
-      console.log("Fetched Data:", jsonData);
 
       // Assuming jsonData contains product details
       const product = jsonData.props.pageProps?.initialData?.data?.product;
@@ -41,7 +39,6 @@ async function fetchVariantData(usItemID: string) {
     // Fallback if data isn't found
     return { image: "-", title: "-", ratings: "-", sellers: "-", upc: "-" };
   } catch (error) {
-    console.error("Error fetching variant data:", error);
     return { image: "-", title: "-", ratings: "-", sellers: "-", upc: "-" };
   }
 }
@@ -56,7 +53,6 @@ export const Variations: React.FC<VariationsProps> = ({ variantsMap, areSections
 
   const toggleOpen = () => setIsOpen(!isOpen);
 
-  console.log("Variants Passed to Component:", variantsMap);
 
   // Sorting logic
   const sortedVariantIds = Object.keys(variantsMap).sort((a, b) => {

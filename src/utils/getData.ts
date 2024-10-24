@@ -29,6 +29,11 @@ function getProductDetails(product, idml, reviews) {
   // Extract the last category in the path as the main category
   const mainCategory = categories.length > 0 ? categories[categories.length - 1].name : "Unknown";
 
+  // Extract review submission times (dates)
+  const reviewDates = reviews.customerReviews
+    ? reviews.customerReviews.map(review => review.reviewSubmissionTime)
+    : [];
+  
   const fulfillmentOptions = product.fulfillmentOptions;
   let stock = 0;
   for (let i = 0; i < fulfillmentOptions.length; i++) {
@@ -38,11 +43,13 @@ function getProductDetails(product, idml, reviews) {
   console.log("product  getData : ", product);
   console.log("idml  getData : ", idml);
   console.log("reviews  getData : ", reviews);
-  console.log("Variants Map:", product.variantsMap);  
+  console.log("Variants Map Data:", product.variantsMap);  
 
   const badges =
     product.badges?.flags?.map((badge) => badge.text) || ["No Badges Available"];
 
+
+    
   return {
     productID: product.usItemId,
     name: product.name,
@@ -61,7 +68,10 @@ function getProductDetails(product, idml, reviews) {
     variantsMap: product.variantsMap,
     sellerName: product.sellerName,
     sellerType: product.sellerType,
-    numberOfReviews: product.numberOfReviews || "0",
+    numberOfRatings: reviews.totalReviewCount || "0",
+    numberOfReviews: reviews.reviewsWithTextCount || "0",
+    overallRating: reviews.roundedAverageOverallRating || "0",
+    reviewDates,
     averageOverallRating:
       reviews.roundedAverageOverallRating ||
       product.averageRating ||

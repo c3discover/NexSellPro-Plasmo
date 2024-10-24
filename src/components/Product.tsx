@@ -41,13 +41,13 @@ export const Product = ({ product }: any) => {
     <div
       id="product"
       key="product"
-      className="font-montserrat flex items-center justify-start flex-col bg-[#d7d7d7] max-w-[100%] p-4 gap-2 rounded-lg shadow-2xl"
+      className="font-montserrat flex items-center justify-start flex-col bg-[#d7d7d7] max-w-[100%] p-2 gap-2 rounded-lg shadow-2xl"
     >
 
 
       {/* Product Name Section */}
       <div id="productName" className="flex items-center justify-between w-full">
-        <p className="text-black font-bold text-xs text-center p-1 m-2 rounded-lg bg-[#bfbfbf] shadow-black shadow-xl">{product.name}</p>
+        <p className="text-black font-bold text-xs text-center p-1 mb-2 mr-1 ml-2 rounded-lg bg-[#bfbfbf] shadow-black shadow-xl">{product.name}</p>
 
         {/* Copy and Copied Icons */}
         <svg
@@ -62,7 +62,7 @@ export const Product = ({ product }: any) => {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={`lucide lucide-copy cursor-pointer w-10 h-10 ${copied ? "hidden" : ""} hover:scale-110 transition-transform duration-200`}
+          className={`lucide lucide-copy cursor-pointer w-10 h-10 ${copied ? "hidden" : ""} hover:scale-110 transition-transform duration-200 m-2`}
         >
           <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
           <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
@@ -80,7 +80,7 @@ export const Product = ({ product }: any) => {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={`lucide lucide-copy cursor-pointer w-10 h-10 text-green-500 ${copied ? "" : "hidden"} hover:scale-110 transition-transform duration-200`}
+          className={`lucide lucide-copy cursor-pointer w-10 h-10 text-green-500 ${copied ? "" : "hidden"} hover:scale-110 transition-transform duration-200 m-2`}
         >
           <path d="M20 6L9 17l-5-5" />
         </svg>
@@ -93,7 +93,8 @@ export const Product = ({ product }: any) => {
 
 
       {/* Product General Info */}
-      <div id="productGeneralInfo" className="flex flex-col lg:flex-row items-start justify-between w-full gap-2">
+      <div id="productGeneralInfo" className="flex flex-col lg:flex-row items-stretch items-center justify-between w-full gap-3">
+
         {/* Product Image Section */}
         <div id="productImage" className="w-full lg:w-1/2 flex flex-col items-center justify-center bg-white p-1 rounded-lg shadow-lg">
           <img src={product.imageUrl} alt={product.name} className="w-1/2 hover:w-full p-2 rounded-lg" />
@@ -105,32 +106,27 @@ export const Product = ({ product }: any) => {
           </p>
         </div>
 
-
-
-
-
-
         {/* Product Details Section */}
-        <div id="productDetails" className="flex flex-col items-start w-full lg:w-1/2 space-y-2">
-          
-          
+        <div id="productDetails" className="w-full lg:w-1/2 flex flex-col items-center justify-center bg-white p-1 rounded-lg shadow-lg">
           {/* Quick Stats Section */}
-          <div id="productQuickStats" className="flex flex-col items-center p-1 mt-1 mb-1 rounded-lg shadow-2xl bg-white w-full">
-            <p className="text-black subpixel-antialiased underline drop-shadow-sm font-extrabold text-base mb-2 text-center">Quick Stats</p>
             <p className="text-black text-xs p-1">
               <span className="font-bold">Current Price </span>
+            </p>
+            <p>
               <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">${product.currentPrice ? parseFloat(product.currentPrice).toFixed(2) : '0.00'}</span>
             </p>
-            <p className="text-black text-xs p-1">
-              <span className="font-bold">Total Ratings </span>
-              <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">{product.numberOfReviews} ⭐ </span>
+            <p className="text-black text-xs p-1 mt-2">
+              <span className="font-bold mt-2">Total Ratings </span>
             </p>
-            <p className="text-black text-xs p-1">
-              <span className="font-bold">Total Sellers </span>
+            <p>
+              <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">{product.numberOfRatings} ⭐ </span>
+            </p>
+            <p className="text-black text-xs p-1 mt-2">
+              <span className="font-bold mt-2">Total Sellers </span>
               <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">{product.totalSellers} </span>
             </p>
-            <p className="text-black text-xs p-1">
-              <span className="font-bold">Walmart Selling? </span>
+            <p className="text-black text-xs p-1 mt-2">
+              <span className="font-bold mt-2">Walmart Selling? </span>
               {product.sellerName === "Walmart.com" ? (
                 <span className="px-1 py-1 text-xs bg-green-100 text-green-700 font-bold border border-green-500 rounded-lg shadow-sm">YES</span>
               ) : (
@@ -139,7 +135,6 @@ export const Product = ({ product }: any) => {
             </p>
           </div>
         </div>
-      </div>
 
 
 
@@ -147,7 +142,8 @@ export const Product = ({ product }: any) => {
 
 
 
-      <div className="flex flex-col items-left p-1 rounded-lg shadow-2xl bg-white w-full">
+
+      <div className="flex flex-col items-left px-3 py-1 rounded-lg shadow-2xl bg-white w-full">
         {/* Brand - Link to Walmart search */}
         <p className="text-black font-bold text-start text-md">
           Brand:{" "}
@@ -187,34 +183,37 @@ export const Product = ({ product }: any) => {
 
 
 
-        {/* Badges */}
-  <div className="text-center p-1 rounded-lg shadow-2xl shadow-lg bg-white">
-    <p className="text-black font-extrabold subpixel-antialiased drop-shadow-sm text-lg mb-1 text-center">
-      Walmart Badges
-    </p>
+      {/* Badges */}
+      <div className="text-center p-1 rounded-lg shadow-2xl shadow-lg bg-slate-500">
+        {badges.length > 0 ? (
+          <div className="grid grid-cols-2 gap-2 p-1 place-items-center">
+            {badges.map((badge, index) => {
+              const containsNumber = /\d+/.test(badge); // Check if the badge contains a number
 
-    {badges.length > 0 ? (
-    <div className="grid grid-cols-2 gap-1 place-items-center">
-      {badges.map((badge, index) => {
-        // Check if it's the last badge and if the length of badges is odd
-        if (index === badges.length - 1 && badges.length % 2 !== 0) {
-          return (
-            <div key={index} className="col-span-2 bg-blue-900 text-white text-2xs px-2 py-1 rounded-lg shadow-md text-center">
-              {badge}
-            </div>
-          );
-        }
-        return (
-          <div key={index} className="bg-blue-900 text-white text-2xs px-2 py-1 rounded-lg shadow-md">
-            {badge}
+              // Style for badge with a number (outline style)
+              const outlineStyle = "border border-blue-500 text-blue-500 bg-white";
+
+              // Style for badge without a number (filled style)
+              const filledStyle = "bg-blue-100 text-blue-900";
+
+              // If it's the last badge and there's an odd number of badges, make it span both columns (centered)
+              const isLastSingleBadge = index === badges.length - 1 && badges.length % 2 !== 0;
+
+              return (
+                <div
+                  key={index}
+                  className={`text-2xs px-2 py-1 rounded-lg shadow-md ${containsNumber ? outlineStyle : filledStyle
+                    } ${isLastSingleBadge ? 'col-span-2 text-center' : ''}`}
+                >
+                  {badge}
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        ) : (
+          <p className="text-sm text-gray-300 italic">No badges available.</p>
+        )}
+      </div>
     </div>
-  ) : (
-      <p className="text-sm text-gray-300 italic">No badges available.</p>
-    )}
-  </div>
-  </div>
-);
+  );
 };
