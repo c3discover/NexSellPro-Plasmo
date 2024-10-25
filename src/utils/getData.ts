@@ -62,6 +62,7 @@ function getProductDetails(product, idml, reviews) {
     category: product.category.path[0].name, // This holds the last/main category name
     stock,
     fulfillmentOptions,
+    fulfillmentType: product.fulfillmentType,
     modelNumber: product.model,
     currentPrice: product.priceInfo.currentPrice.price,
     variantCriteria: product.variantCriteria,
