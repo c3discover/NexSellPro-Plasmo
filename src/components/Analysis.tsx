@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import getData from '../utils/getData';
 
-// ... other interface definitions and imports ...
+// Product interface definitions
 interface Product {
   shippingLength?: number;
   shippingWidth?: number;
@@ -12,6 +12,7 @@ interface Product {
   stock?: number;
   brand?: string;
   sellerName?: string;
+  sellerDisplayName?: string;
   totalReviewCount?: number;
   fulfillmentOptions?: number;
 }
@@ -21,22 +22,13 @@ interface AnalysisProps {
   areSectionsOpen: boolean;
 }
 
-
-
-
-
-
-
-
 export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) => {
   const [isOpen, setIsOpen] = useState(areSectionsOpen);
   const [productDetails, setProductDetails] = useState(null);
   const [capturedData, setCapturedData] = useState(null);
 
-  // Toggle section open/close
   const toggleOpen = () => setIsOpen((prev) => !prev);
 
-  // Function to determine the age of the review in days
   const getDaysAgo = (dateString) => {
     const today = new Date();
     const reviewDate = new Date(dateString);
@@ -53,7 +45,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     setProductDetails(productData);
   }, []);
 
-  // Helper function: Observes the DOM for changes when the modal is open
   const observeDomChanges = (targetNode) => {
     if (targetNode) {
       const observer = new MutationObserver((mutationsList) => {
@@ -73,11 +64,10 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     return null;
   };
 
-  // Helper function: Waits for the modal to appear on the page
   const waitForModal = () => {
     return new Promise((resolve) => {
       const checkExist = setInterval(() => {
-        const modalNode = document.querySelector(".w_g1_b"); // Ensure the selector matches
+        const modalNode = document.querySelector(".w_g1_b");
         if (modalNode) {
           clearInterval(checkExist);
           resolve(modalNode);
@@ -86,44 +76,55 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     });
   };
 
-  // Extracts data from multi-seller modal
   const extractDataFromModal = (modalNode) => {
     const data = [];
     const offers = modalNode.querySelectorAll("[data-testid='allSellersOfferLine']");
 
     offers.forEach((offer) => {
       const priceElement = offer.querySelector(".b.f4.w-50");
-      const price = priceElement ? priceElement.textContent.trim() : null;
-
+      const price = priceElement ? parseFloat(priceElement.textContent.replace(/[^0-9.]/g, '')) : null;
+    
       const sellerElement = offer.querySelector("[data-testid='product-seller-info']");
       let seller = sellerElement ? sellerElement.textContent.trim() : null;
       if (seller) {
-        seller = seller.replace("Sold and shipped by ", "");
+          seller = seller.replace("Sold and shipped by ", "");
       }
-
+    
+      const walmartFulfilled = offer.querySelector("[data-automation-id='Walmart-delivery']");
+    
+      const brandMatchesSeller = product.brand && seller &&
+          product.brand.toLowerCase().split(' ').some(brandPart => 
+              seller.toLowerCase().includes(brandPart)
+          );
+    
       let fulfillmentStatus;
       if (seller === "Walmart.com") {
-        fulfillmentStatus = "WMT";
-      } else {
-        const walmartFulfilled = offer.querySelector("[data-automation-id='Walmart-delivery']");
-        if (walmartFulfilled) {
-          fulfillmentStatus = "✔️";
-        } else if (sellerElement && sellerElement.textContent.startsWith("Sold and shipped by")) {
-          fulfillmentStatus = "❌";
-        } else {
-          fulfillmentStatus = "Fix";
-        }
-      }
-
-      data.push({
-        priceInfo: {
-          currentPrice: {
-            price: parseFloat(price?.replace('$', '')),
-            priceString: price,
+          fulfillmentStatus = "WMT";
+      } else if (brandMatchesSeller) {
+          if (walmartFulfilled) {
+              fulfillmentStatus = "Brand-WFS";
+          } else if (sellerElement && sellerElement.textContent.toLowerCase().startsWith("sold and shipped by")) {
+              fulfillmentStatus = "Brand-SF";
+          } else {
+              fulfillmentStatus = "Brand";
           }
-        },
-        sellerName: seller,
-        fulfillmentStatus: fulfillmentStatus,
+      } else if (walmartFulfilled) {
+          fulfillmentStatus = "WFS";
+      } else if (sellerElement && sellerElement.textContent.toLowerCase().startsWith("sold and shipped by")) {
+          fulfillmentStatus = "SF";
+      } else {
+          fulfillmentStatus = "?";
+      }
+    
+      data.push({
+          priceInfo: {
+              currentPrice: {
+                  price: price,
+                  priceString: price !== null ? `$${price.toFixed(2)}` : "-",
+              }
+          },
+          sellerName: seller,
+          fulfillmentStatus: fulfillmentStatus,
       });
     });
 
@@ -131,73 +132,92 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     return data;
   };
 
-  // Function for handling single-seller data extraction
+  // Function for handling single-seller data extraction using API data
   const extractSingleSellerData = () => {
     const data = [];
 
-    const priceElement = document.querySelector(".b.f4.w-50");
-    const price = priceElement ? priceElement.textContent.trim() : null;
+    // Use API data for price and seller
+    const price = product.currentPrice || null;
+    let seller = product.sellerDisplayName || null;
 
+    // Fallback to DOM scraping if necessary
     const sellerElement = document.querySelector("[data-testid='product-seller-info']");
-    let seller = sellerElement ? sellerElement.textContent.trim() : null;
-    if (seller) {
-      seller = seller.replace("Sold and shipped by ", "");
+    if (!seller && sellerElement) {
+        // Find the nested anchor element that contains the seller name within the span
+        const sellerLink = sellerElement.querySelector("a[data-testid='seller-name-link']");
+        if (sellerLink) {
+            seller = sellerLink.textContent.trim();
+        } else {
+            // If the anchor link is not found, attempt to extract directly from the span's aria-label attribute
+            seller = sellerElement.getAttribute('aria-label')?.replace("Sold and shipped by ", "").trim();
+        }
     }
+
+    const walmartFulfilled = document.querySelector("[data-automation-id='Walmart-delivery']");
+
+    const brandMatchesSeller = product.brand && seller &&
+        product.brand.toLowerCase().split(' ').some(brandPart => 
+            seller.toLowerCase().includes(brandPart)
+        );
 
     let fulfillmentStatus;
     if (seller === "Walmart.com") {
-      fulfillmentStatus = "WMT";
+        fulfillmentStatus = "WMT";
+    } else if (brandMatchesSeller) {
+        if (walmartFulfilled) {
+            fulfillmentStatus = "Brand-WFS";
+        } else if (sellerElement && sellerElement.textContent.toLowerCase().startsWith("sold and shipped by")) {
+            fulfillmentStatus = "Brand-SF";
+        } else {
+            fulfillmentStatus = "Brand";
+        }
+    } else if (walmartFulfilled) {
+        fulfillmentStatus = "WFS";
+    } else if (sellerElement && sellerElement.textContent.toLowerCase().startsWith("sold and shipped by")) {
+        fulfillmentStatus = "SF";
     } else {
-      const walmartFulfilled = document.querySelector("[data-automation-id='Walmart-delivery']");
-      if (walmartFulfilled) {
-        fulfillmentStatus = "✔️";
-      } else if (sellerElement && sellerElement.textContent.startsWith("Sold and shipped by")) {
-        fulfillmentStatus = "❌";
-      } else {
-        fulfillmentStatus = "Fix";
-      }
+        fulfillmentStatus = "?";
     }
 
     data.push({
-      priceInfo: {
-        currentPrice: {
-          price: parseFloat(price?.replace('$', '')),
-          priceString: price,
-        }
-      },
-      sellerName: seller,
-      fulfillmentStatus: fulfillmentStatus,
+        priceInfo: {
+            currentPrice: {
+                price: price,
+                priceString: price !== null ? `$${price.toFixed(2)}` : "-",
+            }
+        },
+        sellerName: seller,
+        fulfillmentStatus: fulfillmentStatus,
     });
 
     setCapturedData(data);
-  };
+};
 
-  useEffect(() => {
-    const handleDataCapture = async () => {
+useEffect(() => {
+  const handleDataCapture = async () => {
       const compareSellersButton = document.querySelector("[aria-label='Compare all sellers']") as HTMLButtonElement;
 
       if (compareSellersButton) {
-        compareSellersButton.click();
-        const modalNode = await waitForModal();
-        const observer = observeDomChanges(modalNode);
+          // Multiple sellers exist, handle multi-seller scenario
+          compareSellersButton.click();
+          const modalNode = await waitForModal();
+          const observer = observeDomChanges(modalNode);
 
-        setTimeout(() => {
-          if (observer) {
-            observer.disconnect();
-          }
-        }, 5000);
+          setTimeout(() => {
+              if (observer) {
+                  observer.disconnect();
+              }
+          }, 5000);
       } else {
-        extractSingleSellerData();
+          // Single seller scenario
+          extractSingleSellerData();
       }
-    };
+  };
 
-    handleDataCapture();
-  }, [product.totalSellers]);
+  handleDataCapture();
+}, [product.totalSellers]);
 
-
-  // Add this line to check the capturedData:
   console.log('Captured Data:', capturedData);
-
 
   return (
     <div
@@ -352,13 +372,19 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
           <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
             Brand Selling?
           </p>
-          <p className={`text-xs text-center p-1 w-full rounded-b-lg shadow-md shadow-black border-2 border-black font-bold ${product.brand === product.sellerName
+          <p className={`text-xs text-center p-1 w-full rounded-b-lg shadow-md shadow-black border-2 border-black font-bold ${product.brand && (product.sellerDisplayName || product.sellerName) &&
+            ((product.brand.toLowerCase().includes((product.sellerDisplayName || product.sellerName).toLowerCase())) ||
+              ((product.sellerDisplayName || product.sellerName).toLowerCase().includes(product.brand.toLowerCase())))
             ? "bg-green-100 text-green-700 border-green-500"
             : "bg-red-100 text-red-700 border-red-500"
             }`}>
-            {product.brand === product.sellerName ? "YES" : "NO"}
+            {product.brand && (product.sellerDisplayName || product.sellerName) &&
+              ((product.brand.toLowerCase().includes((product.sellerDisplayName || product.sellerName).toLowerCase())) ||
+                ((product.sellerDisplayName || product.sellerName).toLowerCase().includes(product.brand.toLowerCase())))
+              ? "YES" : "NO"}
           </p>
         </div>
+
       </div>
 
 
@@ -425,7 +451,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
                 Price
               </th>
               <th className="px-4 py-2 text-2xs text-white bg-[#3a3f47] uppercase border-2 border-black">
-                WFS
+                Fulfillment
               </th>
             </tr>
           </thead>
@@ -437,20 +463,37 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
                     {item.sellerName || "-"}
                   </td>
                   <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
-                    {item.priceInfo?.currentPrice?.price || "-"}
+                    {item.priceInfo?.currentPrice?.priceString || "-"}
                   </td>
+
                   <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
                     {item.fulfillmentStatus === "WMT" ? (
-                      <span className="bg-yellow-100 text-red-700 font-bold border border-red-500 rounded-lg px-1">
+                      <span className="bg-blue-100 border-blue-500 text-blue-700 font-bold border rounded-lg px-1">
                         WMT
                       </span>
-                    ) : item.fulfillmentStatus === "✔️" ? (
-                      "✔️"
-                    ) : item.fulfillmentStatus === "❌" ? (
-                      "❌"
+                    ) : item.fulfillmentStatus === "Brand-WFS" ? (
+                      <span className="bg-purple-100 border-purple-500 text-purple-700 font-bold border rounded-lg px-1">
+                        Brand-WFS
+                      </span>
+                    ) : item.fulfillmentStatus === "Brand-SF" ? (
+                      <span className="bg-purple-100 border-purple-500 text-purple-700 font-bold border rounded-lg px-1">
+                        Brand-SF
+                      </span>
+                    ) : item.fulfillmentStatus === "Brand" ? (
+                      <span className="bg-purple-100 border-purple-500 text-purple-700 font-bold border rounded-lg px-1">
+                        Brand
+                      </span>
+                    ) : item.fulfillmentStatus === "WFS" ? (
+                      <span className="bg-red-100 border-red-500 text-red-700 font-bold border rounded-lg px-1">
+                        WFS
+                      </span>
+                    ) : item.fulfillmentStatus === "SF" ? (
+                      <span className="bg-green-100 border-green-500 text-green-700 font-bold border rounded-lg px-1">
+                        SF
+                      </span>
                     ) : (
                       <span className="bg-yellow-100 text-black-700 font-bold border border-red-500 rounded-lg px-1">
-                        Fix
+                        ?
                       </span>
                     )}
                   </td>

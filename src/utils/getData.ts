@@ -68,6 +68,7 @@ function getProductDetails(product, idml, reviews) {
     variantCriteria: product.variantCriteria,
     variantsMap: product.variantsMap,
     sellerName: product.sellerName,
+    sellerDisplayName: product.sellerDisplayName,
     sellerType: product.sellerType,
     numberOfRatings: reviews.totalReviewCount || "0",
     numberOfReviews: reviews.reviewsWithTextCount || "0",
