@@ -29,6 +29,9 @@ function getProductDetails(product, idml, reviews) {
   // Extract the last category in the path as the main category
   const mainCategory = categories.length > 0 ? categories[categories.length - 1].name : "Unknown";
 
+  // Determine total sellers based on additional offers and primary offer existence
+  const totalSellers = product.selectedOfferId ? product.additionalOfferCount + 1 : product.additionalOfferCount;
+
   // Extract review submission times (dates)
   const reviewDates = reviews.customerReviews
     ? reviews.customerReviews.map(review => review.reviewSubmissionTime)
@@ -86,7 +89,7 @@ function getProductDetails(product, idml, reviews) {
     weight,
     images: product?.imageInfo?.allImages || [],
     videos: idml?.videos || [],
-    totalSellers: product.additionalOfferCount + 1
+    totalSellers
   };
 }
 

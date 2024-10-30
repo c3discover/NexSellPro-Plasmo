@@ -83,48 +83,54 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     offers.forEach((offer) => {
       const priceElement = offer.querySelector(".b.f4.w-50");
       const price = priceElement ? parseFloat(priceElement.textContent.replace(/[^0-9.]/g, '')) : null;
-    
+
       const sellerElement = offer.querySelector("[data-testid='product-seller-info']");
       let seller = sellerElement ? sellerElement.textContent.trim() : null;
       if (seller) {
-          seller = seller.replace("Sold and shipped by ", "");
+        seller = seller.replace("Sold and shipped by ", "");
       }
-    
+
+      // Check for Pro Seller badge
+      const isProSeller = Array.from(offer.querySelectorAll("strong")).some(
+        (el: HTMLElement) => el.textContent?.trim() === "Pro Seller"
+      );
+      
       const walmartFulfilled = offer.querySelector("[data-automation-id='Walmart-delivery']");
-    
+
       const brandMatchesSeller = product.brand && seller &&
-          product.brand.toLowerCase().split(' ').some(brandPart => 
-              seller.toLowerCase().includes(brandPart)
-          );
-    
+        product.brand.toLowerCase().split(' ').some(brandPart =>
+          seller.toLowerCase().includes(brandPart)
+        );
+
       let fulfillmentStatus;
       if (seller === "Walmart.com") {
-          fulfillmentStatus = "WMT";
+        fulfillmentStatus = "WMT";
       } else if (brandMatchesSeller) {
-          if (walmartFulfilled) {
-              fulfillmentStatus = "Brand-WFS";
-          } else if (sellerElement && sellerElement.textContent.toLowerCase().startsWith("sold and shipped by")) {
-              fulfillmentStatus = "Brand-SF";
-          } else {
-              fulfillmentStatus = "Brand";
-          }
+        if (walmartFulfilled) {
+          fulfillmentStatus = "Brand-WFS";
+        } else if (sellerElement && sellerElement.textContent.toLowerCase().startsWith("sold and shipped by")) {
+          fulfillmentStatus = "Brand-SF";
+        } else {
+          fulfillmentStatus = "Brand";
+        }
       } else if (walmartFulfilled) {
-          fulfillmentStatus = "WFS";
+        fulfillmentStatus = "WFS";
       } else if (sellerElement && sellerElement.textContent.toLowerCase().startsWith("sold and shipped by")) {
-          fulfillmentStatus = "SF";
+        fulfillmentStatus = "SF";
       } else {
-          fulfillmentStatus = "?";
+        fulfillmentStatus = "?";
       }
-    
+
       data.push({
-          priceInfo: {
-              currentPrice: {
-                  price: price,
-                  priceString: price !== null ? `$${price.toFixed(2)}` : "-",
-              }
-          },
-          sellerName: seller,
-          fulfillmentStatus: fulfillmentStatus,
+        priceInfo: {
+          currentPrice: {
+            price: price,
+            priceString: price !== null ? `$${price.toFixed(2)}` : "-",
+          }
+        },
+        sellerName: seller,
+        isProSeller, // Store the badge status
+        fulfillmentStatus: fulfillmentStatus,
       });
     });
 
@@ -143,79 +149,82 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     // Fallback to DOM scraping if necessary
     const sellerElement = document.querySelector("[data-testid='product-seller-info']");
     if (!seller && sellerElement) {
-        // Find the nested anchor element that contains the seller name within the span
-        const sellerLink = sellerElement.querySelector("a[data-testid='seller-name-link']");
-        if (sellerLink) {
-            seller = sellerLink.textContent.trim();
-        } else {
-            // If the anchor link is not found, attempt to extract directly from the span's aria-label attribute
-            seller = sellerElement.getAttribute('aria-label')?.replace("Sold and shipped by ", "").trim();
-        }
+      // Find the nested anchor element that contains the seller name within the span
+      const sellerLink = sellerElement.querySelector("a[data-testid='seller-name-link']");
+      if (sellerLink) {
+        seller = sellerLink.textContent.trim();
+      } else {
+        // If the anchor link is not found, attempt to extract directly from the span's aria-label attribute
+        seller = sellerElement.getAttribute('aria-label')?.replace("Sold and shipped by ", "").trim();
+      }
     }
 
+    const proSellerElement = document.querySelector("span.inline-flex.items-center.blue strong");
+    const isProSeller = !!proSellerElement && proSellerElement.textContent.trim() === "Pro Seller";
     const walmartFulfilled = document.querySelector("[data-automation-id='Walmart-delivery']");
 
     const brandMatchesSeller = product.brand && seller &&
-        product.brand.toLowerCase().split(' ').some(brandPart => 
-            seller.toLowerCase().includes(brandPart)
-        );
+      product.brand.toLowerCase().split(' ').some(brandPart =>
+        seller.toLowerCase().includes(brandPart)
+      );
 
     let fulfillmentStatus;
     if (seller === "Walmart.com") {
-        fulfillmentStatus = "WMT";
+      fulfillmentStatus = "WMT";
     } else if (brandMatchesSeller) {
-        if (walmartFulfilled) {
-            fulfillmentStatus = "Brand-WFS";
-        } else if (sellerElement && sellerElement.textContent.toLowerCase().startsWith("sold and shipped by")) {
-            fulfillmentStatus = "Brand-SF";
-        } else {
-            fulfillmentStatus = "Brand";
-        }
+      if (walmartFulfilled) {
+        fulfillmentStatus = "Brand-WFS";
+      } else if (sellerElement && sellerElement.textContent.toLowerCase().startsWith("sold and shipped by")) {
+        fulfillmentStatus = "Brand-SF";
+      } else {
+        fulfillmentStatus = "Brand";
+      }
     } else if (walmartFulfilled) {
-        fulfillmentStatus = "WFS";
+      fulfillmentStatus = "WFS";
     } else if (sellerElement && sellerElement.textContent.toLowerCase().startsWith("sold and shipped by")) {
-        fulfillmentStatus = "SF";
+      fulfillmentStatus = "SF";
     } else {
-        fulfillmentStatus = "?";
+      fulfillmentStatus = "?";
     }
 
     data.push({
-        priceInfo: {
-            currentPrice: {
-                price: price,
-                priceString: price !== null ? `$${price.toFixed(2)}` : "-",
-            }
-        },
-        sellerName: seller,
-        fulfillmentStatus: fulfillmentStatus,
+      priceInfo: {
+        currentPrice: {
+          price: price,
+          priceString: price !== null ? `$${price.toFixed(2)}` : "-",
+        }
+      },
+      sellerName: seller,
+      isProSeller, // Store the badge status
+      fulfillmentStatus: fulfillmentStatus,
     });
 
     setCapturedData(data);
-};
+  };
 
-useEffect(() => {
-  const handleDataCapture = async () => {
+  useEffect(() => {
+    const handleDataCapture = async () => {
       const compareSellersButton = document.querySelector("[aria-label='Compare all sellers']") as HTMLButtonElement;
 
       if (compareSellersButton) {
-          // Multiple sellers exist, handle multi-seller scenario
-          compareSellersButton.click();
-          const modalNode = await waitForModal();
-          const observer = observeDomChanges(modalNode);
+        // Multiple sellers exist, handle multi-seller scenario
+        compareSellersButton.click();
+        const modalNode = await waitForModal();
+        const observer = observeDomChanges(modalNode);
 
-          setTimeout(() => {
-              if (observer) {
-                  observer.disconnect();
-              }
-          }, 5000);
+        setTimeout(() => {
+          if (observer) {
+            observer.disconnect();
+          }
+        }, 5000);
       } else {
-          // Single seller scenario
-          extractSingleSellerData();
+        // Single seller scenario
+        extractSingleSellerData();
       }
-  };
+    };
 
-  handleDataCapture();
-}, [product.totalSellers]);
+    handleDataCapture();
+  }, [product.totalSellers]);
 
   console.log('Captured Data:', capturedData);
 
@@ -257,7 +266,7 @@ useEffect(() => {
 
         <div className="w-1/3 p-1">
           <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
-            Verified Reviews
+            Overall Rating
           </p>
           <p className="text-2xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
             {productDetails ? productDetails.overallRating : "-"} {/* Display overall rating */}
@@ -341,7 +350,7 @@ useEffect(() => {
             Total Sellers
           </p>
           <p className="text-2xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
-            {product.totalSellers || "-"}
+          {capturedData && capturedData.length > 0 ? capturedData.length : "-"}
           </p>
         </div>
       </div>
@@ -461,6 +470,9 @@ useEffect(() => {
                 <tr key={index}>
                   <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
                     {item.sellerName || "-"}
+                    {item.isProSeller && (
+                      <span className="checkmark-circle"></span>
+                    )}
                   </td>
                   <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
                     {item.priceInfo?.currentPrice?.priceString || "-"}
