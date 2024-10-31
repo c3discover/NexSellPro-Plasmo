@@ -5,12 +5,17 @@ export const Product = ({ product }: any) => {
   const [copied, setCopied] = useState(false);
   const [badges, setBadges] = useState([]);
   const [categories, setCategories] = useState([]); // Add state to store categories
+  const [totalSellers, setTotalSellers] = useState(0);
+
 
   // Fetch badges and categories when the component mounts
   useEffect(() => {
     const productDetails = getData();
+    console.log("Product Details:", productDetails);
+
     setBadges(productDetails.badges || []);
     setCategories(productDetails.categories || []); // Fetch categories from product details
+    setTotalSellers(productDetails.totalSellers || 0);
   }, []);
 
   // Helper function to render shelving path as links
@@ -123,7 +128,7 @@ export const Product = ({ product }: any) => {
             </p>
             <p className="text-black text-xs p-1 mt-2">
               <span className="font-bold mt-2">Total Sellers </span>
-              <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">{product.totalSellers} </span>
+              <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">{totalSellers} </span>
             </p>
             <p className="text-black text-xs p-1 mt-2">
               <span className="font-bold mt-2">Walmart Selling? </span>

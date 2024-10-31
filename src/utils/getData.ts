@@ -30,7 +30,9 @@ function getProductDetails(product, idml, reviews) {
   const mainCategory = categories.length > 0 ? categories[categories.length - 1].name : "Unknown";
 
   // Determine total sellers based on additional offers and primary offer existence
-  const totalSellers = product.selectedOfferId ? product.additionalOfferCount + 1 : product.additionalOfferCount;
+  const totalSellers = product.buyBoxSuppression
+  ? product.additionalOfferCount
+  : product.additionalOfferCount + 1;
 
   // Extract review submission times (dates)
   const reviewDates = reviews.customerReviews

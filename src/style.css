@@ -3,9 +3,11 @@
 @tailwind components;
 @tailwind utilities;
 :root,
+
 #plasmo-google-sidebar:host {
   --plasmo-google-sidebar-width: 400px;
 }
+
 body.plasmo-google-sidebar-show,
 body.plasmo-google-sidebar-show * {
   max-width: calc(100vw - var(--plasmo-google-sidebar-width));
@@ -17,6 +19,7 @@ body.plasmo-google-sidebar-show * {
   top: 0px;
   right: 0px;
 }
+
 #sidebar {
   position: absolute;
   font-family: "Montserrat", sans-serif;
@@ -45,6 +48,7 @@ body.plasmo-google-sidebar-show * {
   background: #d7d7d7;
   padding: 5px;
 }
+
 #sidebar h1 {
   font-size: 20px;
   color: #000000;
@@ -52,6 +56,7 @@ body.plasmo-google-sidebar-show * {
   font-weight: bold;
   /* font family */
 }
+
 /* Crisper button with multiple shadows and more defined lines */
 .shadow-inner-crisp {
   box-shadow: 
@@ -61,6 +66,7 @@ body.plasmo-google-sidebar-show * {
   border: 3px solid #2c2c2c; /* Darker border to define button edges */
   border-radius: 10px; /* Rounded corners */
 }
+
 /* Ensure spin buttons for number inputs are always visible */
 input[type="number"] {
   -webkit-appearance: number-input;
