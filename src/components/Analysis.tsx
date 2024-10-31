@@ -93,6 +93,9 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     });
   };
 
+
+
+
   // Extracts multiple seller data from the modal, used in multi-seller cases
   const extractDataFromModal = (modalNode: HTMLElement) => {
     const data = [];
@@ -134,6 +137,10 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     return data;
   };
 
+
+
+
+
   // Extract data for a single seller, useful when only one seller is on the page
   const extractSingleSellerData = () => {
     const price = product.currentPrice || null;
@@ -150,8 +157,8 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     const brandMatchesSeller = product.brand && seller && product.brand.toLowerCase().split(' ').some(brandPart => seller.toLowerCase().includes(brandPart));
 
     const fulfillmentStatus = seller === "Walmart.com" ? "WMT" :
-                              brandMatchesSeller ? (walmartFulfilled ? "Brand-WFS" : "Brand") :
-                              walmartFulfilled ? "WFS" : "SF";
+      brandMatchesSeller ? (walmartFulfilled ? "Brand-WFS" : "Brand") :
+        walmartFulfilled ? "WFS" : "SF";
 
     setCapturedData([{
       priceInfo: { currentPrice: { price, priceString: price !== null ? `$${price.toFixed(2)}` : "-" } },
@@ -160,6 +167,9 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       fulfillmentStatus,
     }]);
   };
+
+
+
 
   return (
     <div
@@ -399,6 +409,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
                 </th>
               </tr>
             </thead>
+
             <tbody className="bg-white divide-y divide-gray-200">
               {capturedData && capturedData.length > 0 ? (
                 capturedData.map((item, index) => (
@@ -410,7 +421,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
                         <span className="checkmark-circle"></span>
                       )}
                     </td>
-
                     {/* Price */}
                     <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
                       {item.priceInfo?.currentPrice?.priceString || "-"}
