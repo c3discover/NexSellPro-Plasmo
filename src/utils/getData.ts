@@ -91,7 +91,7 @@ function getProductDetails(product, idml, reviews) {
     weight,
     images: product?.imageInfo?.allImages || [],
     videos: idml?.videos || [],
-    totalSellers
+    totalSellers,
   };
 }
 

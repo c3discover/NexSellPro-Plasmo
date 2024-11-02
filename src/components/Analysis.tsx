@@ -19,6 +19,7 @@ interface Product {
   numberOfReviews?: number;
   overallRating?: number;
   reviewDates?: string[];
+  sellers?: any[];
 }
 
 // Define the interface for Analysis component props
@@ -33,6 +34,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
   const [productDetails, setProductDetails] = useState<Product | null>(null);
   const [capturedData, setCapturedData] = useState<any[]>([]);
   const [totalSellers, setTotalSellers] = useState(0);
+  // Calculate the number of WFS sellers from capturedData
   const wfsSellerCount = capturedData.filter(seller => seller.fulfillmentStatus === "WFS").length;
   // Check if the brand is one of the sellers
   const isBrandSelling = capturedData.some(seller =>
@@ -43,6 +45,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
   );
 
 
+//////////////////////////////////////////////
   // Sync isOpen state with prop
   useEffect(() => {
     setIsOpen(areSectionsOpen);
@@ -59,47 +62,48 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     return Math.floor(differenceInTime / (1000 * 3600 * 24));
   };
 
+//////////////////////////////////////////////
   // Fetch product data from getData
   useEffect(() => {
     const productData = getData();
     if (productData) {
       setProductDetails(productData);
       setTotalSellers(productData.totalSellers || 0);
-      console.log("Product data loaded, total sellers:", productData.totalSellers);
     } else {
       console.error("Error loading product data");
     }
   }, []);
 
-
+//////////////////////////////////////////////
   // Consolidated data capture logic for single and multi-seller cases
   useEffect(() => {
     const captureSellerData = async () => {
       if (totalSellers > 1) {
-        console.log("Multiple sellers detected. Opening modal...");
         const compareSellersButton = document.querySelector("[aria-label='Compare all sellers']") as HTMLButtonElement;
-
+    
         if (compareSellersButton) {
           compareSellersButton.click();
+          
+          // Wait for the modal to fully appear
           const modalNode = await waitForModal();
+    
+          // Only start observing once the modal is fully loaded
           observeDomChanges(modalNode);
         }
       } else {
-        console.log("Single seller detected.");
-        extractSingleSellerData(); // Call single-seller extraction function
+        extractSingleSellerData(); // Single seller logic remains the same
       }
     };
-
     captureSellerData();
   }, [totalSellers]);
 
 
 
-
+//////////////////////////////////////////////
   // Function for single seller extraction
   const extractSingleSellerData = () => {
-    console.log("Starting extractSingleSellerData function..."); // Initial log
-
+    
+    // Extract offer price
     const price = product.currentPrice || null;
     let seller = product.sellerDisplayName || product.sellerName || "Unknown Seller";
 
@@ -110,23 +114,22 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       seller = sellerLink ? sellerLink.textContent.trim() : sellerElement.getAttribute('aria-label')?.replace("Sold and shipped by ", "").trim();
     }
 
-    console.log("Seller name extracted:", seller); // Log seller name
-
+    // Determine if pro seller 
     const isProSeller = !!document.querySelector("span.inline-flex.items-center.blue strong")?.textContent.includes("Pro Seller");
+    
+    // Determine if WFS
     const walmartFulfilled = !!document.querySelector("[data-automation-id='Walmart-delivery']");
-    console.log("Walmart fulfilled detected:", walmartFulfilled); // Log Walmart fulfillment status
-
+    
+    // Determine if brand is the seller
     const brandMatchesSeller = product.brand && seller && product.brand.toLowerCase().split(' ').some(brandPart =>
       seller.toLowerCase().includes(brandPart)
     );
-    console.log("Brand matches seller:", brandMatchesSeller); // Log brand match status
 
     // Set fulfillment status based on conditions
     const fulfillmentStatus = seller === "Walmart.com" ? "WMT" :
       brandMatchesSeller ? (walmartFulfilled ? "Brand-WFS" : "Brand-SF") :
         walmartFulfilled ? "WFS" : "SF";
 
-    console.log("Final fulfillment status:", fulfillmentStatus); // Log fulfillment status
 
     // Update `capturedData` with the single seller's data
     setCapturedData([{
@@ -141,7 +144,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       fulfillmentStatus
     }]);
 
-    console.log("Single seller data set in capturedData:", capturedData); // Log capturedData after setting  
     console.log("Captured data for single seller:", [{
       priceInfo: { currentPrice: { price, priceString: price !== null ? `$${price.toFixed(2)}` : "-" } },
       sellerName: seller,
@@ -153,18 +155,23 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
 
 
-
-
-
+//////////////////////////////////////////////
   // Helper: Observe DOM changes in the modal for multi-seller extraction
   const observeDomChanges = (modalNode: HTMLElement) => {
+    // Make the modal invisible to the user
+    modalNode.style.visibility = "hidden";
+    modalNode.style.pointerEvents = "none";
+  
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
-          console.log("New content detected in modal. Extracting data...");
           setTimeout(() => {
             const data = extractDataFromModal(modalNode);
             setCapturedData(data);
+  
+            // Optionally reset the visibility if you want to bring it back later
+            modalNode.style.visibility = "";
+            modalNode.style.pointerEvents = "";
           }, 500);
         }
       });
@@ -172,10 +179,8 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     observer.observe(modalNode, { childList: true, subtree: true });
     return observer;
   };
-
-
-
-
+  
+  
   // Helper: Waits for modal to appear
   const waitForModal = () => {
     return new Promise<HTMLElement>((resolve) => {
@@ -183,30 +188,31 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         const modalNode = document.querySelector(".w_g1_b") as HTMLElement;
         if (modalNode) {
           clearInterval(checkExist);
+  
+          // Visually minimize the modal
+          modalNode.style.width = "0";
+          modalNode.style.height = "0";
+          modalNode.style.overflow = "hidden";
+          
           resolve(modalNode);
         }
       }, 100);
     });
   };
+  
 
 
-
-
-
-
-
-
+//////////////////////////////////////////////
   // Extracts multiple seller data from the modal
   const extractDataFromModal = (modalNode: HTMLElement) => {
     const data = [];
     const offers = modalNode.querySelectorAll("[data-testid='allSellersOfferLine']");
 
     offers.forEach((offer, index) => {
+      
       // Extract price
       const priceElement = offer.querySelector(".b.f4.w-50");
       const price = priceElement ? parseFloat(priceElement.textContent.replace(/[^0-9.]/g, '')) : null;
-
-      console.log("Starting seller extraction process..."); // Log for debugging
 
       // Extract seller name, prioritizing `aria-label` if it includes "Sold and shipped by"
       const sellerInfoElement = offer.querySelector("[data-testid='product-seller-info']");
@@ -214,29 +220,25 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       const isProSeller = Array.from(offer.querySelectorAll("strong")).some(
         (el: HTMLElement) => el.textContent?.trim() === "Pro Seller"
       );
-      console.log("aria-label content:", sellerAriaLabel); // Log the content of aria-label
-
 
       // Primary method to get seller name
       let seller = sellerInfoElement?.querySelector("[data-testid='seller-name-link']")?.textContent.trim() || null;
-      console.log("Initial seller extracted from link:", seller); // Log initial seller extraction
 
-      // Fallback to `aria-label` if "sold and shipped by" is included
-      if (!seller && sellerAriaLabel?.includes("sold and shipped by")) {
+      // Fallback: If seller is not extracted from link, use aria-label if it includes "walmart.com"
+      if (!seller && sellerAriaLabel?.includes("walmart.com")) {
+        seller = "Walmart.com";
+      } else if (!seller && sellerAriaLabel?.includes("sold and shipped by")) {
         seller = sellerAriaLabel.replace("sold and shipped by", "").trim();
-        console.log("Seller extracted from aria-label:", seller); // Log seller from aria-label fallback
       }
-
+      
       // Check for Walmart Fulfilled
       const walmartFulfilled = !!offer.querySelector("[data-automation-id='Walmart-delivery']");
-      console.log("Walmart Fulfilled detected:", walmartFulfilled); // Log Walmart fulfillment status
 
       // Check if the seller name matches the brand
       const brandMatchesSeller = product.brand && seller &&
         product.brand.toLowerCase().split(' ').some(brandPart =>
           seller.toLowerCase().includes(brandPart)
         );
-      console.log("Brand matches seller:", brandMatchesSeller); // Log if brand matches seller
 
       // Set fulfillment status based on the conditions
       let fulfillmentStatus;
@@ -258,7 +260,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         fulfillmentStatus = "?";
       }
 
-
       data.push({
         priceInfo: {
           currentPrice: {
@@ -272,7 +273,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       });
     });
 
-    console.log("Extracted Data:", data); // Log the final extracted data
+    console.log("Captured Data for Modal Sellers:", data); // Log the final extracted data
     return data;
   };
 
@@ -280,7 +281,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
 
 
-
+//////////////////////////////////////////////
   // State for controlling the seller table visibility
   const [isTableExpanded, setIsTableExpanded] = useState(true); // Start with the table expanded
 
@@ -294,9 +295,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
 
 
-
-
-
+//////////////////////////////////////////////
   return (
     <div
       id="Analysis"
@@ -551,7 +550,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
                   capturedData.map((item, index) => (
                     <tr key={index}>
                       {/* Seller Name */}
-                      <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
+                      <td className="px-1 text-center align-middle whitespace-nowrap text-2xs border-2 border-black bg-white">
                         {item.sellerName || "-"}
                         {item.isProSeller && (
                           <span className="checkmark-circle"></span>
