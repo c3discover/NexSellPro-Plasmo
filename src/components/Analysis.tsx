@@ -19,7 +19,6 @@ interface Product {
   numberOfReviews?: number;
   overallRating?: number;
   reviewDates?: string[];
-  sellers?: any[];
 }
 
 // Define the interface for Analysis component props
@@ -28,8 +27,9 @@ interface AnalysisProps {
   areSectionsOpen: boolean;
 }
 
-// Analysis Component
+// Analysis Component: Displays product details, ratings, and seller information
 export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) => {
+  // State management for component visibility and data
   const [isOpen, setIsOpen] = useState(areSectionsOpen);
   const [productDetails, setProductDetails] = useState<Product | null>(null);
   const [capturedData, setCapturedData] = useState<any[]>([]);
@@ -45,16 +45,16 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
   );
 
 
-//////////////////////////////////////////////
-  // Sync isOpen state with prop
+  //////////////////////////////////////////////
+  // Sync isOpen state with the passed prop value to control visibility externally
   useEffect(() => {
     setIsOpen(areSectionsOpen);
   }, [areSectionsOpen]);
 
-  // Toggle component open/close
+  // Function to toggle the component open or closed when clicking the header
   const toggleOpen = () => setIsOpen((prev) => !prev);
 
-  // Calculate the age of a review in days based on a date string
+  // Function to calculate the age of a review in days based on a date string
   const getDaysAgo = (dateString: string) => {
     const today = new Date();
     const reviewDate = new Date(dateString);
@@ -62,47 +62,126 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     return Math.floor(differenceInTime / (1000 * 3600 * 24));
   };
 
-//////////////////////////////////////////////
-  // Fetch product data from getData
+
+  //////////////////////////////////////////////
+  // Fetch product data from getData and update the state for productDetails and totalSellers
   useEffect(() => {
     const productData = getData();
     if (productData) {
       setProductDetails(productData);
-      setTotalSellers(productData.totalSellers || 0);
+      setTotalSellers(productData.totalSellers || 0); // Initialize with total sellers count
+      console.log("Product data loaded, total sellers:", productData.totalSellers);
     } else {
       console.error("Error loading product data");
     }
   }, []);
 
-//////////////////////////////////////////////
-  // Consolidated data capture logic for single and multi-seller cases
+
+
+  //////////////////////////////////////////////
+  // Primary function to capture seller data based on the number of sellers
   useEffect(() => {
     const captureSellerData = async () => {
-      if (totalSellers > 1) {
-        const compareSellersButton = document.querySelector("[aria-label='Compare all sellers']") as HTMLButtonElement;
-    
-        if (compareSellersButton) {
-          compareSellersButton.click();
-          
-          // Wait for the modal to fully appear
-          const modalNode = await waitForModal();
-    
-          // Only start observing once the modal is fully loaded
-          observeDomChanges(modalNode);
-        }
+      const compareSellersButton = document.querySelector("[aria-label='Compare all sellers']") as HTMLButtonElement;
+
+      if (compareSellersButton) {
+        // Multi-seller scenario
+        console.log("Multiple sellers detected. Opening modal...");
+        compareSellersButton.click();
+        const modalNode = await waitForModal();
+
+        // Observe changes in the modal to capture seller data
+        const observer = observeDomChanges(modalNode);
+
+        // Disconnect observer after a set period
+        setTimeout(() => {
+          if (observer) observer.disconnect();
+          closeModalIfOpen(); // Close modal after extraction
+        }, 5000);
       } else {
-        extractSingleSellerData(); // Single seller logic remains the same
+        // Single-seller scenario
+        console.log("Single seller detected.");
+        extractSingleSellerData();
       }
     };
+
     captureSellerData();
   }, [totalSellers]);
 
 
 
-//////////////////////////////////////////////
+
+  //////////////////////////////////////////////
+  // Function to observe modal DOM changes for dynamic data capture
+  const observeDomChanges = (targetNode: HTMLElement) => {
+    if (targetNode) {
+      const observer = new MutationObserver((mutationsList) => {
+        mutationsList.forEach((mutation) => {
+          if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
+            console.log("New content detected in modal. Extracting data...");
+
+            // Delay data extraction to ensure all content is fully loaded
+            setTimeout(() => {
+              const jsonData = extractDataFromModal(targetNode);
+              setCapturedData(jsonData);
+              closeModalIfOpen(); // Close modal after extraction
+            }, 500);
+          }
+        });
+      });
+
+      // Start observing the modal for child node changes
+      observer.observe(targetNode, { childList: true, subtree: true });
+      return observer;
+    }
+    return null;
+  };
+
+  // Helper function: Waits for modal to appear in the DOM
+  const waitForModal = () => {
+    return new Promise<HTMLElement>((resolve) => {
+      const checkButtonExist = setInterval(() => {
+        const compareButton = document.querySelector(
+          "button[aria-label='Compare all sellers']"
+        ) as HTMLButtonElement;
+
+        if (compareButton) {
+          console.log("Compare all sellers button found, clicking...");
+          compareButton.click();
+          clearInterval(checkButtonExist);
+
+          // Wait for the modal to appear after clicking
+          const checkModalExist = setInterval(() => {
+            const modalNode = document.querySelector(".w_g1_b") as HTMLElement;
+            if (modalNode) {
+              console.log("Modal found:", modalNode);
+              clearInterval(checkModalExist);
+              resolve(modalNode);
+            }
+          }, 500); // Check every 500ms for modal
+        }
+      }, 500); // Check every 500ms for the button
+    });
+  };
+
+
+
+  //////////////////////////////////////////////
+  // Closes the "More seller options" modal if it’s open
+  const closeModalIfOpen = () => {
+    const closeButton = document.querySelector("[aria-label='Close']");
+    if (closeButton) {
+      (closeButton as HTMLElement).click();
+      console.log("Closed the modal.");
+    }
+  };
+
+
+
+  //////////////////////////////////////////////
   // Function for single seller extraction
   const extractSingleSellerData = () => {
-    
+
     // Extract offer price
     const price = product.currentPrice || null;
     let seller = product.sellerDisplayName || product.sellerName || "Unknown Seller";
@@ -116,10 +195,10 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
     // Determine if pro seller 
     const isProSeller = !!document.querySelector("span.inline-flex.items-center.blue strong")?.textContent.includes("Pro Seller");
-    
+
     // Determine if WFS
     const walmartFulfilled = !!document.querySelector("[data-automation-id='Walmart-delivery']");
-    
+
     // Determine if brand is the seller
     const brandMatchesSeller = product.brand && seller && product.brand.toLowerCase().split(' ').some(brandPart =>
       seller.toLowerCase().includes(brandPart)
@@ -154,62 +233,15 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
 
 
-
-//////////////////////////////////////////////
-  // Helper: Observe DOM changes in the modal for multi-seller extraction
-  const observeDomChanges = (modalNode: HTMLElement) => {
-    // Make the modal invisible to the user
-    modalNode.style.visibility = "hidden";
-    modalNode.style.pointerEvents = "none";
-  
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
-          setTimeout(() => {
-            const data = extractDataFromModal(modalNode);
-            setCapturedData(data);
-  
-            // Optionally reset the visibility if you want to bring it back later
-            modalNode.style.visibility = "";
-            modalNode.style.pointerEvents = "";
-          }, 500);
-        }
-      });
-    });
-    observer.observe(modalNode, { childList: true, subtree: true });
-    return observer;
-  };
-  
-  
-  // Helper: Waits for modal to appear
-  const waitForModal = () => {
-    return new Promise<HTMLElement>((resolve) => {
-      const checkExist = setInterval(() => {
-        const modalNode = document.querySelector(".w_g1_b") as HTMLElement;
-        if (modalNode) {
-          clearInterval(checkExist);
-  
-          // Visually minimize the modal
-          modalNode.style.width = "0";
-          modalNode.style.height = "0";
-          modalNode.style.overflow = "hidden";
-          
-          resolve(modalNode);
-        }
-      }, 100);
-    });
-  };
-  
-
-
-//////////////////////////////////////////////
+  //////////////////////////////////////////////
   // Extracts multiple seller data from the modal
   const extractDataFromModal = (modalNode: HTMLElement) => {
     const data = [];
     const offers = modalNode.querySelectorAll("[data-testid='allSellersOfferLine']");
 
     offers.forEach((offer, index) => {
-      
+      // Further details of data extraction for each seller
+
       // Extract price
       const priceElement = offer.querySelector(".b.f4.w-50");
       const price = priceElement ? parseFloat(priceElement.textContent.replace(/[^0-9.]/g, '')) : null;
@@ -217,20 +249,20 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       // Extract seller name, prioritizing `aria-label` if it includes "Sold and shipped by"
       const sellerInfoElement = offer.querySelector("[data-testid='product-seller-info']");
       const sellerAriaLabel = sellerInfoElement?.getAttribute("aria-label")?.toLowerCase();
+
+      // Extract pro seller status
       const isProSeller = Array.from(offer.querySelectorAll("strong")).some(
-        (el: HTMLElement) => el.textContent?.trim() === "Pro Seller"
+        (el) => el.textContent?.trim() === "Pro Seller"
       );
 
-      // Primary method to get seller name
+      // Determine the seller name, prioritizing `aria-label` when necessary
       let seller = sellerInfoElement?.querySelector("[data-testid='seller-name-link']")?.textContent.trim() || null;
-
-      // Fallback: If seller is not extracted from link, use aria-label if it includes "walmart.com"
       if (!seller && sellerAriaLabel?.includes("walmart.com")) {
         seller = "Walmart.com";
       } else if (!seller && sellerAriaLabel?.includes("sold and shipped by")) {
         seller = sellerAriaLabel.replace("sold and shipped by", "").trim();
       }
-      
+
       // Check for Walmart Fulfilled
       const walmartFulfilled = !!offer.querySelector("[data-automation-id='Walmart-delivery']");
 
@@ -239,6 +271,13 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         product.brand.toLowerCase().split(' ').some(brandPart =>
           seller.toLowerCase().includes(brandPart)
         );
+
+// Check and log brand match and Walmart fulfillment status
+console.log("Seller name:", seller);
+console.log("Is Pro Seller:", isProSeller);
+console.log("Brand matches seller:", brandMatchesSeller);
+console.log("Walmart Fulfilled:", walmartFulfilled);
+console.log("Seller aria-label:", sellerAriaLabel);
 
       // Set fulfillment status based on the conditions
       let fulfillmentStatus;
@@ -260,28 +299,52 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         fulfillmentStatus = "?";
       }
 
+// Log the final fulfillment status for this seller
+console.log("Final Fulfillment Status:", fulfillmentStatus);
+
       data.push({
-        priceInfo: {
-          currentPrice: {
-            price: price,
-            priceString: price !== null ? `$${price.toFixed(2)}` : "-",
-          }
-        },
+        priceInfo: { currentPrice: { price, priceString: price !== null ? `$${price.toFixed(2)}` : "-" } },
         sellerName: seller,
         isProSeller,
-        fulfillmentStatus,
+        fulfillmentStatus
       });
     });
 
-    console.log("Captured Data for Modal Sellers:", data); // Log the final extracted data
+    console.log("Final captured data from modal:", data); // Log the final data array
+
+    closeModal();
+
     return data;
+  };
+
+
+  //////////////////////////////////////////////
+  // Function to close the modal after extracting data
+  const closeModal = () => {
+    const closeButton = document.querySelector("button[aria-label='Close dialog']") as HTMLButtonElement | null;
+
+    if (closeButton) {
+      console.log("Close button found. Attempting to close the modal.");
+      closeButton.click(); // Close the modal if button is found
+    } else {
+      console.log("Close button not found. Attempting to hide modal directly.");
+      const modalNode = document.querySelector(".w_g1_b") as HTMLElement | null;
+      if (modalNode) {
+        modalNode.style.display = "none"; // Hide modal if no close button
+        console.log("Modal hidden directly.");
+      } else {
+        console.error("Unable to locate the modal to close it.");
+      }
+    }
   };
 
 
 
 
 
-//////////////////////////////////////////////
+
+
+  //////////////////////////////////////////////
   // State for controlling the seller table visibility
   const [isTableExpanded, setIsTableExpanded] = useState(true); // Start with the table expanded
 
@@ -295,7 +358,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
 
 
-//////////////////////////////////////////////
+  //////////////////////////////////////////////
   return (
     <div
       id="Analysis"
