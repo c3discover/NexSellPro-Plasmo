@@ -70,7 +70,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     if (productData) {
       setProductDetails(productData);
       setTotalSellers(productData.totalSellers || 0); // Initialize with total sellers count
-      console.log("Product data loaded, total sellers:", productData.totalSellers);
     } else {
       console.error("Error loading product data");
     }
@@ -86,7 +85,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
       if (compareSellersButton) {
         // Multi-seller scenario
-        console.log("Multiple sellers detected. Opening modal...");
         compareSellersButton.click();
         const modalNode = await waitForModal();
 
@@ -100,7 +98,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         }, 5000);
       } else {
         // Single-seller scenario
-        console.log("Single seller detected.");
         extractSingleSellerData();
       }
     };
@@ -118,7 +115,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       const observer = new MutationObserver((mutationsList) => {
         mutationsList.forEach((mutation) => {
           if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
-            console.log("New content detected in modal. Extracting data...");
 
             // Delay data extraction to ensure all content is fully loaded
             setTimeout(() => {
@@ -146,7 +142,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         ) as HTMLButtonElement;
 
         if (compareButton) {
-          console.log("Compare all sellers button found, clicking...");
           compareButton.click();
           clearInterval(checkButtonExist);
 
@@ -154,7 +149,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
           const checkModalExist = setInterval(() => {
             const modalNode = document.querySelector(".w_g1_b") as HTMLElement;
             if (modalNode) {
-              console.log("Modal found:", modalNode);
               clearInterval(checkModalExist);
               resolve(modalNode);
             }
@@ -172,7 +166,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     const closeButton = document.querySelector("[aria-label='Close']");
     if (closeButton) {
       (closeButton as HTMLElement).click();
-      console.log("Closed the modal.");
     }
   };
 
@@ -272,12 +265,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
           seller.toLowerCase().includes(brandPart)
         );
 
-// Check and log brand match and Walmart fulfillment status
-console.log("Seller name:", seller);
-console.log("Is Pro Seller:", isProSeller);
-console.log("Brand matches seller:", brandMatchesSeller);
-console.log("Walmart Fulfilled:", walmartFulfilled);
-console.log("Seller aria-label:", sellerAriaLabel);
 
       // Set fulfillment status based on the conditions
       let fulfillmentStatus;
@@ -298,9 +285,6 @@ console.log("Seller aria-label:", sellerAriaLabel);
       } else {
         fulfillmentStatus = "?";
       }
-
-// Log the final fulfillment status for this seller
-console.log("Final Fulfillment Status:", fulfillmentStatus);
 
       data.push({
         priceInfo: { currentPrice: { price, priceString: price !== null ? `$${price.toFixed(2)}` : "-" } },
@@ -324,16 +308,12 @@ console.log("Final Fulfillment Status:", fulfillmentStatus);
     const closeButton = document.querySelector("button[aria-label='Close dialog']") as HTMLButtonElement | null;
 
     if (closeButton) {
-      console.log("Close button found. Attempting to close the modal.");
       closeButton.click(); // Close the modal if button is found
     } else {
-      console.log("Close button not found. Attempting to hide modal directly.");
       const modalNode = document.querySelector(".w_g1_b") as HTMLElement | null;
       if (modalNode) {
         modalNode.style.display = "none"; // Hide modal if no close button
-        console.log("Modal hidden directly.");
       } else {
-        console.error("Unable to locate the modal to close it.");
       }
     }
   };
