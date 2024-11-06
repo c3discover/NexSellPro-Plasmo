@@ -167,7 +167,7 @@ export const Variations: React.FC<VariationsProps> = ({ variantsMap, areSections
                 {/* Variants Box */}
                 <div className="w-1/2 p-1">
                   <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
-                    Variant Criteria
+                    Variant Attributes
                   </p>
                   <div className="text-2xs text-black text-center bg-white border-2 border-black p-1 rounded-b-lg shadow-md shadow-black">
                     {Object.values(variantsMap)[0]?.variants
@@ -215,9 +215,11 @@ export const Variations: React.FC<VariationsProps> = ({ variantsMap, areSections
                     {/* Variant ID Row */}
                     <thead>
                       <tr>
-                        <th className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white">
-                          Variant ID
-                        </th>
+                      <td
+    className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white"
+    style={{ textAlign: "left" }}
+  >                          Variant ID
+                        </td>
                         {isVariantTableExpanded &&
                           sortedVariantIds.map((variantId) => (
                             <th
@@ -233,7 +235,7 @@ export const Variations: React.FC<VariationsProps> = ({ variantsMap, areSections
                     {/* Image Row */}
                     <tbody className="bg-white divide-y divide-gray-200">
                       <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white">
+                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
                           Image
                         </td>
                         {isVariantTableExpanded &&
@@ -259,7 +261,7 @@ export const Variations: React.FC<VariationsProps> = ({ variantsMap, areSections
 
                       {/* Title Row */}
                       <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white">
+                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
                           Title
                         </td>
                         {isVariantTableExpanded &&
@@ -277,7 +279,7 @@ export const Variations: React.FC<VariationsProps> = ({ variantsMap, areSections
 
                       {/* Attributes Row */}
                       <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white">
+                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
                           Attributes
                         </td>
                         {isVariantTableExpanded &&
@@ -286,16 +288,26 @@ export const Variations: React.FC<VariationsProps> = ({ variantsMap, areSections
                               key={variantId}
                               className="px-2 py-1 text-2xs border-2 border-black text-center"
                             >
-                              {extractAttribute(variantId, variantsMap) || "-"}
+                              {variantsMap[variantId]?.variants
+                                .map((attribute: string) => attribute.split('-')[1]) // Get the attribute value after the dash
+                                .map((attributeValue, index) => (
+                                  <div key={index}>
+                                    {attributeValue
+                                      .split('_') // Split on underscores
+                                      .map(word => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize each word
+                                      .join(' ')} {/* Join with spaces for readability */}
+                                  </div>
+                                )) || <div>-</div>} {/* Display a dash if there are no attributes */}
                             </td>
                           ))}
                       </tr>
 
 
 
+
                       {/* Price Row */}
                       <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white">
+                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
                           Price
                         </td>
                         {isVariantTableExpanded &&
@@ -316,7 +328,7 @@ export const Variations: React.FC<VariationsProps> = ({ variantsMap, areSections
 
                       {/* Ratings Row */}
                       <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white">
+                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
                           Ratings
                         </td>
                         {isVariantTableExpanded &&
@@ -334,7 +346,7 @@ export const Variations: React.FC<VariationsProps> = ({ variantsMap, areSections
 
                       {/* Sellers Row */}
                       <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white">
+                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
                           Sellers
                         </td>
                         {isVariantTableExpanded &&
@@ -352,7 +364,7 @@ export const Variations: React.FC<VariationsProps> = ({ variantsMap, areSections
 
                       {/* WPID Row */}
                       <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white">
+                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
                           WPID
                         </td>
                         {isVariantTableExpanded &&
@@ -370,7 +382,7 @@ export const Variations: React.FC<VariationsProps> = ({ variantsMap, areSections
 
                       {/* UPC Row */}
                       <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white">
+                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
                           UPC
                         </td>
                         {isVariantTableExpanded &&
@@ -388,7 +400,7 @@ export const Variations: React.FC<VariationsProps> = ({ variantsMap, areSections
 
                       {/* In Stock Row */}
                       <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white">
+                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
                           In Stock
                         </td>
                         {isVariantTableExpanded &&
@@ -405,7 +417,7 @@ export const Variations: React.FC<VariationsProps> = ({ variantsMap, areSections
                   </table>
                 </div>
               )}
-          </>
+            </>
           )}
         </>
       )}
