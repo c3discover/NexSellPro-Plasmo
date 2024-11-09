@@ -79,11 +79,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
       </h1>
 
       <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>
-        {
         
         
         
-        /* Left Section */}
+        
+        {/* Left Section */}
         <div className="w-2/3 p-2">        
           <div className="flex flex-wrap">
 
