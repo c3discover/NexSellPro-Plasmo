@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from "react";
-import PricingBlock from "./common/PricingBlock";
-import SelectBlock from "./common/SelectBlock";
-import InputBlock from "./common/InputBlock";
+
 import {
   calculateReferralFee,
   calculateWFSFee,
@@ -25,7 +23,7 @@ interface Product {
 interface PricingProps {
   product: Product;
   areSectionsOpen: boolean;
-  }
+}
 
 interface PricingBlockProps {
   label: string;
@@ -36,9 +34,9 @@ interface PricingBlockProps {
 
 export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) => {
   const [isOpen, setIsOpen] = useState(areSectionsOpen);
-      useEffect(() => {
-        setIsOpen(areSectionsOpen);
-      }, [areSectionsOpen]);
+  useEffect(() => {
+    setIsOpen(areSectionsOpen);
+  }, [areSectionsOpen]);
 
   const [productCost, setProductCost] = useState<number>(0.00);
   const [contractCategory, setContractCategory] = useState<string>("Everything Else");
@@ -69,276 +67,343 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
   return (
     <div
       id="Pricing"
-      className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}
-    >
+      className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}>
       <h1
         className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
-        onClick={toggleOpen}
-      >
+        onClick={toggleOpen}>
         {isOpen ? "▼ Pricing" : "▶ Pricing"}
       </h1>
-
       <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>
-        
-        
-        
-        
-        {/* Left Section */}
-        <div className="w-2/3 p-2">        
-          <div className="flex flex-wrap">
+        <div id="Pricing" className="p-1 bg-[#d7d7d7] rounded-lg shadow-sm">
 
-            {/* Product Cost and Sale Price */}
-            <div className="w-1/2">
-              <InputBlock 
-                label="Product Cost" 
-                value={productCost} 
-                backgroundColor="#3a3f47" 
-                onChange={(e) => setProductCost(parseFloat(e.target.value))} 
-                />
+
+          {/*----------------------------------------------------------------*/}
+          {/*Group 1: Revenue - Key Metrics*/}
+          <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
+            <h2 className="text-base font-bold mb-1">Revenue Metrics</h2>
+            <div className="space-y-2"> {/* Adds spacing between items */}
+
+              {/* Monthly Sales Est Row */}
+              <div className="flex justify-between items-center mx-5 text-sm">
+                <span className="font-semibold">Monthly Sales Est</span>
+                <span className="text-sm">Coming Soon...</span>
+              </div>
+
+              {/* Total Profit Row */}
+              <div className="flex justify-between items-center mx-5 text-sm">
+                <span className="font-semibold">Total Profit</span>
+                <span className="text-sm">{`$${totalProfit.toFixed(2)}`}</span>
+              </div>
+
+              {/* Margin Row */}
+              <div className="flex justify-between items-center mx-5 text-sm">
+                <span className="font-semibold">Margin</span>
+                <span className="text-sm">{`${margin}%`}</span>
+              </div>
+
+              {/* ROI Row */}
+              <div className="flex justify-between items-center mx-5 text-sm">
+                <span className="font-semibold">ROI</span>
+                <span className={`text-sm  ${productCost === 0 ? "text-red-500 font-extrabold" : "text-black"}`}>
+                  {productCost === 0 ? "Enter Cost" : `${roi}%`}
+                </span>
+              </div>
+
+            </div>
+          </div>
+
+
+
+
+          {/*----------------------------------------------------------------*/}
+          { /* Group 2: Pricing */}
+          <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
+            <h2 className="text-base font-bold mb-2">Pricing</h2>
+            <div className="space-y-2 text-sm">
+
+              {/* Product Cost Row */}
+              <div className="flex items-center mx-5">
+                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                  Product Cost
+                </label>
+                <div className="flex items-center w-full">
+                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <input
+                    type="text"
+                    name="minProfit"
+                    value={productCost.toFixed(2)}
+                    onChange={(e) => setProductCost(parseFloat(e.target.value))}
+                    className="p-1 pr-3 text-right w-full border rounded-r"
+                  />
+                </div>
+              </div>
+
+              {/* Sale Price Row */}
+              <div className="flex items-center mx-5">
+                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                  Sale Price
+                </label>
+                <div className="flex items-center w-full">
+                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <input
+                    type="text"
+                    name="minProfit"
+                    value={salePrice}
+                    onChange={(e) => setSalePrice(parseFloat(e.target.value))}
+                    className="p-1 pr-3 text-right w-full border rounded-r"
+                  />
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+
+
+          {/*----------------------------------------------------------------*/}
+          {/* Group 3: Shipping Dimensions */}
+          <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
+            <h2 className="text-base font-bold mb-2">Shipping Dimensions</h2>
+            <div className="space-y-2 text-sm"> {/* Vertical spacing between items */}
+
+              {/* Length Row */}
+              <div className="flex items-center mx-5">
+                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                  Length (in)
+                </label>
+                <div className="flex items-center w-full">
+                  <input
+                    type="text"
+                    value={shippingLength}
+                    className="p-1 pr-3 text-right w-full border rounded-l"
+                  />
+                  <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">in</span>
+                </div>
+              </div>
+
+              {/* Width Row */}
+              <div className="flex items-center mx-5">
+                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                  Width (in)
+                </label>
+                <div className="flex items-center w-full">
+                  <input
+                    type="text"
+                    value={shippingWidth}
+                    className="p-1 pr-3 text-right w-full border rounded-l"
+                  />
+                  <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">in</span>
+                </div>
+              </div>
+
+              {/* Height Row */}
+              <div className="flex items-center mx-5">
+                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                  Height (in)
+                </label>
+                <div className="flex items-center w-full">
+                  <input
+                    type="text"
+                    value={shippingHeight}
+                    className="p-1 pr-3 text-right w-full border rounded-l"
+                  />
+                  <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">in</span>
+                </div>
+              </div>
+
+              {/* Weight Row */}
+              <div className="flex items-center mx-5">
+                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                  Weight (lbs)
+                </label>
+                <div className="flex items-center w-full">
+                  <input
+                    type="text"
+                    value={weight}
+                    className="p-1 pr-3 text-right w-full border rounded-l"
+                  />
+                  <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">in</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+
+
+          {/*----------------------------------------------------------------*/}
+          {/* Group 4: Fees */}
+          <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
+            <h2 className="text-base font-bold mb-2">Fees</h2>
+            <div className="space-y-2 text-sm"> {/* Adds vertical spacing between rows */}
+
+              {/* Referral Fee Row */}
+              <div className="flex items-center mx-5">
+                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                  Referral Fee
+                </label>
+                <div className="flex items-center w-full">
+                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <input
+                    type="text"
+                    value={referralFee.toFixed(2)}
+                    onChange={(e) => setPrepFee(parseFloat(e.target.value))}
+                    className="p-1 pr-3 text-right w-full border rounded-r"
+                  />
+                </div>
+              </div>
+
+              {/* WFS Fee Row */}
+              <div className="flex items-center mx-5">
+                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                  WFS Fee
+                </label>
+                <div className="flex items-center w-full">
+                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <input
+                    type="text"
+                    value={wfsFee.toFixed(2)}
+                    onChange={(e) => setPrepFee(parseFloat(e.target.value))}
+                    className="p-1 pr-3 text-right w-full border rounded-r"
+                  />
+                </div>
+              </div>
+
+              {/* Prep Fee Row */}
+              <div className="flex items-center mx-5">
+                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                  Prep Fee
+                </label>
+                <div className="flex items-center w-full">
+                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <input
+                    type="text"
+                    value={prepFee.toFixed(2)}
+                    onChange={(e) => setPrepFee(parseFloat(e.target.value))}
+                    className="p-1 pr-3 text-right w-full border rounded-r"
+                  />
+                </div>
+              </div>
+
+              {/* Additional Fees Row */}
+              <div className="flex items-center mx-5">
+                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                  Additional Fees
+                </label>
+                <div className="flex items-center w-full">
+                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <input
+                    type="text"
+                    value={additionalFees.toFixed(2)}
+                    onChange={(e) => setAdditionalFees(parseFloat(e.target.value))}
+                    className="p-1 pr-3 text-right w-full border rounded-r"
+                  />
+                </div>
+              </div>
+
+              {/* Inbound Shipping Fee Row */}
+              <div className="flex items-center mx-5">
+                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                  Inbound Shipping Fee
+                </label>
+                <div className="flex items-center w-full">
+                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <input
+                    type="text"
+                    value={inboundShipping.toFixed(2)}
+                    onChange={(e) => setPrepFee(parseFloat(e.target.value))}
+                    className="p-1 pr-3 text-right w-full border rounded-r"
+                  />
+                </div>
+              </div>
+
+              {/* Storage Fee Row */}
+              <div className="flex items-center mx-5">
+                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                  Storage Fee
+                </label>
+                <div className="flex items-center w-full">
+                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <input
+                    type="text"
+                    value={storageFee.toFixed(2)}
+                    onChange={(e) => setPrepFee(parseFloat(e.target.value))}
+                    className="p-1 pr-3 text-right w-full border rounded-r"
+                  />
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+
+
+          {/*----------------------------------------------------------------*/}
+          {/* Group 5: Contract Category */}
+          <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
+            <h2 className="text-base font-bold mb-2">Contract Category</h2>
+            <div className="flex items-center mx-5 text-sm">
+
+              <div className="w-full">
+                <select
+                  value={contractCategory}
+                  onChange={(e) => setContractCategory(e.target.value)}
+                  className="p-1 w-full border border-gray-300 rounded bg-gray-100 text-gray-700">
+                  {contractCategoryOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="w-1/2">
-              <InputBlock 
-                label="Sale Price" 
-                value={salePrice} 
-                backgroundColor="#3a3f47" 
-                onChange={(e) => setSalePrice(parseFloat(e.target.value))} 
-                />
-            </div>
+          </div>
 
 
 
-            {/* Shipping Dimensions */}
-            <div className="w-full p-1">
-              <p className="text-center font-bold shadow-inherit shadow-md">Shipping Dimensions</p>
-            </div>
-
-
-            <div className="w-1/4">
-              <PricingBlock 
-                label="Length (in)" 
-                content={shippingLength.toString()} 
-                backgroundColor="#3a3f47" 
-                textColor="text-black"
-                />
-            </div>
-
-
-            <div className="w-1/4">
-              <PricingBlock 
-                label="Width (in)" 
-                content={shippingWidth.toString()} 
-                backgroundColor="#3a3f47" 
-                textColor="text-black"
-                />
-            </div>
-
-
-            <div className="w-1/4">
-              <PricingBlock 
-                label="Height (in)" 
-                content={shippingHeight.toString()} 
-                backgroundColor="#3a3f47" 
-                textColor="text-black"
-                />
-            </div>
-
-
-            <div className="w-1/4">
-              <PricingBlock 
-                label="Weight (lbs)" 
-                content={weight.toString()} 
-                backgroundColor="#3a3f47" 
-                textColor="text-black"
-                />
-            </div>
-
-
-
-            {/* Fees Section */}
-            <div className="w-1/2">
-              <PricingBlock 
-                label="Referral Fee" 
-                content={`$${referralFee.toFixed(2)}`} 
-                backgroundColor="#3a3f47" 
-                textColor="text-black"
-                />
-            </div>
-
-
-            <div className="w-1/2">
-              <PricingBlock 
-                label="WFS Fee" 
-                content={`$${wfsFee.toFixed(2)}`} 
-                backgroundColor="#3a3f47" 
-                textColor="text-black"
-                />
-            </div>
-
-
-            <div className="w-1/2">
-              <PricingBlock 
-                label="Inbound Shipping" 
-                content={`$${inboundShipping.toFixed(2)}`} 
-                backgroundColor="#3a3f47" 
-                textColor="text-black"
-                />
-            </div>
-
-
-            <div className="w-1/2">
-              <PricingBlock 
-                label="Storage" 
-                content={`$${storageFee.toFixed(2)}`} 
-                backgroundColor="#3a3f47" 
-                textColor="text-black"
-                />
-            </div>
-
-
-            <div className="w-1/2">
-              <InputBlock 
-                label="Prep Fee" 
-                value={prepFee} 
-                backgroundColor="#3a3f47" 
-                onChange={(e) => setPrepFee(parseFloat(e.target.value))} 
-                />
-            </div>
-
-
-            <div className="w-1/2">
-              <InputBlock 
-                label="Additional Fees" 
-                value={additionalFees} 
-                backgroundColor="#3a3f47" 
-                onChange={(e) => setAdditionalFees(parseFloat(e.target.value))} 
-                />
-            </div>
-
-
-            {/* Contract Category */}
-            <div className="w-full">
-              <SelectBlock 
-                label="Contract Category (Determines Fee)" 
-                selectedValue={contractCategory} 
-                options={contractCategoryOptions} 
-                backgroundColor="#3a3f47" 
-                onChange={(e) => setContractCategory(e.target.value)} />
-            </div>
-
-
-            <div className="w-1/2 mt-4">
-              <label 
-                className={`flex flex-col items-center justify-center p-2 border-2 cursor-pointer ${
-                  isWalmartFulfilled 
-                  ? 'bg-[#006EDC] text-white shadow-inner-crisp' 
+          {/*----------------------------------------------------------------*/}
+          {/* Group 6: Fulfillment Buttons */}
+          <div className="flex space-x-2 my-4 mx-5"> {/* Flex container with spacing between buttons */}
+            <div className="flex-1">
+              <label
+                className={`flex flex-col items-center justify-center p-2 border-2 cursor-pointer ${isWalmartFulfilled
+                  ? 'bg-[#006EDC] text-white shadow-inner-crisp'
                   : 'bg-gray-200 text-black shadow-none'
-                }`}
+                  }`}
                 onClick={() => setIsWalmartFulfilled(true)}>
-                <input 
-                  type="radio" 
-                  checked={isWalmartFulfilled} 
-                  onChange={() => setIsWalmartFulfilled(true)} 
+                <input
+                  type="radio"
+                  checked={isWalmartFulfilled}
+                  onChange={() => setIsWalmartFulfilled(true)}
                   className="hidden" />
                 <span className="block font-bold">Walmart</span>
                 <span className="block font-bold">Fulfilled</span>
               </label>
             </div>
 
-            <div className="w-1/2 mt-4">
-              <label 
-                className={`flex flex-col items-center justify-center p-2 border-2 cursor-pointer ${
-                  !isWalmartFulfilled 
-                  ? 'bg-[#006EDC] text-white shadow-inner-crisp' 
+            <div className="flex-1">
+              <label
+                className={`flex flex-col items-center justify-center p-2 border-2 cursor-pointer ${!isWalmartFulfilled
+                  ? 'bg-[#006EDC] text-white shadow-inner-crisp'
                   : 'bg-gray-200 text-black shadow-none'}`}
                 onClick={() => setIsWalmartFulfilled(false)}>
-                <input 
-                  type="radio" 
-                  checked={!isWalmartFulfilled} 
-                  onChange={() => setIsWalmartFulfilled(false)} 
+                <input
+                  type="radio"
+                  checked={!isWalmartFulfilled}
+                  onChange={() => setIsWalmartFulfilled(false)}
                   className="hidden" />
                 <span className="block font-bold">Seller</span>
-                <span className="block font-bold ">Fulfilled</span>
+                <span className="block font-bold">Fulfilled</span>
               </label>
             </div>
           </div>
+
+
+
+
         </div>
-
-
-
-
-        {/* Right Section */}
-        <div className="w-1/3 p-2">
-          <div className="flex flex-wrap">
-
-
-            <div className="w-full">
-              <PricingBlock 
-                label="Monthly Sales Estimate" 
-                content="Coming Soon..." 
-                backgroundColor="#3a3f47" 
-                textColor="text-black"/>
-            </div>
-            <div className="w-full">
-              <PricingBlock 
-                label="Total Profit" 
-                content={`$${totalProfit.toFixed(2)}`} 
-                backgroundColor="#3a3f47" 
-                textColor="text-black"/>
-            </div>
-            <div className="w-full">
-              <PricingBlock 
-                label="Margin" 
-                content={`${margin}%`} 
-                backgroundColor="#3a3f47" 
-                textColor="text-black"/>
-            </div>
-            <div className="w-full">
-                <PricingBlock 
-                label="ROI" 
-                content={productCost === 0 ? "Enter Cost" : `${roi}%`} 
-                backgroundColor="#3a3f47" 
-                textColor={productCost === 0 ? "text-red-500 font-extrabold" : "text-black"} />
-            </div>
-
-
-
-            {/* Bottom Section */}
-            <div className="w-full justify-center">
-              <InputBlock 
-                label="Inbound Shipping per lb" 
-                value={inboundShippingRate} 
-                backgroundColor="#3a3f47" 
-                onChange={(e) => setInboundShippingRate(parseFloat(e.target.value))} />
-            </div>
-
-
-            <div className="w-full">
-              <div className="w-full p-1">
-                <p className="text-center font-bold shadow-inherit shadow-md" >
-                  Storage </p>
-              </div>
-            </div>
-
-            <div className="w-full">
-              <InputBlock
-                label="Storage Length (months)"
-                value={storageLength}
-                backgroundColor="#3a3f47"
-                onChange={(e) => setStorageLength(Number(e.target.value))}
-              />
-            </div>
-            <div className="w-full">
-              <SelectBlock 
-                label="Season" 
-                selectedValue={season} 
-                options={seasonOptions} 
-                backgroundColor="#3a3f47" 
-                onChange={(e) => setSeason(e.target.value)} />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
-};
+}

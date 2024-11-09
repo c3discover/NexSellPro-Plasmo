@@ -12,7 +12,12 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     inboundShippingCost: "0.00",
     storageLength: "0",
     season: "Jan-Sep",
+
   });
+
+    const [prepCostType, setPrepCostType] = useState("per lb");
+    const [prepCostPerLb, setPrepCostPerLb] = useState(0.00);
+    const [prepCostEach, setPrepCostEach] = useState(0.00);
 
 
   // Load values from localStorage when the component mounts
@@ -44,6 +49,10 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
       season: "Jan-Sep",
     });
   };
+
+
+
+
 
   const handleDesiredMetricsChange = (e) => {
     let input = e.target.value;
@@ -84,8 +93,8 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
       <div className="bg-white p-6 rounded-md w-[300px] shadow-lg relative">
-        
-        
+
+
         {/* Clear All Button positioned in the top-right */}
         <button
           onClick={handleClearAll}
@@ -277,6 +286,51 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
                 </select>
               </div>
             </div>
+
+            <div className="flex items-center mb-2">
+              <label className="p-1 mr-2 min-w-[120px] whitespace-nowrap">
+                Prep Cost
+              </label>
+              <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+              <div className="flex items-center w-full">
+                <input
+                  type="text"
+                  name="prepCost"
+                  value={prepCostType === "per lb" ? prepCostPerLb : prepCostEach}
+                  onChange={(e) =>
+                    prepCostType === "per lb"
+                      ? setPrepCostPerLb(parseFloat(e.target.value) || 0.00)
+                      : setPrepCostEach(parseFloat(e.target.value) || 0.00)
+                  }
+                  className="p-1 pr-3 text-right w-full border"
+                />
+                <select
+                  value={prepCostType}
+                  onChange={(e) => setPrepCostType(e.target.value)}
+                  className="p-1 border-l rounded-r bg-gray-100 text-gray-700"
+                >
+                  <option value="per lb">/lb</option>
+                  <option value="per unit">each</option>
+                </select>
+              </div>
+            </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
           </div>
           <button
