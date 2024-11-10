@@ -192,8 +192,8 @@ export const calculateWFSFee = (finalShippingWeight: number, isWalmartFulfilled:
     }
 };
 
-export const calculateInboundShipping = (weight: number, ratePerLb: number): number => {
-    return weight * ratePerLb;
+export const calculateInboundShipping = (weight: number, inboundShippingCost: number): number => {
+    return weight * inboundShippingCost;
 };
 
 export const calculateStorageFee = (season: string, cubicFeet: number, storageLength: number): string => {
@@ -232,4 +232,19 @@ export const calculateROI = (totalProfit: number, productCost: number): string =
 
 export const calculateMargin = (totalProfit: number, salePrice: number): string => {
     return ((totalProfit / salePrice) * 100).toFixed(2);
+};
+
+export const calculateProductCostFromMargin = (
+    salePrice: number,
+    minMargin: number,
+    referralFee: number,
+    wfsFee: number,
+    inboundShipping: number,
+    storageFee: number,
+    prepFee: number,
+    additionalFees: number
+): number => {
+    const totalExpenses = referralFee + wfsFee + inboundShipping + storageFee + prepFee + additionalFees;
+    // Calculate product cost needed to achieve the desired margin
+    return salePrice - ((salePrice * minMargin) / 100) - totalExpenses;
 };

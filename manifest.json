@@ -1,25 +1,33 @@
 {
-    "manifest_version": 3,
-    "name": "WalAIWiz",
-    "version": "1.0",
-    "description": "A Chrome extension to assist Walmart.com sellers.",
-    "action": {
-      "default_popup": "index.html",
-      "default_icon": "assets/icon.png"
-    },
-    "permissions": [
-      "activeTab",
-      "storage"
-    ],
-    "background": {
-      "service_worker": "background.js"
-    },
-    "content_scripts": [
-      {
-        "matches": ["*://*.walmart.com/*"],
-        "js": ["src/content.tsx"],
-        "css": ["src/style.css"]
-      }
-    ]
-  }
-  
+  "manifest_version": 3,
+  "name": "WalAIWiz",
+  "version": "1.0",
+  "description": "A Chrome extension to assist Walmart.com sellers.",
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": "assets/icon.png"
+  },
+  "permissions": [
+    "activeTab",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "host_permissions": [
+    "*://*.walmart.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.walmart.com/*"
+      ],
+      "js": [
+        "src/content.tsx"
+      ],
+      "css": [
+        "src/style.css"
+      ]
+    }
+  ]
+}
