@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { 
+  useState, 
+  useEffect 
+} from "react";
 
-// Import calculation functions for different fees and metrics
 import {
   calculateReferralFee,
   calculateWFSFee,
@@ -11,18 +13,30 @@ import {
   calculateROI,
   calculateMargin,
   calculateProductCostFromMargin,
+  calculateFinalShippingWeightForInbound,
+  calculateFinalShippingWeightForWFS,
+  calculateAdditionalFees,
 } from "../utils/calculations";
 
-// Import category options
-import { contractCategoryOptions, seasonOptions } from "../constants/options";
+import { 
+  contractCategoryOptions, 
+  seasonOptions 
+} from "../constants/options";
 
-// Define interfaces for expected prop types
+
+
+
+// Define the types expected in the component props
 interface Product {
   shippingLength?: number;
   shippingWidth?: number;
   shippingHeight?: number;
   weight?: number;
   currentPrice?: number;
+  isWalmartFulfilled: boolean;
+  isApparel?: boolean;
+  isHazardousMaterial?: boolean;
+  retailPrice?: number;
 }
 
 interface PricingProps {
@@ -30,53 +44,97 @@ interface PricingProps {
   areSectionsOpen: boolean;
 }
 
+
+
+
+
+
 export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) => {
-  // Controls the visibility of the Pricing section
+  // State to manage the visibility of the Pricing section
   const [isOpen, setIsOpen] = useState(areSectionsOpen);
   useEffect(() => setIsOpen(areSectionsOpen), [areSectionsOpen]);
 
-  // States for various input and calculated values
-  const [productCost, setProductCost] = useState<number>(0.00);
-  const [contractCategory, setContractCategory] = useState<string>("Everything Else");
-  const [inboundShippingRate, setInboundShippingRate] = useState<number>(0.5);
-  const [prepFee, setPrepFee] = useState<number>(0);
-  const [additionalFees, setAdditionalFees] = useState<number>(0);
-  const [isWalmartFulfilled, setIsWalmartFulfilled] = useState<boolean>(true);
-  const [salePrice, setSalePrice] = useState<number>(product.currentPrice || 0);
-  const [inboundShippingFee, setInboundShippingFee] = useState(0);
-  const [storageFee, setStorageFee] = useState(0);
-  const [season, setSeason] = useState("Jan-Sep");
-  const [storageLength, setStorageLength] = useState(1);
+  // Initialize state for product details and calculated values
+  const [productCost, setProductCost] = useState(0.0); // Cost of the product
+  const [contractCategory, setContractCategory] = useState("Everything Else"); // Category for referral fee
+  const [inboundShippingRate, setInboundShippingRate] = useState(0.5); // Rate for inbound shipping per lb
+  const [prepFee, setPrepFee] = useState(0); // Preparation fee
+  const [isWalmartFulfilled, setIsWalmartFulfilled] = useState(true); // Whether Walmart fulfills the product
+  const [salePrice, setSalePrice] = useState(product.currentPrice || 0); // Sale price of the product
+  const [inboundShippingFee, setInboundShippingFee] = useState(0); // Calculated inbound shipping fee
+  const [storageFee, setStorageFee] = useState(0); // Calculated storage fee
+  const [season, setSeason] = useState("Jan-Sep"); // Default storage season
+  const [storageLength, setStorageLength] = useState(1); // Default storage length in months
+  const [isProductCostEdited, setProductCostEdited] = useState(false);
+  const [isSalePriceEdited, setSalePriceEdited] = useState(false);
+  const [isInboundShippingFeeEdited, setInboundShippingFeeEdited] = useState(false);
+  const [isStorageFeeEdited, setStorageFeeEdited] = useState(false);
+  const [isPrepFeeEdited, setPrepFeeEdited] = useState(false);
 
-  // Extract product dimensions and weight from the API-provided `product` object
-  const [shippingLength, setShippingLength] = useState<number>(product.shippingLength || 0);
-  const [shippingWidth, setShippingWidth] = useState<number>(product.shippingWidth || 0);
-  const [shippingHeight, setShippingHeight] = useState<number>(product.shippingHeight || 0);
-  const [weight, setWeight] = useState<number>(product.weight || 0);
+  // Dimensions and weight of the product
+  const [shippingLength, setShippingLength] = useState(product.shippingLength || 0);
+  const [shippingWidth, setShippingWidth] = useState(product.shippingWidth || 0);
+  const [shippingHeight, setShippingHeight] = useState(product.shippingHeight || 0);
+  const [weight, setWeight] = useState(product.weight || 0);
 
-  // Initialize settings for season and storage length from localStorage
+  // Load settings from localStorage on component mount
   useEffect(() => {
     const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
     setSeason(storedMetrics.season || "Jan-Sep");
     setStorageLength(parseInt(storedMetrics.storageLength) || 1);
-  }, []); // Run once on mount
+    setProductCost(parseFloat(storedMetrics.minProfit) || 0);
+    setInboundShippingRate(parseFloat(storedMetrics.inboundShippingCost) || 0.5);
 
-  // Calculate cubic feet based on product dimensions
+    // Retrieve and set the preparation fee based on type
+    const savedPrepCostType = localStorage.getItem("prepCostType");
+    const savedPrepCostPerLb = parseFloat(localStorage.getItem("prepCostPerLb")) || 0;
+    const savedPrepCostEach = parseFloat(localStorage.getItem("prepCostEach")) || 0;
+    setPrepFee(savedPrepCostType === "per lb" ? savedPrepCostPerLb * weight : savedPrepCostEach);
+  }, [weight]);
+
+  // Calculate the cubic feet based on the product dimensions
   const cubicFeet = calculateCubicFeet(shippingLength, shippingWidth, shippingHeight);
 
-  // Calculate fees and metrics based on product details
-  const referralFee = calculateReferralFee(salePrice, contractCategory);
-  const finalShippingWeight = weight + 0.25; // Add buffer for packaging
-  const wfsFee = calculateWFSFee(finalShippingWeight, isWalmartFulfilled) as number;
-  const inboundShipping = calculateInboundShipping(weight, inboundShippingRate);
+  // Calculate final shipping weights for inbound and WFS purposes
+  const finalShippingWeightForInbound = calculateFinalShippingWeightForInbound(weight, shippingLength, shippingWidth, shippingHeight);
+  const finalShippingWeightForWFS = calculateFinalShippingWeightForWFS(weight, shippingLength, shippingWidth, shippingHeight);
 
-  // Calculate profit, ROI, and margin based on input values
+  // Calculate inbound shipping fee using the inbound-specific final shipping weight
+  useEffect(() => {
+    const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+    const inboundShippingCost = parseFloat(storedMetrics.inboundShippingCost) || 0.5;
+    const newInboundShippingFee = finalShippingWeightForInbound * inboundShippingCost;
+    setInboundShippingFee(newInboundShippingFee);
+  }, [finalShippingWeightForInbound]);
+
+  // Prepare the product data for WFS Fee calculation with WFS-specific weight
+  const productForWFSFee = {
+    weight: finalShippingWeightForWFS,
+    length: shippingLength,
+    width: shippingWidth,
+    height: shippingHeight,
+    isWalmartFulfilled,
+    isApparel: product.isApparel || false,
+    isHazardousMaterial: product.isHazardousMaterial || false,
+    retailPrice: product.retailPrice || 0,
+  };
+
+  // Calculate the WFS Fee
+  const wfsFee = calculateWFSFee(productForWFSFee);
+
+  // Calculate additional fees (e.g., apparel, hazardous material, etc.)
+  const additionalFees = calculateAdditionalFees(weight);
+
+  // Calculate referral fee based on sale price and contract category
+  const referralFee = calculateReferralFee(salePrice, contractCategory);
+
+  // Calculate total profit, ROI, and margin based on all fees and costs
   const totalProfit = calculateTotalProfit(
     salePrice,
     productCost,
     referralFee,
     wfsFee,
-    inboundShipping,
+    inboundShippingFee,
     storageFee,
     prepFee,
     additionalFees
@@ -84,62 +142,60 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
   const roi = calculateROI(totalProfit, productCost);
   const margin = calculateMargin(totalProfit, salePrice);
 
-  // Load additional metrics from localStorage on mount
-  useEffect(() => {
-    const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics"));
-    if (storedMetrics) {
-      setProductCost(parseFloat(storedMetrics.minProfit) || 0);
-      setInboundShippingRate(parseFloat(storedMetrics.inboundShippingCost) || 0.5);
-      setStorageLength(parseInt(storedMetrics.storageLength) || 1);
-      setSeason(storedMetrics.season || "Jan-Sep");
-    }
-
-    // Determine prep and additional fees based on cost type (per lb or per unit)
-    const savedPrepCostType = localStorage.getItem("prepCostType");
-    const savedPrepCostPerLb = parseFloat(localStorage.getItem("prepCostPerLb")) || 0;
-    const savedPrepCostEach = parseFloat(localStorage.getItem("prepCostEach")) || 0;
-    setPrepFee(savedPrepCostType === "per lb" ? savedPrepCostPerLb : savedPrepCostEach);
-
-    const savedAdditionalCostType = localStorage.getItem("additionalCostType");
-    const savedAdditionalCostPerLb = parseFloat(localStorage.getItem("additionalCostPerLb")) || 0;
-    const savedAdditionalCostEach = parseFloat(localStorage.getItem("additionalCostEach")) || 0;
-    setAdditionalFees(savedAdditionalCostType === "per lb" ? savedAdditionalCostPerLb : savedAdditionalCostEach);
-  }, []);
-
-  // Calculate initial product cost to achieve target margin
-  useEffect(() => {
-    const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics"));
-    const minMargin = parseFloat(storedMetrics?.minMargin || "0");
-    if (minMargin && salePrice) {
-      const initialProductCost = calculateProductCostFromMargin(
-        salePrice,
-        minMargin,
-        referralFee,
-        wfsFee,
-        inboundShipping,
-        storageFee,
-        prepFee,
-        additionalFees
-      );
-      setProductCost(parseFloat(initialProductCost.toFixed(2)));
-    }
-  }, [salePrice, referralFee, wfsFee, inboundShipping, storageFee, prepFee, additionalFees]);
-
-  // Calculate inbound shipping fee dynamically based on weight and inbound shipping cost from settings
-  useEffect(() => {
-    const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
-    const inboundShippingCost = parseFloat(storedMetrics.inboundShippingCost) || 0.5;
-    const newInboundShippingFee = calculateInboundShipping(weight, inboundShippingCost);
-    setInboundShippingFee(newInboundShippingFee);
-  }, [weight]);
-
   // Calculate storage fee based on cubic feet, season, and storage length
   useEffect(() => {
     const calculatedStorageFee = parseFloat(calculateStorageFee(season, cubicFeet, storageLength));
     setStorageFee(isNaN(calculatedStorageFee) ? 0 : calculatedStorageFee);
   }, [shippingLength, shippingWidth, shippingHeight, cubicFeet, season, storageLength]);
 
-  // Toggle the visibility of the Pricing section
+  // Helper function to format numbers to two decimal places, showing 0 as "0.00"
+  const formatToTwoDecimalPlaces = (value: number): string => {
+    return value.toFixed(2);
+  };
+
+// Define a custom style for input fields that change color based on edit state
+const inputBaseStyle = "p-1 pr-3 text-right w-full border rounded-r";
+const greyTextStyle = "text-gray-500 font-normal"; // Style for initial values
+const blackBoldStyle = "text-black font-bold"; // Style for manually edited values
+
+// Utility function for handling user input formatting and styling
+const formatInputValue = (value: number) => value.toFixed(2);
+
+// Function to apply conditional style for input fields
+const getConditionalInputStyle = (isEdited: boolean) => `${inputBaseStyle} ${isEdited ? blackBoldStyle : greyTextStyle}`;
+
+  // Handlers for input changes with formatting and style updates
+  const handleProductCostChange = (e) => {
+    const formattedValue = parseFloat(e.target.value) || 0;
+    setProductCost(formattedValue);
+    setProductCostEdited(true);
+  };
+
+  const handleSalePriceChange = (e) => {
+    const formattedValue = parseFloat(e.target.value) || 0;
+    setSalePrice(formattedValue);
+    setSalePriceEdited(true);
+  };
+
+  const handleInboundShippingFeeChange = (e) => {
+    const formattedValue = parseFloat(e.target.value) || 0;
+    setInboundShippingFee(formattedValue);
+    setInboundShippingFeeEdited(true);
+  };
+
+  const handleStorageFeeChange = (e) => {
+    const formattedValue = parseFloat(e.target.value) || 0;
+    setStorageFee(formattedValue);
+    setStorageFeeEdited(true);
+  };
+
+  const handlePrepFeeChange = (e) => {
+    const formattedValue = parseFloat(e.target.value) || 0;
+    setPrepFee(formattedValue);
+    setPrepFeeEdited(true);
+  };
+
+  // Toggle Pricing section visibility
   const toggleOpen = () => setIsOpen(!isOpen);
 
 
@@ -201,56 +257,43 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
 
           {/*----------------------------------------------------------------*/}
           { /* Group 2: Pricing */}
-          <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
-            <h2 className="text-base font-bold mb-2">Pricing</h2>
-            <div className="space-y-2 text-sm">
-
-              {/* Product Cost Row */}
-              <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
-                  Product Cost
-                </label>
-                <div className="flex items-center w-full">
-                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
-                  <input
-                    type="text"
-                    name="minProfit"
-                    value={productCost.toFixed(2)}
-                    onChange={(e) => {
-                      // Format input to keep two decimal places
-                      let input = e.target.value.replace(/[^0-9]/g, ""); // Remove non-numeric characters
-                      if (input) {
-                        input = (parseFloat(input) / 100).toFixed(2); // Automatically add decimal places
-                        setProductCost(parseFloat(input));
-                      } else {
-                        setProductCost(0); // Set to 0 if input is empty
-                      }
-                    }}
-                    className="p-1 pr-3 text-right w-full border rounded-r"
-                  />
-                </div>
-              </div>
-
-              {/* Sale Price Row */}
-              <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
-                  Sale Price
-                </label>
-                <div className="flex items-center w-full">
-                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
-                  <input
-                    type="text"
-                    name="minProfit"
-                    value={salePrice}
-                    onChange={(e) => setSalePrice(parseFloat(e.target.value) || 0)}
-                    className="p-1 pr-3 text-right w-full border rounded-r"
-                  />
-                </div>
-              </div>
-
+      {/* Pricing Section */}
+      <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
+        <h2 className="text-base font-bold mb-2">Pricing</h2>
+        <div className="space-y-2 text-sm">
+          {/* Product Cost Row */}
+          <div className="flex items-center mx-5">
+            <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+              Product Cost
+            </label>
+            <div className="flex items-center w-full">
+              <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+              <input
+                type="text"
+                value={formatInputValue(productCost)}
+                onChange={handleProductCostChange}
+                className={getConditionalInputStyle(isProductCostEdited)}
+              />
             </div>
           </div>
-
+          
+          {/* Sale Price Row */}
+          <div className="flex items-center mx-5">
+            <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+              Sale Price
+            </label>
+            <div className="flex items-center w-full">
+              <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+              <input
+                type="text"
+                value={formatInputValue(salePrice)}
+                onChange={handleSalePriceChange}
+                className={getConditionalInputStyle(isSalePriceEdited)}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
 
 
           {/*----------------------------------------------------------------*/}
@@ -269,13 +312,8 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                     type="text"
                     value={shippingLength}
                     onChange={(e) => {
-                      let input = e.target.value.replace(/[^0-9]/g, "");
-                      if (input) {
-                        input = (parseFloat(input) / 100).toFixed(2);
-                        setShippingLength(parseFloat(input));
-                      } else {
-                        setShippingLength(0);
-                      }
+                      let input = e.target.value.replace(/[^0-9.]/g, ""); // Allow only numbers and decimal point
+                      setShippingLength(parseFloat(input) || 0);
                     }}
                     className="p-1 pr-3 text-right w-full border rounded-l"
                   />
@@ -293,13 +331,8 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                     type="text"
                     value={shippingWidth}
                     onChange={(e) => {
-                      let input = e.target.value.replace(/[^0-9]/g, "");
-                      if (input) {
-                        input = (parseFloat(input) / 100).toFixed(2);
-                        setShippingWidth(parseFloat(input));
-                      } else {
-                        setShippingWidth(0);
-                      }
+                      let input = e.target.value.replace(/[^0-9.]/g, ""); // Allow only numbers and decimal point
+                      setShippingWidth(parseFloat(input) || 0);
                     }}
                     className="p-1 pr-3 text-right w-full border rounded-l"
                   />
@@ -317,13 +350,8 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                     type="text"
                     value={shippingHeight}
                     onChange={(e) => {
-                      let input = e.target.value.replace(/[^0-9]/g, "");
-                      if (input) {
-                        input = (parseFloat(input) / 100).toFixed(2);
-                        setShippingHeight(parseFloat(input));
-                      } else {
-                        setShippingHeight(0);
-                      }
+                      let input = e.target.value.replace(/[^0-9.]/g, ""); // Allow only numbers and decimal point
+                      setShippingHeight(parseFloat(input) || 0);
                     }}
                     className="p-1 pr-3 text-right w-full border rounded-l"
                   />
@@ -341,13 +369,8 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                     type="text"
                     value={weight}
                     onChange={(e) => {
-                      let input = e.target.value.replace(/[^0-9]/g, "");
-                      if (input) {
-                        input = (parseFloat(input) / 100).toFixed(2);
-                        setWeight(parseFloat(input));
-                      } else {
-                        setWeight(0);
-                      }
+                      let input = e.target.value.replace(/[^0-9.]/g, ""); // Allow only numbers and decimal point
+                      setWeight(parseFloat(input) || 0);
                     }}
                     className="p-1 pr-3 text-right w-full border rounded-l"
                   />
@@ -375,12 +398,13 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                   <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
                   <input
                     type="text"
-                    value={referralFee.toFixed(2)}
+                    value={typeof referralFee === "number" ? referralFee.toFixed(2) : referralFee} // Check if referralFee is a number before using toFixed
                     readOnly
                     className="p-1 pr-3 text-right w-full border rounded-r"
                   />
                 </div>
               </div>
+
 
               {/* WFS Fee Row */}
               <div className="flex items-center mx-5">
@@ -391,12 +415,13 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                   <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
                   <input
                     type="text"
-                    value={wfsFee.toFixed(2)}
+                    value={typeof wfsFee === "number" ? wfsFee.toFixed(2) : wfsFee} // Check if wfsFee is a number before using toFixed
                     readOnly
                     className="p-1 pr-3 text-right w-full border rounded-r"
                   />
                 </div>
               </div>
+
 
               {/* Inbound Shipping Fee Row */}
               <div className="flex items-center mx-5">
@@ -470,12 +495,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                   <input
                     type="text"
                     value={additionalFees.toFixed(2)}
-                    onChange={(e) => setAdditionalFees(parseFloat(e.target.value))}
+                    readOnly // Set to read-only as additionalFees is calculated
                     className="p-1 pr-3 text-right w-full border rounded-r"
                   />
                 </div>
               </div>
-
 
 
             </div>

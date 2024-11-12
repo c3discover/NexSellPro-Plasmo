@@ -1,195 +1,253 @@
+interface Product {
+    weight: number;
+    length: number;
+    width: number;
+    height: number;
+    isWalmartFulfilled: boolean;
+    isApparel?: boolean;
+    isHazardousMaterial?: boolean;
+    retailPrice?: number;
+}
+
 export const calculateReferralFee = (salePrice: number, contractCategory: string): number => {
+    let referralRate;
+
     switch (contractCategory) {
         case "Apparel & Accessories":
-            if (salePrice <= 15) {
-                return salePrice * 0.05;
-            } else if (salePrice > 15 && salePrice <= 20) {
-                return salePrice * 0.10;
-            } else if (salePrice > 20) {
-                return salePrice * 0.15;
-            }
+            referralRate = salePrice <= 15 ? 0.05 : (salePrice <= 20 ? 0.10 : 0.15);
             break;
 
         case "Automotive & Powersports":
-            return salePrice * 0.12;
+            referralRate = 0.12;
+            break;
 
         case "Automotive Electronics":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Baby":
-            if (salePrice <= 10) {
-                return salePrice * 0.08;
-            } else {
-                return salePrice * 0.15;
-            }
+            referralRate = salePrice <= 10 ? 0.08 : 0.15;
+            break;
 
         case "Beauty":
-            if (salePrice <= 10) {
-                return salePrice * 0.08;
-            } else {
-                return salePrice * 0.15;
-            }
+            referralRate = salePrice <= 10 ? 0.08 : 0.15;
+            break;
 
         case "Books":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Camera & Photo":
-            return salePrice * 0.08;
+            referralRate = 0.08;
+            break;
 
         case "Cell Phones":
-            return salePrice * 0.08;
+            referralRate = 0.08;
+            break;
 
         case "Consumer Electronics":
-            return salePrice * 0.08;
+            referralRate = 0.08;
+            break;
 
         case "Electronics Accessories":
-            if (salePrice <= 100) {
-                return salePrice * 0.15;
-            } else {
-                return 100 * 0.15 + (salePrice - 100) * 0.08;
-            }
+            referralRate = salePrice <= 100 ? 0.15 : 0.08;
+            break;
 
         case "Indoor & Outdoor Furniture":
-            if (salePrice <= 200) {
-                return salePrice * 0.15;
-            } else {
-                return 200 * 0.15 + (salePrice - 200) * 0.10;
-            }
+            referralRate = salePrice <= 200 ? 0.15 : 0.10;
+            break;
 
         case "Decor":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Gourmet Food":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Grocery":
-            if (salePrice <= 10) {
-                return salePrice * 0.08;
-            } else {
-                return salePrice * 0.15;
-            }
+            referralRate = salePrice <= 10 ? 0.08 : 0.15;
+            break;
 
         case "Health & Personal Care":
-            if (salePrice <= 10) {
-                return salePrice * 0.08;
-            } else {
-                return salePrice * 0.15;
-            }
+            referralRate = salePrice <= 10 ? 0.08 : 0.15;
+            break;
 
         case "Home & Garden":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Industrial & Scientific":
-            return salePrice * 0.12;
+            referralRate = 0.12;
+            break;
 
         case "Jewelry":
-            if (salePrice <= 250) {
-                return salePrice * 0.20;
-            } else {
-                return 250 * 0.20 + (salePrice - 250) * 0.05;
-            }
+            referralRate = salePrice <= 250 ? 0.20 : 0.05;
+            break;
 
         case "Kitchen":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Luggage & Travel Accessories":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Major Appliances":
-            return salePrice * 0.08;
+            referralRate = 0.08;
+            break;
 
         case "Music":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Musical Instruments":
-            return salePrice * 0.12;
+            referralRate = 0.12;
+            break;
 
         case "Office Products":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Outdoors":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Outdoor Power Tools":
-            if (salePrice <= 500) {
-                return salePrice * 0.15;
-            } else {
-                return 500 * 0.15 + (salePrice - 500) * 0.08;
-            }
+            referralRate = salePrice <= 500 ? 0.15 : 0.08;
+            break;
 
         case "Personal Computers":
-            return salePrice * 0.06;
+            referralRate = 0.06;
+            break;
 
         case "Pet Supplies":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Plumbing Heating Cooling & Ventilation":
-            return salePrice * 0.10;
+            referralRate = 0.10;
+            break;
 
         case "Shoes, Handbags & Sunglasses":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Software & Computer Video Games":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Sporting Goods":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Tires & Wheels":
-            return salePrice * 0.10;
+            referralRate = 0.10;
+            break;
 
         case "Tools & Home Improvement":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Toys & Games":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Video & DVD":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Video Game Consoles":
-            return salePrice * 0.08;
+            referralRate = 0.08;
+            break;
 
         case "Video Games":
-            return salePrice * 0.15;
+            referralRate = 0.15;
+            break;
 
         case "Watches":
-            if (salePrice <= 1500) {
-                return salePrice * 0.15;
-            } else {
-                return 1500 * 0.15 + (salePrice - 1500) * 0.03;
-            }
-
-        case "Everything Else":
-            return salePrice * 0.15;
+            referralRate = salePrice <= 1500 ? 0.15 : 0.03;
+            break;
 
         default:
-            return 0;
+            referralRate = 0.15; // Default fee for "Everything Else" or unlisted categories
+            break;
     }
+
+    // Calculate and round to two decimal places
+    return parseFloat((salePrice * referralRate).toFixed(2));
 };
 
-export const calculateWFSFee = (finalShippingWeight: number, isWalmartFulfilled: boolean): number | string => {
+// Function to calculate additional fees based on cost type
+export const calculateAdditionalFees = (weight: number): number => {
+    const additionalCostType = localStorage.getItem("additionalCostType") || "per lb";
+    const additionalCostPerLb = parseFloat(localStorage.getItem("additionalCostPerLb") || "0");
+    const additionalCostEach = parseFloat(localStorage.getItem("additionalCostEach") || "0");
+
+    return additionalCostType === "per lb" ? additionalCostPerLb * weight : additionalCostEach;
+};
+
+// Update calculateWFSFee to include additional costs
+export const calculateWFSFee = (product: Product): number => {
+    const { weight, length, width, height, isWalmartFulfilled, isApparel, isHazardousMaterial, retailPrice } = product;
+
+    // If the item is Seller Fulfilled, WFS Fee is 0
     if (!isWalmartFulfilled) {
-        return 0.00; // If Seller Fulfilled, WFS Fee is $0.00
+        console.log("WFS Fee Calculation: Item is Seller Fulfilled, fee is 0");
+        return 0.00;
     }
 
-    if (finalShippingWeight < 1) {
-        return 3.45;
-    } else if (finalShippingWeight === 2) {
-        return 4.95;
-    } else if (finalShippingWeight === 3) {
-        return 5.45;
-    } else if (finalShippingWeight < 20) {
-        return 0.4 * (finalShippingWeight - 4) + 5.75;
-    } else if (finalShippingWeight < 30) {
-        return 0.4 * (finalShippingWeight - 21) + 15.55;
-    } else if (finalShippingWeight < 50) {
-        return 0.4 * (finalShippingWeight - 31) + 14.55;
-    } else if (finalShippingWeight < 150) {
-        return 0.4 * (finalShippingWeight - 51) + 17.55;
-    } else {
-        return 'Oversize';
+    // Calculate Girth and Longest Side
+    const girth = 2 * (width + height);
+    const longestSide = Math.max(length, width, height);
+    const medianSide = [length, width, height].sort((a, b) => a - b)[1];
+
+    // Check for Big & Bulky
+    const isBigAndBulky = (
+        weight > 150 ||
+        (longestSide > 108 && longestSide <= 120) ||
+        (longestSide + girth > 165)
+    );
+
+    if (isBigAndBulky) {
+        const baseFee = 155;
+        const additionalPerPoundFee = weight > 90 ? (weight - 90) * 0.80 : 0;
+        return baseFee + additionalPerPoundFee + calculateAdditionalFees(weight);
     }
+
+    // Initialize additional fee for non-Big & Bulky items
+    let additionalFee = 0;
+
+    // Apply specific additional fees
+    if (isApparel) additionalFee += 0.50;
+    if (isHazardousMaterial) additionalFee += 0.50;
+    if (retailPrice && retailPrice < 10) additionalFee += 1.00;
+
+    // Oversize conditions
+    const isOversize = (
+        (longestSide > 48 && longestSide <= 96) ||
+        (medianSide > 30) ||
+        (longestSide + girth > 105 && longestSide + girth <= 130)
+    );
+
+    const isAdditionalOversize = (
+        (longestSide > 96 && longestSide <= 108) ||
+        (longestSide + girth > 130 && longestSide + girth <= 165)
+    );
+
+    if (isOversize) additionalFee += 3.00;
+    if (isAdditionalOversize) additionalFee += 20.00;
+
+    // Calculate standard WFS fees
+    const baseWFSFee = weight <= 1 ? 3.45 :
+                      weight <= 2 ? 4.95 :
+                      weight <= 3 ? 5.45 :
+                      weight <= 20 ? 5.75 + 0.40 * (weight - 4) :
+                      weight <= 30 ? 15.55 + 0.40 * (weight - 21) :
+                      weight <= 50 ? 14.55 + 0.40 * (weight - 31) :
+                      weight >50 ? 17.55 + 0.40 * (weight - 51) : 1000;
+
+    return baseWFSFee + additionalFee + calculateAdditionalFees(weight);
 };
 
 export const calculateInboundShipping = (weight: number, inboundShippingCost: number): number => {
@@ -248,3 +306,29 @@ export const calculateProductCostFromMargin = (
     // Calculate product cost needed to achieve the desired margin
     return salePrice - ((salePrice * minMargin) / 100) - totalExpenses;
 };
+
+// Function to calculate dimensional weight based on dimensions
+export const calculateDimensionalWeight = (length: number, width: number, height: number): number => {
+    return (length * width * height) / 139;
+};
+
+// Function to calculate final shipping weight following Walmart's guidelines
+export const calculateFinalShippingWeightForWFS  = (weight: number, length: number, width: number, height: number): number => {
+    // Calculate dimensional weight
+    const dimensionalWeight = calculateDimensionalWeight(length, width, height);
+
+    // Determine base weight
+    let baseShippingWeight;
+    if (weight < 1) {
+        baseShippingWeight = weight;        // For items less than 1 lb, use the unit weight as-is
+    } else {
+        baseShippingWeight = Math.max(weight, dimensionalWeight);        // For items 1 lb or greater, use the greater of unit or dimensional weight
+    }
+    return Math.ceil(baseShippingWeight + 0.25);    // Add 0.25 lb for packaging and round up to the nearest whole pound
+};
+
+// Calculate final shipping weight for inbound shipping fee (greater of weight and dimensional weight)
+export const calculateFinalShippingWeightForInbound = (weight: number, length: number, width: number, height: number): number => {
+    const dimensionalWeight = calculateDimensionalWeight(length, width, height);
+    return Math.max(weight, dimensionalWeight);
+  };
