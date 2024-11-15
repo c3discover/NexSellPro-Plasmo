@@ -2,7 +2,11 @@ import React, { useState, useEffect } from "react";
 
 // SettingsModal Component: manages and saves user-defined settings
 export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
-  // Initial State for desired metrics and fees
+  /////////////////////////////////////////////////////
+  // State Definitions
+  /////////////////////////////////////////////////////
+
+  // User-defined metrics and fee settings
   const [desiredMetrics, setDesiredMetrics] = useState({
     minProfit: "0.00",
     minMargin: "0",
@@ -16,24 +20,39 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     season: "Jan-Sep",
   });
 
-  // State for prep and additional costs, with cost types
+  // Prep and additional costs settings
   const [prepCostType, setPrepCostType] = useState("per lb");
-  const [prepCostPerLb, setPrepCostPerLb] = useState(0.00);
-  const [prepCostEach, setPrepCostEach] = useState(0.00);
+  const [prepCostPerLb, setPrepCostPerLb] = useState(0.0);
+  const [prepCostEach, setPrepCostEach] = useState(0.0);
   const [additionalCostType, setAdditionalCostType] = useState("per lb");
-  const [additionalCostPerLb, setAdditionalCostPerLb] = useState(0.00);
-  const [additionalCostEach, setAdditionalCostEach] = useState(0.00);
+  const [additionalCostPerLb, setAdditionalCostPerLb] = useState(0.0);
+  const [additionalCostEach, setAdditionalCostEach] = useState(0.0);
 
-  // Load values from localStorage when component mounts
+  // Fulfillment preference settings
+  const [defaultFulfillment, setDefaultFulfillment] = useState<string>("Walmart Fulfilled");
+
+  /////////////////////////////////////////////////////
+  // Effect Hooks for Loading and Saving Settings
+  /////////////////////////////////////////////////////
+
+  // Load values from localStorage when the component mounts
   useEffect(() => {
-    const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics"));
+    const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
     if (storedMetrics) setDesiredMetrics(storedMetrics);
+
+    const savedFulfillment = localStorage.getItem("defaultFulfillment");
+    if (savedFulfillment) setDefaultFulfillment(savedFulfillment);
   }, []);
 
-  // Auto-save desired metrics to localStorage on change
+  // Save desired metrics and fulfillment preference to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem("desiredMetrics", JSON.stringify(desiredMetrics));
-  }, [desiredMetrics]);
+    localStorage.setItem("defaultFulfillment", defaultFulfillment);
+  }, [desiredMetrics, defaultFulfillment]);
+
+  /////////////////////////////////////////////////////
+  // Handler Functions
+  /////////////////////////////////////////////////////
 
   // Reset metrics to default values
   const handleClearAll = () => {
@@ -49,24 +68,32 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
       storageLength: "1",
       season: "Jan-Sep",
     });
+    setDefaultFulfillment("Walmart Fulfilled");
   };
 
-  // Handle input changes with formatting (e.g., decimal or integer)
-  const handleDesiredMetricsChange = (e) => {
-    let input = e.target.value.replace(/[^0-9]/g, ""); // Remove non-digits
+  // Handle changes in user-defined metrics with proper formatting
+  const handleDesiredMetricsChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const fieldName = e.target.name;
+    let input = e.target.value;
 
+    // Format numeric inputs for specific fields
     if (fieldName === "minProfit" || fieldName === "inboundShippingCost") {
-      input = input ? (parseFloat(input) / 100).toFixed(2) : "0.00"; // Format to 2 decimals
-    } else {
-      input = input.startsWith("0") ? input.replace(/^0+/, "") : input || "0"; // Format to integer
+      input = input ? (parseFloat(input) / 100).toFixed(2) : "0.00"; // Format to 2 decimal places
+    } else if (!isNaN(Number(input))) {
+      input = input.startsWith("0") ? input.replace(/^0+/, "") : input || "0"; // Format as an integer
     }
 
-    // Update state with formatted value
+    // Update the state
     setDesiredMetrics((prev) => ({ ...prev, [fieldName]: input }));
   };
 
-  // Save settings to localStorage and close modal
+
+  // Handle changes in default fulfillment preference
+  const handleFulfillmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setDefaultFulfillment(e.target.value);
+  };
+
+  // Save all settings and close the modal
   const handleSaveSettings = () => {
     localStorage.setItem("desiredMetrics", JSON.stringify(desiredMetrics));
     localStorage.setItem("prepCostType", prepCostType);
@@ -78,12 +105,20 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     onClose();
   };
 
+  /////////////////////////////////////////////////////
+  // Conditional Rendering
+  /////////////////////////////////////////////////////
+
   if (!isOpen) return null; // Do not render if modal is closed
+
+
+
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
-      <div className="bg-white p-6 rounded-md w-[300px] shadow-lg relative">
-        {/* Button to clear all settings */}
+      <div className="bg-white p-6 rounded-md w-[350px] shadow-lg relative">
+
+        {/* Clear All Button */}
         <button
           onClick={handleClearAll}
           className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded text-xs"
@@ -91,52 +126,19 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
           Clear All
         </button>
 
-        {/* Modal content */}
+        {/* Modal Header */}
         <h2 className="text-lg font-bold">Settings</h2>
+
+        {/* Baseline Metrics Section */}
         <div className="space-y-1">
           <h3 className="text-md font-semibold">Baseline Metrics</h3>
           <p className="italic text-gray-600 mb-2 ml-2">Enter the desired values below</p>
 
-          {/* Additional form fields would go here */}
-
-          <button
-            onClick={handleSaveSettings}
-            className="mt-4 w-full bg-cyan-500 text-white p-2 rounded-lg hover:bg-cyan-600"
-          >
-            Save Settings
-          </button>
-        </div>
-      </div>
-
-  
-
-    <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
-      <div className="bg-white p-6 rounded-md w-[300px] shadow-lg relative">
-
-
-        {/* Clear All Button positioned in the top-right */}
-        <button
-          onClick={handleClearAll}
-          className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded text-xs"
-        >
-          Clear All
-        </button>
-
-
-
-        <h2 className="text-lg font-bold">Settings</h2>
-        <div className="space-y-1">
-          <h3 className="text-md font-semibold">Baseline Metrics</h3>
-          <p className="italic text-gray-600 mb-2 ml-2">Enter the desired values below</p>
-          <div className="flex flex-col flex-1 space-y-1/2">
-
-
-
-
-
-
-            <div className="flex items-center mb-2">
-              <label className="p-1 mr-2 min-w-[120px] whitespace-nowrap">
+          {/* Baseline Metrics Inputs */}
+          <div className="flex flex-col flex-1 space-y-2">
+            {/* Minimum Profit */}
+            <div className="flex items-center">
+              <label className="p-1 mr-2 min-w-[170px] whitespace-nowrap">
                 Minimum Profit
               </label>
               <div className="flex items-center w-full">
@@ -151,234 +153,238 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
               </div>
             </div>
 
-            <div className="flex items-center mb-2">
-              <label className="p-1 mr-2 min-w-[120px] whitespace-nowrap">
+            {/* Minimum Margin */}
+            <div className="flex items-center">
+              <label className="p-1 mr-2 min-w-[170px] whitespace-nowrap">
                 Minimum Margin
               </label>
               <div className="flex items-center w-full">
-                <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">%</span>
                 <input
                   type="text"
                   name="minMargin"
                   value={desiredMetrics.minMargin}
                   onChange={handleDesiredMetricsChange}
-                  className="p-1 pr-3 text-right w-full border rounded-r"
+                  className="p-1 pr-3 text-right w-full border rounded-l"
                 />
+                <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">%</span>
               </div>
             </div>
 
-            <div className="flex items-center mb-2">
-              <label className="p-1 mr-2 min-w-[120px] whitespace-nowrap">
+            {/* Minimum ROI */}
+            <div className="flex items-center">
+              <label className="p-1 mr-2 min-w-[170px] whitespace-nowrap">
                 Minimum ROI
               </label>
               <div className="flex items-center w-full">
-                <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">%</span>
                 <input
                   type="text"
                   name="minROI"
                   value={desiredMetrics.minROI}
                   onChange={handleDesiredMetricsChange}
-                  className="p-1 pr-3 text-right w-full border rounded-r"
+                  className="p-1 pr-3 text-right w-full border rounded-l"
                 />
+                <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">%</span>
               </div>
             </div>
 
-
-            <div className="flex items-center mb-2">
-              <label className="p-1 mr-2 min-w-[120px]">
+            {/* Minimum Monthly Sales */}
+            <div className="flex items-center">
+              <label className="p-1 mr-2 min-w-[170px]">
                 Minimum Monthly Sales
               </label>
-              <div className="flex items-center w-full">
-                <input
-                  type="text"
-                  name="minMonthlySales"
-                  value={desiredMetrics.minMonthlySales}
-                  onChange={handleDesiredMetricsChange}
-                  className="p-1 pr-3 text-right w-full border rounded"
-                  placeholder="Coming Soon..."
-                />
-              </div>
+              <input
+                type="text"
+                name="minMonthlySales"
+                value={desiredMetrics.minMonthlySales}
+                onChange={handleDesiredMetricsChange}
+                className="p-1 pr-3 text-right w-full border rounded"
+                placeholder="Coming Soon..."
+              />
             </div>
 
-            <div className="flex items-center mb-2">
-              <label className="p-1 mr-2 min-w-[120px]">
+            {/* Minimum Total Ratings */}
+            <div className="flex items-center">
+              <label className="p-1 mr-2 min-w-[170px]">
                 Minimum Total Ratings
               </label>
-              <div className="flex items-center w-full">
-                <input
-                  type="text"
-                  name="minTotalRatings"
-                  value={desiredMetrics.minTotalRatings}
-                  onChange={handleDesiredMetricsChange}
-                  className="p-1 pr-3 text-right w-full border rounded"
-                />
-              </div>
+              <input
+                type="text"
+                name="minTotalRatings"
+                value={desiredMetrics.minTotalRatings}
+                onChange={handleDesiredMetricsChange}
+                className="p-1 pr-3 text-right w-full border rounded"
+              />
             </div>
 
-            <div className="flex items-center mb-2">
-              <label className="p-1 mr-2 min-w-[120px]">
-                Minimum Ratings in the Last 30 Days
+            {/* Minimum Ratings in Last 30 Days */}
+            <div className="flex items-center">
+              <label className="p-1 mr-2 min-w-[170px]">
+                Minimum Ratings (30 Days)
               </label>
-              <div className="flex items-center w-full">
-                <input
-                  type="text"
-                  name="minRatings30Days"
-                  value={desiredMetrics.minRatings30Days}
-                  onChange={handleDesiredMetricsChange}
-                  className="p-1 pr-3 text-right w-full border rounded"
-                />
-              </div>
+              <input
+                type="text"
+                name="minRatings30Days"
+                value={desiredMetrics.minRatings30Days}
+                onChange={handleDesiredMetricsChange}
+                className="p-1 pr-3 text-right w-full border rounded"
+              />
             </div>
 
-            <div className="flex items-center mb-2">
-              <label className="p-1 mr-2 min-w-[120px]">
-                Maximum Number of Sellers
+            {/* Maximum Number of Sellers */}
+            <div className="flex items-center">
+              <label className="p-1 mr-2 min-w-[170px]">
+                Maximum Sellers
               </label>
-              <div className="flex items-center w-full">
-                <input
-                  type="text"
-                  name="maxSellers"
-                  value={desiredMetrics.maxSellers}
-                  onChange={handleDesiredMetricsChange}
-                  className="p-1 pr-3 text-right w-full border rounded"
-                />
-              </div>
+              <input
+                type="text"
+                name="maxSellers"
+                value={desiredMetrics.maxSellers}
+                onChange={handleDesiredMetricsChange}
+                className="p-1 pr-3 text-right w-full border rounded"
+              />
             </div>
-
-
-
-
-
-            <h3 className="text-md font-semibold">Fee Settings</h3>
-            <p className="italic text-gray-600 mb-2 ml-2">Enter your estimated values below</p>
-
-
-            <div className="flex flex-col flex-1 space-y-1/2"></div>
-
-
-            <div className="flex items-center mb-2">
-              <label className="p-1 mr-2 min-w-[120px] whitespace-nowrap">
-                Inbound Shipping Cost
-              </label>
-              <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
-              <div className="flex items-center w-full">
-                <input
-                  type="text"
-                  name="inboundShippingCost"
-                  value={desiredMetrics.inboundShippingCost}
-                  onChange={handleDesiredMetricsChange}
-                  className="p-1 pr-3 text-right w-full border"
-                />
-                <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">/lb</span>
-              </div>
-            </div>
-
-            <div className="flex items-center mb-2">
-              <label className="p-1 mr-2 min-w-[120px] whitespace-nowrap">
-                Storage Length
-              </label>
-              <div className="flex items-center w-full">
-                <input
-                  type="number"
-                  name="storageLength"
-                  value={desiredMetrics.storageLength}
-                  onChange={handleDesiredMetricsChange}
-                  className="p-1 tracking-wide text-right rounded-l w-full border"
-                />
-                <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">months</span>
-              </div>
-            </div>
-
-            <div className="flex items-center mb-2">
-              <label className="p-1 mr-2 min-w-[120px]">
-                Season
-              </label>
-              <div className="flex items-center w-full">
-                <select
-                  name="season"
-                  value={desiredMetrics.season}
-                  onChange={handleDesiredMetricsChange}
-                  className="p-1 text-right w-full border rounded"
-                >
-                  <option value="Jan-Sep">Jan-Sep</option>
-                  <option value="Oct-Dec">Oct-Dec</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex items-center mb-2">
-              <label className="p-1 mr-2 min-w-[120px] whitespace-nowrap">
-                Prep Cost
-              </label>
-              <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
-              <div className="flex items-center w-full">
-                <input
-                  type="text"
-                  name="prepCost"
-                  value={prepCostType === "per lb" ? prepCostPerLb : prepCostEach}
-                  onChange={(e) =>
-                    prepCostType === "per lb"
-                      ? setPrepCostPerLb(parseFloat(e.target.value) || 0.00)
-                      : setPrepCostEach(parseFloat(e.target.value) || 0.00)
-                  }
-                  className="p-1 pr-3 text-right w-full border"
-                />
-                <select
-                  value={prepCostType}
-                  onChange={(e) => setPrepCostType(e.target.value)}
-                  className="p-1 border-l rounded-r bg-gray-100 text-gray-700"
-                >
-                  <option value="per lb">/lb</option>
-                  <option value="per unit">each</option>
-                </select>
-              </div>
-            </div>
-
-
-            <div className="flex items-center mb-2">
-              <label className="p-1 mr-2 min-w-[120px] whitespace-nowrap">
-                Additional Fees
-              </label>
-              <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
-              <div className="flex items-center w-full">
-                <input
-                  type="text"
-                  name="aditionalCosts"
-                  value={additionalCostType === "per lb" ? additionalCostPerLb : additionalCostEach}
-                  onChange={(e) =>
-                    additionalCostType === "per lb"
-                      ? setAdditionalCostPerLb(parseFloat(e.target.value) || 0.00)
-                      : setAdditionalCostEach(parseFloat(e.target.value) || 0.00)
-                  }
-                  className="p-1 pr-3 text-right w-full border"
-                />
-                <select
-                  value={additionalCostType}
-                  onChange={(e) => setAdditionalCostType(e.target.value)}
-                  className="p-1 border-l rounded-r bg-gray-100 text-gray-700"
-                >
-                  <option value="per lb">/lb</option>
-                  <option value="per unit">each</option>
-                </select>
-              </div>
-            </div>
-
-
-
-
-
-
-
           </div>
-          <button
-            onClick={handleSaveSettings}
-            className="mt-4 w-full bg-cyan-500 text-white p-2 rounded-lg hover:bg-cyan-600"
-          >
-            Save Settings
-          </button>
         </div>
+
+        {/* Fee Settings Section */}
+        <div className="space-y-1 mt-4">
+          <h3 className="text-md font-semibold">Fee Settings</h3>
+          <p className="italic text-gray-600 mb-2 ml-2">Enter your estimated values below</p>
+
+          {/* Inbound Shipping Cost */}
+          <div className="flex items-center">
+            <label className="p-1 mr-2 min-w-[170px] whitespace-nowrap">
+              Inbound Shipping Cost
+            </label>
+            <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+            <input
+              type="text"
+              name="inboundShippingCost"
+              value={desiredMetrics.inboundShippingCost}
+              onChange={handleDesiredMetricsChange}
+              className="p-1 pr-3 text-right w-full border"
+            />
+            <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">/lb</span>
+          </div>
+
+          {/* Storage Length */}
+          <div className="flex items-center">
+            <label className="p-1 mr-2 min-w-[170px]">
+              Storage Length
+            </label>
+            <input
+              type="number"
+              name="storageLength"
+              value={desiredMetrics.storageLength}
+              onChange={handleDesiredMetricsChange}
+              className="p-1 text-right w-full border rounded"
+            />
+            <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">months</span>
+          </div>
+
+          {/* Season */}
+          <div className="flex items-center mb-2">
+            <label className="p-1 mr-2 min-w-[170px]">
+              Season
+            </label>
+            <div className="flex items-center w-full">
+              <select
+                name="season"
+                value={desiredMetrics.season}
+                onChange={handleDesiredMetricsChange}
+                className="p-1 text-right w-full border rounded"
+              >
+                <option value="Jan-Sep">Jan-Sep</option>
+                <option value="Oct-Dec">Oct-Dec</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Pre Cost */}
+          <div className="flex items-center mb-2">
+            <label className="p-1 mr-2 min-w-[170px] whitespace-nowrap">
+              Prep Cost
+            </label>
+            <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+            <div className="flex items-center w-full">
+              <input
+                type="text"
+                name="prepCost"
+                value={prepCostType === "per lb" ? prepCostPerLb : prepCostEach}
+                onChange={(e) =>
+                  prepCostType === "per lb"
+                    ? setPrepCostPerLb(parseFloat(e.target.value) || 0.00)
+                    : setPrepCostEach(parseFloat(e.target.value) || 0.00)
+                }
+                className="p-1 pr-3 text-right w-full border"
+              />
+              <select
+                value={prepCostType}
+                onChange={(e) => setPrepCostType(e.target.value)}
+                className="p-1 border-l rounded-r bg-gray-100 text-gray-700"
+              >
+                <option value="per lb">/lb</option>
+                <option value="per unit">each</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Additional Fees */}
+          <div className="flex items-center mb-2">
+            <label className="p-1 mr-2 min-w-[170px] whitespace-nowrap">
+              Additional Fees
+            </label>
+            <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+            <div className="flex items-center w-full">
+              <input
+                type="text"
+                name="aditionalCosts"
+                value={additionalCostType === "per lb" ? additionalCostPerLb : additionalCostEach}
+                onChange={(e) =>
+                  additionalCostType === "per lb"
+                    ? setAdditionalCostPerLb(parseFloat(e.target.value) || 0.00)
+                    : setAdditionalCostEach(parseFloat(e.target.value) || 0.00)
+                }
+                className="p-1 pr-3 text-right w-full border"
+              />
+              <select
+                value={additionalCostType}
+                onChange={(e) => setAdditionalCostType(e.target.value)}
+                className="p-1 border-l rounded-r bg-gray-100 text-gray-700"
+              >
+                <option value="per lb">/lb</option>
+                <option value="per unit">each</option>
+              </select>
+            </div>
+          </div>
+
+
+          {/* Fulfillment Method */}
+          <div className="flex items-center">
+            <label htmlFor="fulfillment-select" className="p-1 mr-2 min-w-[170px] whitespace-nowrap">
+              Default Fulfillment
+            </label>
+            <select
+              id="fulfillment-select"
+              value={defaultFulfillment}
+              onChange={handleFulfillmentChange}
+              className="p-2 text-2xs border rounded w-full"
+            >
+              <option value="Walmart Fulfilled">Walmart Fulfilled</option>
+              <option value="Seller Fulfilled">Seller Fulfilled</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Save Settings Button */}
+        <button
+          onClick={handleSaveSettings}
+          className="mt-4 w-full bg-cyan-500 text-white p-2 rounded-lg hover:bg-cyan-600"
+        >
+          Save Settings
+        </button>
       </div>
     </div>
-    </div>
-  )
+  );
 }
+
