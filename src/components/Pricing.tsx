@@ -14,6 +14,7 @@ import {
   calculateFinalShippingWeightForInbound,
   calculateFinalShippingWeightForWFS,
   calculateAdditionalFees,
+  calculateProductCostFromMargin
 } from "../utils/calculations";
 
 import { contractCategoryOptions } from "../constants/options";
@@ -50,10 +51,27 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
   const [season, setSeason] = useState<string>("Jan-Sep");
   const [storageLength, setStorageLength] = useState<number>(1);
   const [inboundShippingRate, setInboundShippingRate] = useState<number>(0.0);
+  const [hasEdited, setHasEdited] = useState<{ [key: string]: boolean }>({});
 
   // Pricing (Group 2)
+  const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+  const minMargin = parseFloat(storedMetrics.minMargin || "0");
+
+  const initialProductCost = calculateProductCostFromMargin(
+    product.currentPrice || 0, // Use currentPrice as salePrice
+    minMargin,
+    calculateReferralFee(product.currentPrice || 0, "Everything Else"), // Referral Fee
+    0, // Placeholder WFS Fee (will update later)
+    0, // Placeholder Inbound Shipping Fee (will update later)
+    0, // Placeholder Storage Fee (will update later)
+    0, // Placeholder Prep Fee (will update later)
+    0  // Placeholder Additional Fees (will update later)
+  );
+
+
   const [productCost, setProductCost] = useState<number>(0.0);
   const [rawProductCost, setRawProductCost] = useState<string | null>(null);
+
 
   const [salePrice, setSalePrice] = useState<number>(product.currentPrice || 0);
   const [rawSalePrice, setRawSalePrice] = useState<string | null>(null);
@@ -110,8 +128,16 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     const savedPreference = localStorage.getItem("isWalmartFulfilled");
     return savedPreference === "true" || savedPreference === null; // Default to true if no preference
   });
+  const initializeWfsFee = () => {
+    const recalculatedFee = calculateWFSFee(productForWFSFee); // Calculate WFS Fee
+    setWfsFee(recalculatedFee); // Set the initial value
+    setRawWfsFee(null); // Ensure no raw edits are active
+    setHasEdited((prev) => ({ ...prev, wfsFee: false })); // Mark as unedited
+  };
 
-
+  useEffect(() => {
+    initializeWfsFee(); // Simulate button click logic
+  }, []); // Empty dependency array ensures it runs only once
 
   /////////////////////////////////////////////////////
   // Derived Values
@@ -169,6 +195,28 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
   // Effects
   /////////////////////////////////////////////////////
 
+  useEffect(() => {
+    const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+    const minMargin = parseFloat(storedMetrics.minMargin || "0");
+    
+    const recalculatedProductCost = calculateProductCostFromMargin(
+      salePrice,
+      minMargin,
+      referralFee,
+      wfsFee,
+      inboundShippingFee,
+      storageFee,
+      prepFee,
+      additionalFees
+    );
+  
+    console.log("Calculated Product Cost:", recalculatedProductCost);
+  
+    setProductCost(recalculatedProductCost);
+  }, [salePrice, referralFee, wfsFee, inboundShippingFee, storageFee, prepFee, additionalFees]);
+  
+  
+
   // Sync state with product data
   useEffect(() => {
     if (product) {
@@ -207,12 +255,6 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     const updatedReferralFee = calculateReferralFee(salePrice, contractCategory);
     setReferralFee(updatedReferralFee);
   }, [salePrice, contractCategory]);
-
-  // WFS Fee Calculation
-  useEffect(() => {
-    const recalculatedWFSFee = calculateWFSFee(productForWFSFee);
-    setWfsFee(recalculatedWFSFee);
-  }, [productForWFSFee]);
 
   // Additional Fees Calculation
   useEffect(() => {
@@ -310,6 +352,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
           <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
             <h2 className="text-base font-bold mb-2">Pricing</h2>
             <div className="space-y-2 text-sm">
+
               {/* Product Cost Row */}
               <div className="flex items-center mx-5">
                 <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
@@ -320,13 +363,18 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                   <input
                     type="text"
                     value={rawProductCost !== null ? rawProductCost : productCost.toFixed(2)}
-                    onChange={(e) => setRawProductCost(e.target.value)} // Update raw input
-                    onBlur={() => {
-                      const formattedValue = parseFloat(rawProductCost || productCost.toString()).toFixed(2);
-                      setProductCost(parseFloat(formattedValue)); // Update productCost state
-                      setRawProductCost(null); // Clear raw input state
+                    onChange={(e) => {
+                      setRawProductCost(e.target.value); // Capture raw input
+                      setHasEdited((prev) => ({ ...prev, productCost: true })); // Mark as edited
                     }}
-                    className="p-1 pr-3 text-right w-full border rounded text-black"
+                    onBlur={() => {
+                      if (rawProductCost !== null) {
+                        const formattedValue = parseFloat(rawProductCost).toFixed(2); // Format input
+                        setProductCost(parseFloat(formattedValue)); // Update state
+                        setRawProductCost(null); // Clear raw input
+                      }
+                    }}
+                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.productCost ? "text-black font-bold" : "text-gray-700"}`}
                   />
                 </div>
               </div>
@@ -346,8 +394,9 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       const formattedValue = parseFloat(rawSalePrice || salePrice.toString()).toFixed(2);
                       setSalePrice(parseFloat(formattedValue)); // Update salePrice state
                       setRawSalePrice(null); // Clear raw input state
+                      setHasEdited((prev) => ({ ...prev, salePrice: true })); // Mark Additional Fees as edited
                     }}
-                    className="p-1 pr-3 text-right w-full border rounded text-black"
+                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.salePrice ? "text-black font-bold" : "text-gray-700"}`}
                   />
                 </div>
               </div>
@@ -375,8 +424,9 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       const formattedValue = parseFloat(rawLength || shippingLength.toString()).toFixed(2);
                       setShippingLength(parseFloat(formattedValue) || 0); // Update actual length state
                       setRawLength(null); // Clear raw input state
+                      setHasEdited((prev) => ({ ...prev, shippingLength: true })); // Mark Additional Fees as edited
                     }}
-                    className="p-1 pr-3 text-right w-full border rounded text-black"
+                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.shippingLength ? "text-black font-bold" : "text-gray-700"}`}
                   />
                   <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">in</span>
                 </div>
@@ -396,8 +446,9 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       const formattedValue = parseFloat(rawWidth || shippingWidth.toString()).toFixed(2);
                       setShippingWidth(parseFloat(formattedValue) || 0); // Update actual width state
                       setRawWidth(null); // Clear raw input state
+                      setHasEdited((prev) => ({ ...prev, shippingWidth: true })); // Mark Additional Fees as edited
                     }}
-                    className="p-1 pr-3 text-right w-full border rounded text-black"
+                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.shippingWidth ? "text-black font-bold" : "text-gray-700"}`}
                   />
                   <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">in</span>
                 </div>
@@ -417,8 +468,9 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       const formattedValue = parseFloat(rawHeight || shippingHeight.toString()).toFixed(2);
                       setShippingHeight(parseFloat(formattedValue) || 0); // Update actual height state
                       setRawHeight(null); // Clear raw input state
+                      setHasEdited((prev) => ({ ...prev, shippingHeight: true })); // Mark Additional Fees as edited
                     }}
-                    className="p-1 pr-3 text-right w-full border rounded text-black"
+                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.shippingHeight ? "text-black font-bold" : "text-gray-700"}`}
                   />
                   <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">in</span>
                 </div>
@@ -438,8 +490,9 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       const formattedValue = parseFloat(rawWeight || weight.toString()).toFixed(2);
                       setWeight(parseFloat(formattedValue) || 0); // Update actual weight state
                       setRawWeight(null); // Clear raw input state
+                      setHasEdited((prev) => ({ ...prev, weight: true })); // Mark Additional Fees as edited
                     }}
-                    className="p-1 pr-3 text-right w-full border rounded text-black"
+                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.weight ? "text-black font-bold" : "text-gray-700"}`}
                   />
                   <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">lbs</span>
                 </div>
@@ -471,45 +524,44 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       const formattedValue = parseFloat(rawReferralFee || referralFee.toString()).toFixed(2); // Format input to 2 decimal places
                       setReferralFee(parseFloat(formattedValue) || 0); // Update referralFee state
                       setRawReferralFee(null); // Clear rawReferralFee state
+                      setHasEdited((prev) => ({ ...prev, referralFee: true })); // Mark Additional Fees as edited
                     }}
-                    className="p-1 pr-3 text-right w-full border rounded text-black" // Remove `readOnly` to allow editing
+                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.referralFee ? "text-black font-bold" : "text-gray-700"}`}
                   />
                 </div>
               </div>
 
-
               {/* WFS Fee Row */}
               <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
-                  WFS Fee
-                </label>
+                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">WFS Fee</label>
                 <div className="flex items-center w-full">
                   <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
                   <input
                     type="text"
-                    value={rawWfsFee !== null ? rawWfsFee : wfsFee.toFixed(2)} // Display rawWfsFee if editing, else formatted wfsFee
-                    onChange={(e) => setRawWfsFee(e.target.value)} // Allow editing
+                    value={rawWfsFee !== null ? rawWfsFee : wfsFee.toFixed(2)} // Show raw or formatted WFS Fee
+                    onChange={(e) => {
+                      setRawWfsFee(e.target.value); // Update raw input state
+                      setHasEdited((prev) => ({ ...prev, wfsFee: true })); // Mark as edited
+                    }}
                     onBlur={() => {
                       if (rawWfsFee !== null) {
-                        const formattedValue = parseFloat(rawWfsFee || wfsFee.toString()).toFixed(2);
-                        setWfsFee(parseFloat(formattedValue) || 0); // Update WFS Fee state
-                        setRawWfsFee(null); // Clear raw input
+                        const formattedValue = parseFloat(rawWfsFee).toFixed(2); // Format input to 2 decimals
+                        setWfsFee(parseFloat(formattedValue)); // Update WFS Fee with formatted value
+                        setRawWfsFee(null); // Clear raw input state
                       }
                     }}
-                    className="p-1 pr-3 text-right w-full border rounded text-black"
+                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.wfsFee ? "text-black font-bold" : "text-gray-700"
+                      }`}
                   />
                   <button
-                    onClick={() => {
-                      const recalculatedFee = calculateWFSFee(productForWFSFee); // Recalculate WFS Fee
-                      setWfsFee(recalculatedFee); // Reset to calculated value
-                      setRawWfsFee(null); // Exit edit mode
-                    }}
-                    className="ml-2 px-2 py-1 bg-blue-500 text-white text-xs rounded"
+                    onClick={initializeWfsFee} // Reuse the initialization logic for the reset button
+                    className="p-1 px-2 bg-blue-500 text-white rounded hover:bg-blue-600"
                   >
                     ↻
                   </button>
                 </div>
               </div>
+
 
 
               {/* Inbound Shipping Fee Row */}
@@ -531,9 +583,10 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                         const formattedValue = parseFloat(rawInboundShippingFee).toFixed(2); // Format to 2 decimals
                         setInboundShippingFee(parseFloat(formattedValue) || 0); // Update actual state
                         setRawInboundShippingFee(null); // Clear raw input
+                        setHasEdited((prev) => ({ ...prev, inboundShippingFee: true })); // Mark Additional Fees as edited
                       }
                     }}
-                    className="p-1 pr-3 text-right w-full border rounded text-black"
+                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.inboundShippingFee ? "text-black font-bold" : "text-gray-700"}`}
                   />
                 </div>
               </div>
@@ -556,9 +609,10 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                         const formattedValue = parseFloat(rawStorageFee).toFixed(2); // Format to 2 decimals
                         setStorageFee(parseFloat(formattedValue) || 0); // Update actual storage fee state
                         setRawStorageFee(null); // Clear raw input state
+                        setHasEdited((prev) => ({ ...prev, storageFee: true })); // Mark Additional Fees as edited
                       }
                     }}
-                    className="p-1 pr-3 text-right w-full border rounded text-black"
+                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.storageFee ? "text-black font-bold" : "text-gray-700"}`}
                   />
                 </div>
               </div>
@@ -584,9 +638,10 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                         const formattedValue = parseFloat(rawPrepFee).toFixed(2); // Format to 2 decimal places
                         setPrepFee(parseFloat(formattedValue) || 0); // Update actual state
                         setRawPrepFee(null); // Clear raw input state
+                        setHasEdited((prev) => ({ ...prev, prepFee: true })); // Mark Additional Fees as edited
                       }
                     }}
-                    className="p-1 pr-3 text-right w-full border rounded text-black"
+                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.prepFee ? "text-black font-bold" : "text-gray-700"}`}
                   />
                 </div>
               </div>
@@ -604,6 +659,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                     onChange={(e) => {
                       const input = e.target.value.replace(/[^0-9.]/g, ""); // Allow numbers and a single decimal point
                       setRawAdditionalFees(input); // Update raw input state
+                      setHasEdited((prev) => ({ ...prev, additionalFees: true })); // Mark Additional Fees as edited
                     }}
                     onBlur={() => {
                       if (rawAdditionalFees !== null) {
@@ -612,7 +668,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                         setRawAdditionalFees(null); // Clear raw input state
                       }
                     }}
-                    className="p-1 pr-3 text-right w-full border rounded text-black"
+                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.additionalFees ? "text-black font-bold" : "text-gray-700"}`}
                   />
                   <button
                     onClick={() => {
