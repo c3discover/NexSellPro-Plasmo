@@ -189,6 +189,87 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
   useEffect(() => setIsOpen(areSectionsOpen), [areSectionsOpen]); // Sync with props
 
 
+  /////////////////////////////////////////////////////
+  // Reset Button
+  /////////////////////////////////////////////////////
+
+  // Reset Pricing Section
+  const resetPricing = () => {
+    const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+    const minMargin = parseFloat(storedMetrics.minMargin || "0");
+
+    const initialProductCost = calculateProductCostFromMargin(
+      salePrice,
+      minMargin,
+      referralFee,
+      wfsFee,
+      inboundShippingFee,
+      storageFee,
+      prepFee,
+      additionalFees
+    );
+
+    setProductCost(initialProductCost);
+    setSalePrice(product.currentPrice || 0);
+    setRawProductCost(null);
+    setRawSalePrice(null);
+
+    // Reset text color
+    setHasEdited((prev) => ({
+      ...prev,
+      productCost: false,
+      salePrice: false,
+    }));
+  };
+
+
+  const resetShippingDimensions = () => {
+    setShippingLength(product.shippingLength || 0);
+    setShippingWidth(product.shippingWidth || 0);
+    setShippingHeight(product.shippingHeight || 0);
+    setWeight(product.weight || 0);
+
+    setRawLength(null);
+    setRawWidth(null);
+    setRawHeight(null);
+    setRawWeight(null);
+
+    // Reset text color
+    setHasEdited((prev) => ({
+      ...prev,
+      shippingLength: false,
+      shippingWidth: false,
+      shippingHeight: false,
+      weight: false,
+    }));
+  };
+
+
+  const resetFees = () => {
+    const recalculatedWfsFee = calculateWFSFee(productForWFSFee);
+
+    setWfsFee(recalculatedWfsFee);
+    setInboundShippingFee(0); // Or recalculate if needed
+    setStorageFee(0);         // Or recalculate if needed
+    setPrepFee(0);            // Or recalculate if needed
+    setAdditionalFees(0);     // Or recalculate if needed
+
+    setRawWfsFee(null);
+    setRawInboundShippingFee(null);
+    setRawStorageFee(null);
+    setRawPrepFee(null);
+    setRawAdditionalFees(null);
+
+    // Reset text color
+    setHasEdited((prev) => ({
+      ...prev,
+      wfsFee: false,
+      inboundShippingFee: false,
+      storageFee: false,
+      prepFee: false,
+      additionalFees: false,
+    }));
+  };
 
 
   /////////////////////////////////////////////////////
@@ -198,7 +279,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
   useEffect(() => {
     const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
     const minMargin = parseFloat(storedMetrics.minMargin || "0");
-    
+
     const recalculatedProductCost = calculateProductCostFromMargin(
       salePrice,
       minMargin,
@@ -209,24 +290,40 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
       prepFee,
       additionalFees
     );
-  
+
     console.log("Calculated Product Cost:", recalculatedProductCost);
-  
+
     setProductCost(recalculatedProductCost);
   }, [salePrice, referralFee, wfsFee, inboundShippingFee, storageFee, prepFee, additionalFees]);
-  
-  
+
+
 
   // Sync state with product data
   useEffect(() => {
     if (product) {
-      setShippingLength(product.shippingLength ?? 0);
-      setShippingWidth(product.shippingWidth ?? 0);
-      setShippingHeight(product.shippingHeight ?? 0);
-      setWeight(product.weight ?? 0);
-      setIsWalmartFulfilled(product.isWalmartFulfilled || false);
+      setShippingLength(
+        typeof product.shippingLength === "string"
+          ? parseFloat(product.shippingLength)
+          : product.shippingLength ?? 0
+      );
+      setShippingWidth(
+        typeof product.shippingWidth === "string"
+          ? parseFloat(product.shippingWidth)
+          : product.shippingWidth ?? 0
+      );
+      setShippingHeight(
+        typeof product.shippingHeight === "string"
+          ? parseFloat(product.shippingHeight)
+          : product.shippingHeight ?? 0
+      );
+      setWeight(
+        typeof product.weight === "string"
+          ? parseFloat(product.weight)
+          : product.weight ?? 0
+      );
     }
   }, [product]);
+
 
   // Load settings from localStorage
   useEffect(() => {
@@ -311,7 +408,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
           {/*----------------------------------------------------------------*/}
           {/*Group 1: Revenue - Key Metrics*/}
           <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
-            <h2 className="text-base font-bold mb-1">Revenue Metrics</h2>
+            <h2 className="text-base font-bold mb-3 mx-2">Revenue Metrics</h2>
             <div className="space-y-2"> {/* Adds spacing between items */}
 
               {/* Monthly Sales Est Row */}
@@ -348,10 +445,19 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
 
           {/*----------------------------------------------------------------*/}
           { /* Group 2: Pricing */}
-          {/* Pricing Section */}
           <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
-            <h2 className="text-base font-bold mb-2">Pricing</h2>
+            <div className="flex justify-between items-center mb-3 mx-2"> 
+              <h2 className="text-base font-bold">Pricing</h2>
+              <button
+                onClick={resetPricing}
+                className="p-0.5 px-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                aria-label="Reset Pricing"
+              >
+                ↻
+              </button>
+            </div>
             <div className="space-y-2 text-sm">
+
 
               {/* Product Cost Row */}
               <div className="flex items-center mx-5">
@@ -407,8 +513,17 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
           {/*----------------------------------------------------------------*/}
           {/* Group 3: Shipping Dimensions */}
           <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
-            <h2 className="text-base font-bold mb-2">Shipping Dimensions</h2>
-            <div className="space-y-2 text-sm"> {/* Vertical spacing between items */}
+            <div className="flex justify-between items-center mb-3 mx-2">
+              <h2 className="text-base font-bold">Shipping Dimensions</h2>
+              <button
+                onClick={resetShippingDimensions}
+                className="p-0.5 px-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                aria-label="Reset Shipping Dimensions"
+              >
+                ↻
+              </button>
+            </div>
+            <div className="space-y-2 text-sm">
 
               {/* Length Row */}
               <div className="flex items-center mx-5">
@@ -506,8 +621,17 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
           {/*----------------------------------------------------------------*/}
           {/* Group 4: Fees */}
           <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
-            <h2 className="text-base font-bold mb-2">Fees</h2>
-            <div className="space-y-2 text-sm"> {/* Adds vertical spacing between rows */}
+            <div className="flex justify-between items-center mb-3 mx-2">
+              <h2 className="text-base font-bold">Fees</h2>
+              <button
+                onClick={resetFees}
+                className="p-0.5 px-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                aria-label="Reset Fees"
+              >
+                ↻
+              </button>
+            </div>
+            <div className="space-y-2 text-sm">
 
               {/* Referral Fee Row */}
               <div className="flex items-center mx-5">
@@ -553,16 +677,8 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                     className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.wfsFee ? "text-black font-bold" : "text-gray-700"
                       }`}
                   />
-                  <button
-                    onClick={initializeWfsFee} // Reuse the initialization logic for the reset button
-                    className="p-1 px-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-                  >
-                    ↻
-                  </button>
                 </div>
               </div>
-
-
 
               {/* Inbound Shipping Fee Row */}
               <div className="flex items-center mx-5">
@@ -591,7 +707,6 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 </div>
               </div>
 
-
               {/* Storage Fee Row */}
               <div className="flex items-center mx-5">
                 <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">Storage Fee</label>
@@ -616,8 +731,6 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                   />
                 </div>
               </div>
-
-
 
               {/* Prep Fee Row */}
               <div className="flex items-center mx-5">
@@ -670,20 +783,8 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                     }}
                     className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.additionalFees ? "text-black font-bold" : "text-gray-700"}`}
                   />
-                  <button
-                    onClick={() => {
-                      const recalculatedFee = calculateAdditionalFees(weight); // Ensure this returns a number
-                      setAdditionalFees(recalculatedFee); // Update state with the recalculated fee
-                      setRawAdditionalFees(null); // Clear raw input state
-                    }}
-                    className="ml-2 px-2 py-1 bg-blue-500 text-white text-xs rounded"
-                  >
-                    ↻
-                  </button>
                 </div>
               </div>
-
-
             </div>
           </div>
 
@@ -692,7 +793,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
           {/*----------------------------------------------------------------*/}
           {/* Group 5: Contract Category */}
           <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
-            <h2 className="text-base font-bold mb-2">Contract Category</h2>
+            <h2 className="text-base font-bold mb-3 mx-2">Contract Category</h2>
             <div className="flex items-center mx-5 text-sm">
 
               <div className="w-full">
