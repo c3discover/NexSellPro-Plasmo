@@ -57,7 +57,7 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ product, areSectionsOp
 
 
         {/* Top Section: IDENTIFIERS */}
-        <p className="font-extrabold text-center text-sm bg-[#d7d7d7] w-full p-2">
+        <p className="font-extrabold text-base text-center bg-[#d7d7d7] w-full p-2">
           Product Identifiers
         </p>
         <table className="table-auto w-full text-black mx-2">
@@ -67,10 +67,10 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ product, areSectionsOp
                 key={index}
                 className="border-2 border-black text-center"
               >
-                <td className="bg-[#3a3f47] text-2xs font-bold text-white tracking-tight">{row.label}</td>
-                <td className="bg-[#ffffff] text-2xs border-b border-black tracking-tight">{row.value}</td>
+                <td className="bg-[#3a3f47] w-[100px] text-xs font-bold text-white tracking-tight">{row.label}</td>
+                <td className="bg-[#ffffff] w-[150px] text-xs border-b border-black tracking-tight">{row.value}</td>
                 <td
-                  className="bg-[#3a3f47] text-2xs text-white underline cursor-pointer"
+                  className="bg-[#3a3f47] w-[50px] text-xs text-white underline cursor-pointer"
                   onClick={() => {
                     navigator.clipboard.writeText(String(row.value));
                     setCopiedIndex(index);
@@ -92,16 +92,16 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ product, areSectionsOp
           {/* Wrap p and table in a flex container */}
           <div className="flex flex-col">
             {/* External Data Label */}
-            <p className="font-extrabold items-center text-center p-2 text-sm bg-[#d7d7d7] ">
+            <p className="font-extrabold text-base items-center text-center p-2 bg-[#d7d7d7] ">
               External Data
             </p>
             <table className="table-auto border-2 border-black mx-2">
               <tbody>
                 {externalData.map((row, index) => (
                   <tr key={index} className="border-b border-black text-center">
-                    <td className="text-white text-2xs bg-[#3a3f47] font-bold tracking-tight px-1">{row.store}</td>
-                    <td className="text-2xs border border-black tracking-tight px-1">{row.link}</td>
-                    <td className="text-2xs border border-black tracking-tight px-1">{row.price}</td>
+                    <td className="text-white w-[100px] text-xs bg-[#3a3f47] font-bold tracking-tight px-1">{row.store}</td>
+                    <td className="w-[150px] text-xs border border-black tracking-tight px-1">{row.link}</td>
+                    <td className="w-[50px] text-xs border border-black tracking-tight px-1">{row.price}</td>
                   </tr>
                 ))}
               </tbody>
@@ -111,7 +111,7 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ product, areSectionsOp
 
 
           {/* Top Section: AVG EXTERNAL PRICE */}
-          <p className="font-extrabold items-center text-center p-2 text-sm bg-[#d7d7d7]">
+          <p className="font-extrabold items-center text-center p-2 text-base bg-[#d7d7d7]">
             Average External Price
           </p>
 

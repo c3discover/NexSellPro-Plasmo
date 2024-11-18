@@ -2,7 +2,7 @@
 // Imports and Type Definitions
 /////////////////////////////////////////////////
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   calculateReferralFee,
   calculateWFSFee,
@@ -68,6 +68,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     0  // Placeholder Additional Fees (will update later)
   );
 
+  const hasInitializedProductCost = useRef(false);
 
   const [productCost, setProductCost] = useState<number>(0.0);
   const [rawProductCost, setRawProductCost] = useState<string | null>(null);
@@ -171,18 +172,10 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
   };
 
   // Profit, ROI, and Margin calculations
-  const totalProfit = calculateTotalProfit(
-    salePrice,
-    productCost,
-    referralFee,
-    wfsFee,
-    inboundShippingFee,
-    storageFee,
-    prepFee,
-    additionalFees
-  );
-  const roi = calculateROI(totalProfit, productCost);
-  const margin = calculateMargin(totalProfit, salePrice);
+  const [totalProfit, setTotalProfit] = useState(0); // Store Total Profit
+  const [roi, setROI] = useState(0);                 // Store ROI
+  const [margin, setMargin] = useState(0);           // Store Margin
+
 
   // State to manage the visibility of the Pricing section
   const [isOpen, setIsOpen] = useState<boolean>(areSectionsOpen);
@@ -246,43 +239,48 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
 
 
   const resetFees = () => {
-    const recalculatedWfsFee = calculateWFSFee(productForWFSFee);
+    if (isWalmartFulfilled) {
+      const recalculatedWfsFee = calculateWFSFee(productForWFSFee);
+      const recalculatedStorageFee = parseFloat(
+        calculateStorageFee(season, cubicFeet, storageLength)
+      ) || 0;
+      const recalculatedInboundShippingFee =
+        finalShippingWeightForInbound * inboundShippingRate;
 
-    setWfsFee(recalculatedWfsFee);
-    setInboundShippingFee(0); // Or recalculate if needed
-    setStorageFee(0);         // Or recalculate if needed
-    setPrepFee(0);            // Or recalculate if needed
-    setAdditionalFees(0);     // Or recalculate if needed
+      setWfsFee(recalculatedWfsFee);
+      setInboundShippingFee(recalculatedInboundShippingFee);
+      setStorageFee(recalculatedStorageFee);
+    } else {
 
+      setWfsFee(0);
+      setInboundShippingFee(0);
+      setStorageFee(0);
+    }
+
+    // Reset other fees
+    setPrepFee(0);
+    setAdditionalFees(0);
+
+    // Clear raw inputs and reset edit state
     setRawWfsFee(null);
     setRawInboundShippingFee(null);
     setRawStorageFee(null);
     setRawPrepFee(null);
     setRawAdditionalFees(null);
 
-    // Reset text color
-    setHasEdited((prev) => ({
-      ...prev,
+    setHasEdited({
       wfsFee: false,
       inboundShippingFee: false,
       storageFee: false,
       prepFee: false,
       additionalFees: false,
-    }));
+    });
   };
 
-
-  /////////////////////////////////////////////////////
-  // Effects
-  /////////////////////////////////////////////////////
-
   useEffect(() => {
-    const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
-    const minMargin = parseFloat(storedMetrics.minMargin || "0");
-
-    const recalculatedProductCost = calculateProductCostFromMargin(
+    const updatedTotalProfit = calculateTotalProfit(
       salePrice,
-      minMargin,
+      productCost,
       referralFee,
       wfsFee,
       inboundShippingFee,
@@ -291,11 +289,129 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
       additionalFees
     );
 
-    console.log("Calculated Product Cost:", recalculatedProductCost);
+    setTotalProfit(updatedTotalProfit); // Update Total Profit
 
-    setProductCost(recalculatedProductCost);
-  }, [salePrice, referralFee, wfsFee, inboundShippingFee, storageFee, prepFee, additionalFees]);
+    const calculatedROI = parseFloat(calculateROI(updatedTotalProfit, productCost)); // Parse ROI
+    setROI(isNaN(calculatedROI) ? 0 : calculatedROI); // Handle invalid ROI
 
+    const calculatedMargin = parseFloat(calculateMargin(updatedTotalProfit, salePrice)); // Parse Margin
+    setMargin(isNaN(calculatedMargin) ? 0 : calculatedMargin); // Handle invalid Margin
+  }, [
+    salePrice,
+    productCost,
+    referralFee,
+    wfsFee,
+    inboundShippingFee,
+    storageFee,
+    prepFee,
+    additionalFees,
+  ]);
+
+
+
+  /////////////////////////////////////////////////////
+  // Effects
+  /////////////////////////////////////////////////////
+
+  useEffect(() => {
+    if (!hasInitializedProductCost.current) {
+      console.log("Initial Values:", {
+        salePrice,
+        referralFee,
+        wfsFee,
+        inboundShippingFee,
+        storageFee,
+        prepFee,
+        additionalFees,
+      });
+  
+      const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+      const minMargin = parseFloat(storedMetrics.minMargin || "0");
+  
+      const initialProductCost = calculateProductCostFromMargin(
+        salePrice,
+        minMargin,
+        referralFee,
+        wfsFee,
+        inboundShippingFee,
+        storageFee,
+        prepFee,
+        additionalFees
+      );
+  
+      console.log("Initial Product Cost Calculated:", initialProductCost);
+  
+      setProductCost(initialProductCost);
+      hasInitializedProductCost.current = true;
+    }
+  }, [
+    salePrice,
+    referralFee,
+    wfsFee,
+    inboundShippingFee,
+    storageFee,
+    prepFee,
+    additionalFees,
+  ]);
+  
+  
+
+  useEffect(() => {
+    if (isWalmartFulfilled) {
+      // Only recalculate WFS Fee if it has not been manually edited
+      if (!hasEdited.wfsFee) {
+        const recalculatedWfsFee = calculateWFSFee(productForWFSFee);
+        setWfsFee(recalculatedWfsFee);
+      }
+
+      // Only reset inbound shipping fee if not manually edited
+      if (!hasEdited.inboundShippingFee) {
+        const recalculatedInboundShippingFee =
+          finalShippingWeightForInbound * inboundShippingRate;
+        setInboundShippingFee(recalculatedInboundShippingFee); // No inbound shipping for Walmart Fulfilled
+      }
+
+      // Only reset storage fee if not manually edited
+      if (!hasEdited.storageFee) {
+        const recalculatedStorageFee = parseFloat(
+          calculateStorageFee(season, cubicFeet, storageLength)
+        ) || 0;
+        setStorageFee(recalculatedStorageFee);
+      }
+    } else {
+      // Seller Fulfilled logic
+      if (!hasEdited.wfsFee) {
+        setWfsFee(0); // No WFS Fee for Seller Fulfilled
+      }
+
+      if (!hasEdited.inboundShippingFee) {
+        const recalculatedInboundShippingFee =
+          finalShippingWeightForInbound * inboundShippingRate;
+        setInboundShippingFee(recalculatedInboundShippingFee);
+      }
+
+      if (!hasEdited.storageFee) {
+        setStorageFee(0); // No storage fee for Seller Fulfilled
+      }
+    }
+  }, [
+    isWalmartFulfilled,
+    productForWFSFee,
+    season,
+    cubicFeet,
+    storageLength,
+    finalShippingWeightForInbound,
+    inboundShippingRate,
+    hasEdited, // Track edits to prevent overwrites
+  ]);
+
+
+  useEffect(() => {
+    const savedPreference = localStorage.getItem("isWalmartFulfilled");
+    const initialFulfillment = savedPreference === "true" || savedPreference === null;
+
+    setIsWalmartFulfilled(initialFulfillment); // Default to Walmart Fulfilled
+  }, []);
 
 
   // Sync state with product data
@@ -446,7 +562,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
           {/*----------------------------------------------------------------*/}
           { /* Group 2: Pricing */}
           <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
-            <div className="flex justify-between items-center mb-3 mx-2"> 
+            <div className="flex justify-between items-center mb-3 mx-2">
               <h2 className="text-base font-bold">Pricing</h2>
               <button
                 onClick={resetPricing}
@@ -664,14 +780,15 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                     type="text"
                     value={rawWfsFee !== null ? rawWfsFee : wfsFee.toFixed(2)} // Show raw or formatted WFS Fee
                     onChange={(e) => {
-                      setRawWfsFee(e.target.value); // Update raw input state
+                      const input = e.target.value.replace(/[^0-9.]/g, ""); // Allow numbers and a single decimal point
+                      setRawWfsFee(input); // Store the raw input
                       setHasEdited((prev) => ({ ...prev, wfsFee: true })); // Mark as edited
                     }}
                     onBlur={() => {
                       if (rawWfsFee !== null) {
                         const formattedValue = parseFloat(rawWfsFee).toFixed(2); // Format input to 2 decimals
-                        setWfsFee(parseFloat(formattedValue)); // Update WFS Fee with formatted value
-                        setRawWfsFee(null); // Clear raw input state
+                        setWfsFee(parseFloat(formattedValue)); // Update WFS Fee state with formatted value
+                        setRawWfsFee(null); // Clear raw input
                       }
                     }}
                     className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.wfsFee ? "text-black font-bold" : "text-gray-700"
@@ -689,20 +806,19 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                     type="text"
                     value={rawInboundShippingFee !== null ? rawInboundShippingFee : inboundShippingFee.toFixed(2)}
                     onChange={(e) => {
-                      // Store the raw input as the user types
                       const input = e.target.value.replace(/[^0-9.]/g, ""); // Allow numbers and a single decimal point
-                      setRawInboundShippingFee(input);
+                      setRawInboundShippingFee(input); // Store the raw input
                     }}
                     onBlur={() => {
-                      // Format and save the value on blur
                       if (rawInboundShippingFee !== null) {
                         const formattedValue = parseFloat(rawInboundShippingFee).toFixed(2); // Format to 2 decimals
                         setInboundShippingFee(parseFloat(formattedValue) || 0); // Update actual state
                         setRawInboundShippingFee(null); // Clear raw input
-                        setHasEdited((prev) => ({ ...prev, inboundShippingFee: true })); // Mark Additional Fees as edited
+                        setHasEdited((prev) => ({ ...prev, inboundShippingFee: true })); // Mark as edited
                       }
                     }}
-                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.inboundShippingFee ? "text-black font-bold" : "text-gray-700"}`}
+                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.inboundShippingFee ? "text-black font-bold" : "text-gray-700"
+                      }`}
                   />
                 </div>
               </div>
@@ -722,12 +838,13 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                     onBlur={() => {
                       if (rawStorageFee !== null) {
                         const formattedValue = parseFloat(rawStorageFee).toFixed(2); // Format to 2 decimals
-                        setStorageFee(parseFloat(formattedValue) || 0); // Update actual storage fee state
+                        setStorageFee(parseFloat(formattedValue) || 0); // Update storage fee state
                         setRawStorageFee(null); // Clear raw input state
-                        setHasEdited((prev) => ({ ...prev, storageFee: true })); // Mark Additional Fees as edited
+                        setHasEdited((prev) => ({ ...prev, storageFee: true })); // Mark as edited
                       }
                     }}
-                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.storageFee ? "text-black font-bold" : "text-gray-700"}`}
+                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.storageFee ? "text-black font-bold" : "text-gray-700"
+                      }`}
                   />
                 </div>
               </div>
@@ -824,12 +941,14 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                   ? 'bg-[#006EDC] text-white shadow-inner-crisp'
                   : 'bg-gray-200 text-black shadow-none'
                   }`}
-                onClick={() => setIsWalmartFulfilled(true)}
+                onClick={() => {
+                  setIsWalmartFulfilled(true);
+                  setHasEdited({}); // Clear edited states on toggle
+                }}
               >
                 <input
                   type="radio"
                   checked={isWalmartFulfilled}
-                  onChange={() => setIsWalmartFulfilled(true)}
                   className="hidden"
                 />
                 <span className="block font-bold">Walmart</span>
@@ -844,12 +963,14 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                   ? 'bg-[#006EDC] text-white shadow-inner-crisp'
                   : 'bg-gray-200 text-black shadow-none'
                   }`}
-                onClick={() => setIsWalmartFulfilled(false)}
+                onClick={() => {
+                  setIsWalmartFulfilled(false);
+                  setHasEdited({}); // Clear edited states on toggle
+                }}
               >
                 <input
                   type="radio"
                   checked={!isWalmartFulfilled}
-                  onChange={() => setIsWalmartFulfilled(false)}
                   className="hidden"
                 />
                 <span className="block font-bold">Seller</span>
@@ -857,10 +978,6 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
               </label>
             </div>
           </div>
-
-
-
-
 
 
         </div>
