@@ -1,3 +1,7 @@
+/////////////////////////////////////////////////
+// Imports and Type Definitions
+/////////////////////////////////////////////////
+
 import React, { useState, useEffect } from "react";
 import getData from '../utils/getData';
 
@@ -27,9 +31,15 @@ interface AnalysisProps {
   areSectionsOpen: boolean;
 }
 
-// Analysis Component: Displays product details, ratings, and seller information
+
+/////////////////////////////////////////////////
+// Component Definition: Displays product details, ratings, and seller information
+/////////////////////////////////////////////////
 export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) => {
-  // State management for component visibility and data
+
+  /////////////////////////////////////////////////////
+  // State Management
+  /////////////////////////////////////////////////////  
   const [isOpen, setIsOpen] = useState(areSectionsOpen);
   const [productDetails, setProductDetails] = useState<Product | null>(null);
   const [capturedData, setCapturedData] = useState<any[]>([]);
@@ -45,25 +55,15 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
   );
 
 
-  //////////////////////////////////////////////
+  /////////////////////////////////////////////////////
+  // Effect Hooks
+  /////////////////////////////////////////////////////
+
   // Sync isOpen state with the passed prop value to control visibility externally
   useEffect(() => {
     setIsOpen(areSectionsOpen);
   }, [areSectionsOpen]);
 
-  // Function to toggle the component open or closed when clicking the header
-  const toggleOpen = () => setIsOpen((prev) => !prev);
-
-  // Function to calculate the age of a review in days based on a date string
-  const getDaysAgo = (dateString: string) => {
-    const today = new Date();
-    const reviewDate = new Date(dateString);
-    const differenceInTime = today.getTime() - reviewDate.getTime();
-    return Math.floor(differenceInTime / (1000 * 3600 * 24));
-  };
-
-
-  //////////////////////////////////////////////
   // Fetch product data from getData and update the state for productDetails and totalSellers
   useEffect(() => {
     const productData = getData();
@@ -75,9 +75,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     }
   }, []);
 
-
-
-  //////////////////////////////////////////////
   // Primary function to capture seller data based on the number of sellers
   useEffect(() => {
     const captureSellerData = async () => {
@@ -107,6 +104,20 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
 
 
+  /////////////////////////////////////////////////////
+  // Utility Functions
+  /////////////////////////////////////////////////////
+
+  // Function to toggle the component open or closed when clicking the header
+  const toggleOpen = () => setIsOpen((prev) => !prev);
+
+  // Function to calculate the age of a review in days based on a date string
+  const getDaysAgo = (dateString: string) => {
+    const today = new Date();
+    const reviewDate = new Date(dateString);
+    const differenceInTime = today.getTime() - reviewDate.getTime();
+    return Math.floor(differenceInTime / (1000 * 3600 * 24));
+  };
 
   //////////////////////////////////////////////
   // Function to observe modal DOM changes for dynamic data capture
@@ -158,10 +169,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     });
   };
 
-
-
-  //////////////////////////////////////////////
-  // Closes the "More seller options" modal if it’s open
+  // Closes the "More seller options" modal if its open
   const closeModalIfOpen = () => {
     const closeButton = document.querySelector("[aria-label='Close']");
     if (closeButton) {
@@ -169,10 +177,11 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     }
   };
 
+  /////////////////////////////////////////////////////
+  // Data Extraction Functions
+  /////////////////////////////////////////////////////
 
-
-  //////////////////////////////////////////////
-  // Function for single seller extraction
+  // Extract single seller data
   const extractSingleSellerData = () => {
 
     // Extract offer price
@@ -224,9 +233,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     }]);
   };
 
-
-
-  //////////////////////////////////////////////
   // Extracts multiple seller data from the modal
   const extractDataFromModal = (modalNode: HTMLElement) => {
     const data = [];
@@ -302,7 +308,37 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
   };
 
 
-  //////////////////////////////////////////////
+  /////////////////////////////////////////////////////
+  // Formatting Functions
+  /////////////////////////////////////////////////////
+
+  // Apply formatting for total ratings highlight
+  const applyTotalRatingsHighlight = () => {
+    // Get total ratings from product details
+    const totalRatings = productDetails?.numberOfRatings || 0;
+
+    // Get minimum total ratings from settings
+    const storedSettings = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+    const minTotalRatings =
+      typeof storedSettings.minTotalRatings === "string"
+        ? parseFloat(storedSettings.minTotalRatings)
+        : storedSettings.minTotalRatings || null;
+
+    // If no threshold or set to 0, return default formatting
+    if (minTotalRatings === null || minTotalRatings === 0) {
+      return "bg-white text-black border-gray-500 font-bold text-xs p-1"; // Default (no highlight)
+    }
+    // Apply green or red formatting based on comparison
+    return totalRatings >= minTotalRatings
+      ? "bg-green-100 text-green-700 border-green-500" // Green for valid
+      : "bg-red-100 text-red-700 border-red-500"; // Red for invalid
+  };
+
+
+  /////////////////////////////////////////////////////
+  // OTHER
+  /////////////////////////////////////////////////////
+
   // Function to close the modal after extracting data
   const closeModal = () => {
     const closeButton = document.querySelector("button[aria-label='Close dialog']") as HTMLButtonElement | null;
@@ -318,13 +354,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     }
   };
 
-
-
-
-
-
-
-  //////////////////////////////////////////////
   // State for controlling the seller table visibility
   const [isTableExpanded, setIsTableExpanded] = useState(true); // Start with the table expanded
 
@@ -332,10 +361,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
   const toggleTable = () => {
     setIsTableExpanded((prev) => !prev);
   };
-
-
-
-
 
 
   //////////////////////////////////////////////
@@ -358,28 +383,31 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         {/* Top Section: Total Reviews and Date of Last Review */}
         <div className="w-full p-2 flex justify-between items-center">
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
               Total Ratings
             </p>
-            <p className="text-2xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
-              {productDetails ? productDetails.numberOfRatings : "-"} {/* Display total ratings */}
+            <p
+              className={`text-center rounded-b-lg shadow-md shadow-black border-2 ${applyTotalRatingsHighlight()}`}
+            >
+              {productDetails ? productDetails.numberOfRatings : "-"}
             </p>
           </div>
 
+
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
               Total Reviews
             </p>
-            <p className="text-2xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
+            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
               {productDetails ? productDetails.numberOfReviews : "-"} {/* Display total reviews */}
             </p>
           </div>
 
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
               Overall Rating
             </p>
-            <p className="text-2xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
+            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
               {productDetails ? productDetails.overallRating : "-"} {/* Display overall rating */}
             </p>
           </div>
@@ -390,10 +418,10 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         {/* Middle Section: New Reviews */}
         <div className="w-[95%] mx-auto px-2 pb-4 flex justify-between items-center">
           <div className="w-full p-1">
-            <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
               Date of Most Recent Reviews
             </p>
-            <div className="text-2xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
+            <div className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
               {productDetails && productDetails.reviewDates && productDetails.reviewDates.length > 0
                 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 mx-10 justify-center"> {/* Use grid layout for 3 columns */}
@@ -455,10 +483,10 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         {/* Middle Section: Stock Information */}
         <div className="w-full p-2 flex justify-between items-center">
           <div className="w-full p-1">
-            <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
               Total Stock
             </p>
-            <p className="text-2xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
+            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
               {product.stock || "-"}
             </p>
           </div>
@@ -467,28 +495,28 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
         <div className="w-[95%] mx-auto px-2 pb-4 flex justify-between items-center">
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
               Shipping Stock
             </p>
-            <p className="text-2xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
+            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
               {product.fulfillmentOptions?.[0]?.availableQuantity || 0}
             </p>
           </div>
 
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
               Pickup Stock
             </p>
-            <p className="text-2xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
+            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
               {product.fulfillmentOptions?.[1]?.availableQuantity || 0}
             </p>
           </div>
 
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
               Delivery Stock
             </p>
-            <p className="text-2xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
+            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
               {product.fulfillmentOptions?.[2]?.availableQuantity || 0}
             </p>
           </div>
@@ -504,42 +532,44 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         {/* Middle Section: Seller Information */}
         <div className="w-full p-2 flex justify-between items-center">
           <div className="w-full p-1">
-            <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
               Total Sellers
             </p>
-            <p className="text-2xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
+            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
               {product.totalSellers || "-"}            </p>
           </div>
         </div>
 
         <div className="w-[95%] mx-auto px-2 pb-4 flex justify-between items-center">
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
               WFS Sellers
             </p>
-            <p className="text-2xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
-              {wfsSellerCount || "-"}
+            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
+              {wfsSellerCount || 0}
             </p>
           </div>
 
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
-              Walmart Selling?
+            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+              Walmart Sells
             </p>
             <p className={`text-xs text-center p-1 w-full rounded-b-lg shadow-md shadow-black border-2 border-black font-bold ${product.sellerName === "Walmart.com"
-              ? "bg-green-100 text-green-700 border-green-500"
-              : "bg-red-100 text-red-700 border-red-500"
+              ? "bg-red-100 text-red-700 border-red-500"
+              : "bg-green-100 text-green-700 border-green-500"
               }`}>
               {product.sellerName === "Walmart.com" ? "YES" : "NO"}
             </p>
           </div>
 
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
-              Brand Selling?
+            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+              Brand Sells
             </p>
             <p
-              className={`text-xs text-center p-1 w-full rounded-b-lg shadow-md shadow-black border-2 border-black font-bold ${isBrandSelling ? "bg-green-100 text-green-700 border-green-500" : "bg-red-100 text-red-700 border-red-500"
+              className={`text-xs text-center p-1 w-full rounded-b-lg shadow-md shadow-black border-2 border-black font-bold ${isBrandSelling
+                ? "bg-red-100 text-red-700 border-red-500"
+                : "bg-green-100 text-green-700 border-green-500"
                 }`}
             >
               {isBrandSelling ? "YES" : "NO"}
@@ -576,13 +606,13 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
           <table className="min-w-full border-collapse">
             <thead>
               <tr>
-                <th className="px-4 py-2 text-2xs text-white bg-[#3a3f47] uppercase border-2 border-black">
+                <th className="px-4 py-2 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black">
                   Seller Name
                 </th>
-                <th className="px-4 py-2 text-2xs text-white bg-[#3a3f47] uppercase border-2 border-black">
+                <th className="px-4 py-2 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black">
                   Price
                 </th>
-                <th className="px-4 py-2 text-2xs text-white bg-[#3a3f47] uppercase border-2 border-black">
+                <th className="px-4 py-2 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black">
                   Fulfillment
                 </th>
               </tr>
@@ -593,19 +623,19 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
                   capturedData.map((item, index) => (
                     <tr key={index}>
                       {/* Seller Name */}
-                      <td className="px-1 text-center align-middle whitespace-nowrap text-2xs border-2 border-black bg-white">
+                      <td className="px-1 text-center align-middle whitespace-nowrap text-xs border-2 border-black bg-white">
                         {item.sellerName || "-"}
                         {item.isProSeller && (
                           <span className="checkmark-circle"></span>
                         )}
                       </td>
                       {/* Price */}
-                      <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
+                      <td className="px-1 text-center whitespace-nowrap text-xs border-2 border-black bg-white">
                         {item.priceInfo?.currentPrice?.priceString || "-"}
                       </td>
 
                       {/* Fulfillment Status */}
-                      <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
+                      <td className="px-1 text-center whitespace-nowrap text-xs border-2 border-black bg-white">
                         {item.fulfillmentStatus === "WMT" ? (
                           <span className="bg-blue-100 border-blue-500 text-blue-700 font-bold border rounded-lg px-1">
                             WMT

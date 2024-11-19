@@ -133,9 +133,9 @@ export const Product = ({ product }: any) => {
             <p className="text-black text-xs p-1 mt-2">
               <span className="font-bold mt-2">Walmart Selling? </span>
               {product.sellerName === "Walmart.com" ? (
-                <span className="px-1 py-1 text-xs bg-green-100 text-green-700 font-bold border border-green-500 rounded-lg shadow-sm">YES</span>
+                <span className="px-1 py-1 text-xs bg-red-100 text-red-700 font-bold border border-red-500 rounded-lg shadow-sm">YES</span>
               ) : (
-                <span className="px-1 py-1 text-xs bg-red-100 text-red-700 font-bold border border-red-500 rounded-lg shadow-sm">NO</span>
+                <span className="px-1 py-1 text-xs bg-green-100 text-green-700 font-bold border border-green-500 rounded-lg shadow-sm">NO</span>
               )}
             </p>
           </div>

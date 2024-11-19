@@ -292,19 +292,10 @@ export const calculateMargin = (totalProfit: number, salePrice: number): string 
     return ((totalProfit / salePrice) * 100).toFixed(2);
 };
 
-export const calculateProductCostFromMargin = (
+export const calculateStartingProductCost = (
     salePrice: number,
-    minMargin: number,
-    referralFee: number,
-    wfsFee: number,
-    inboundShipping: number,
-    storageFee: number,
-    prepFee: number,
-    additionalFees: number
-): number => {
-    const totalExpenses = referralFee + wfsFee + inboundShipping + storageFee + prepFee + additionalFees;
-    // Calculate product cost needed to achieve the desired margin
-    return salePrice - ((salePrice * minMargin) / 100) - totalExpenses;
+    ): number => {
+    return salePrice / 3
 };
 
 // Function to calculate dimensional weight based on dimensions

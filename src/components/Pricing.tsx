@@ -14,7 +14,7 @@ import {
   calculateFinalShippingWeightForInbound,
   calculateFinalShippingWeightForWFS,
   calculateAdditionalFees,
-  calculateProductCostFromMargin
+  calculateStartingProductCost
 } from "../utils/calculations";
 
 import { contractCategoryOptions } from "../constants/options";
@@ -57,15 +57,8 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
   const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
   const minMargin = parseFloat(storedMetrics.minMargin || "0");
 
-  const initialProductCost = calculateProductCostFromMargin(
-    product.currentPrice || 0, // Use currentPrice as salePrice
-    minMargin,
-    calculateReferralFee(product.currentPrice || 0, "Everything Else"), // Referral Fee
-    0, // Placeholder WFS Fee (will update later)
-    0, // Placeholder Inbound Shipping Fee (will update later)
-    0, // Placeholder Storage Fee (will update later)
-    0, // Placeholder Prep Fee (will update later)
-    0  // Placeholder Additional Fees (will update later)
+  const initialProductCost = calculateStartingProductCost(
+    product.currentPrice || 0
   );
 
   const hasInitializedProductCost = useRef(false);
@@ -191,15 +184,8 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
     const minMargin = parseFloat(storedMetrics.minMargin || "0");
 
-    const initialProductCost = calculateProductCostFromMargin(
-      salePrice,
-      minMargin,
-      referralFee,
-      wfsFee,
-      inboundShippingFee,
-      storageFee,
-      prepFee,
-      additionalFees
+    const initialProductCost = calculateStartingProductCost(
+      salePrice
     );
 
     setProductCost(initialProductCost);
@@ -215,19 +201,42 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     }));
   };
 
-
+  // Reset Shipping Dimensions Section
   const resetShippingDimensions = () => {
-    setShippingLength(product.shippingLength || 0);
-    setShippingWidth(product.shippingWidth || 0);
-    setShippingHeight(product.shippingHeight || 0);
-    setWeight(product.weight || 0);
-
+    // Reset dimensions using the same logic as initial display
+    const newLength =
+      typeof product.shippingLength === "string"
+        ? parseFloat(product.shippingLength)
+        : product.shippingLength ?? 0;
+  
+    const newWidth =
+      typeof product.shippingWidth === "string"
+        ? parseFloat(product.shippingWidth)
+        : product.shippingWidth ?? 0;
+  
+    const newHeight =
+      typeof product.shippingHeight === "string"
+        ? parseFloat(product.shippingHeight)
+        : product.shippingHeight ?? 0;
+  
+    const newWeight =
+      typeof product.weight === "string"
+        ? parseFloat(product.weight)
+        : product.weight ?? 0;
+  
+    // Update state with calculated values
+    setShippingLength(newLength);
+    setShippingWidth(newWidth);
+    setShippingHeight(newHeight);
+    setWeight(newWeight);
+  
+    // Reset raw input values to match the state
     setRawLength(null);
     setRawWidth(null);
     setRawHeight(null);
     setRawWeight(null);
-
-    // Reset text color
+  
+    // Reset "hasEdited" flags for these fields
     setHasEdited((prev) => ({
       ...prev,
       shippingLength: false,
@@ -236,8 +245,9 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
       weight: false,
     }));
   };
+  
 
-
+  // Reset Fees Section
   const resetFees = () => {
     if (isWalmartFulfilled) {
       const recalculatedWfsFee = calculateWFSFee(productForWFSFee);
@@ -268,13 +278,15 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     setRawPrepFee(null);
     setRawAdditionalFees(null);
 
-    setHasEdited({
+    setHasEdited((prev) => ({
+      ...prev,
       wfsFee: false,
       inboundShippingFee: false,
       storageFee: false,
       prepFee: false,
       additionalFees: false,
-    });
+    }));
+    
   };
 
   useEffect(() => {
@@ -328,15 +340,8 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
       const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
       const minMargin = parseFloat(storedMetrics.minMargin || "0");
   
-      const initialProductCost = calculateProductCostFromMargin(
+      const initialProductCost = calculateStartingProductCost(
         salePrice,
-        minMargin,
-        referralFee,
-        wfsFee,
-        inboundShippingFee,
-        storageFee,
-        prepFee,
-        additionalFees
       );
   
       console.log("Initial Product Cost Calculated:", initialProductCost);

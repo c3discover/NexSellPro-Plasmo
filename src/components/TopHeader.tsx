@@ -57,7 +57,12 @@ export const TopHeader: React.FC = () => {
             position: "relative",
           }}
         >
-          <SettingsModal isOpen={isSettingsOpen} onClose={handleSettingsToggle} />
+          <SettingsModal
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            onSettingsChange={() => {
+            }}
+          />
         </div>
       )}
     </div>

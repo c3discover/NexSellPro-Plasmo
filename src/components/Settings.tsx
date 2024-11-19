@@ -1,7 +1,20 @@
+/////////////////////////////////////////////////
+// Imports and Type Definitions
+/////////////////////////////////////////////////
+
 import React, { useState, useEffect } from "react";
 
+/////////////////////////////////////////////////
+// Component Definition
+/////////////////////////////////////////////////
+
 // SettingsModal Component: manages and saves user-defined settings
-export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
+export const SettingsModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onSettingsChange: () => void; 
+}> = ({ isOpen, onClose, onSettingsChange }) => {
+
   /////////////////////////////////////////////////////
   // State Definitions
   /////////////////////////////////////////////////////
@@ -69,6 +82,7 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
       season: "Jan-Sep",
     });
     setDefaultFulfillment("Walmart Fulfilled");
+    onSettingsChange(); // Notify parent component of changes
   };
 
   // Handle changes in user-defined metrics with proper formatting
@@ -87,7 +101,6 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     setDesiredMetrics((prev) => ({ ...prev, [fieldName]: input }));
   };
 
-
   // Handle changes in default fulfillment preference
   const handleFulfillmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setDefaultFulfillment(e.target.value);
@@ -102,8 +115,10 @@ export const SettingsModal: React.FC<{ isOpen: boolean; onClose: () => void }> =
     localStorage.setItem("additionalCostType", additionalCostType);
     localStorage.setItem("additionalCostPerLb", additionalCostPerLb.toString());
     localStorage.setItem("additionalCostEach", additionalCostEach.toString());
+    onSettingsChange(); // Notify parent component of changes
     onClose();
   };
+
 
   /////////////////////////////////////////////////////
   // Conditional Rendering
