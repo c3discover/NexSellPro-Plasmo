@@ -326,7 +326,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
     // If no threshold or set to 0, return default formatting
     if (minTotalRatings === null || minTotalRatings === 0) {
-      return "bg-white text-black border-gray-500 font-bold text-xs p-1"; // Default (no highlight)
+      return "bg-white text-black border-gray-500 text-xs p-1"; // Default (no highlight)
     }
     // Apply green or red formatting based on comparison
     return totalRatings >= minTotalRatings

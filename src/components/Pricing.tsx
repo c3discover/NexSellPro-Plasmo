@@ -954,6 +954,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 <input
                   type="radio"
                   checked={isWalmartFulfilled}
+                  onChange={() => {}}
                   className="hidden"
                 />
                 <span className="block font-bold">Walmart</span>
@@ -976,6 +977,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 <input
                   type="radio"
                   checked={!isWalmartFulfilled}
+                  onChange={() => {}}
                   className="hidden"
                 />
                 <span className="block font-bold">Seller</span>
