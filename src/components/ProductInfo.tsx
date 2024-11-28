@@ -45,10 +45,10 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ product, areSectionsOp
       className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}
     >
       <h1
-        className="font-montserrat text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
+        className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
         onClick={toggleOpen}
       >
-        {isOpen ? "▼ Product Information" : "▶ Product Information"}
+        {isOpen ? "🔽  Product Information" : "▶️  Product Information"}
       </h1>
 
       <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>

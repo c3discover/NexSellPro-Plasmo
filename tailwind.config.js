@@ -5,7 +5,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        montserrat: ['Montserrat', 'Arial', 'sans-serif'], // Added 'Arial' and 'sans-serif' as fallback fonts
+        inter: ['Inter', 'Arial', 'sans-serif'], // Inter as primary, Arial as fallback
       },
       fontSize: {
         '2xs': '0.625rem', // You can adjust this value as needed

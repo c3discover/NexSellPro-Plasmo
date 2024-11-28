@@ -12,14 +12,14 @@ export const TopHeader: React.FC = () => {
   return (
     <div
       id="header"
-      className="flex flex-col text-white shadow-xl rounded-b-lg"
+      className="flex flex-col text-white shadow-xl rounded-lg"
       style={{
         background: 'linear-gradient(145deg, #3a3f47, #2f3238)', // A dark gradient for texture
         boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.5)', // Adds depth like a countertop
       }}
     >
       {/* Header Bar */}
-      <div className="w-full flex items-center justify-between p-4">
+      <div className="w-full flex items-center justify-between p-4 pt-5">
         {/* Left Icon with more drastic drop shadow */}
         <div
           className="text-2xs p-0 m-0 hover:text-gray-400 transition duration-300 ease-in-out"

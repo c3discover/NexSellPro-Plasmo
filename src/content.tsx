@@ -138,17 +138,18 @@ const ContentUI = () => {
   return (
     <div
       id="sidebar"
-      style={{ backgroundColor: "#FBFBFB" }}
-      className={`w-full h-full flex flex-col p-4 ${isOpen ? "open" : "closed"}`}
+      style={{ backgroundColor: "#FBFBFB" }}  // Explicitly set background color here
+      className={`absolute w-[400px] h-screen transition-all duration-500 ease-in-out mb-3 text-sm flex flex-col p-2 ${isOpen ? "open" : "closed"}`}
     >
 
       {/* Toggle button for sidebar open/close */}
       <button
-        className={`sidebar-toggle mt-2 bg-gray-100 text-gray-700 font-bold text-xs py-2 px-4 rounded-lg transition-all duration-200 ease-in-out transform hover:scale-150 border border-gray-400`}
+        className="fixed right-[25px] top-2 bg-[#d7d7d7] p-1.5 text-xs font-semibold rounded-lg shadow-lg transition-transform duration-200 ease-in-out hover:scale-110 hover:shadow-lg border-2 border-gray-500"
         onClick={() => setIsOpen(!isOpen)}
       >
         {isOpen ? "🔴 Close" : "🟢 Open"}
       </button>
+
 
       {/* Main content of the sidebar */}
       <div className="flex flex-col space-y-5">
@@ -158,7 +159,7 @@ const ContentUI = () => {
         {/* Expand/Collapse all sections button placed below Product and above BuyGauge */}
         <div style={{ display: 'inline-block' }}>
           <button
-            className={`pr-4 space-y-3 w-auto bg-[#3a3f47] font-bold text-white text-left text-xs rounded-xl drop-shadow-xl`}
+            className={`pl-1 py-1 pr-4 bg-[#3a3f47] font-semibold text-white text-start !text-sm rounded-xl drop-shadow-xl`}
             style={{ display: 'flex', justifyContent: 'flex-start', border: 'none' }}
             onClick={toggleSections}
           >

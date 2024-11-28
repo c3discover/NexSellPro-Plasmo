@@ -23,7 +23,7 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({ areSectionsOpen }) => {
         className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
         onClick={toggleOpen}
       >
-        {isOpen ? "▼ Buy Gauge" : "▶ Buy Gauge"}
+        {isOpen ? "🔽  Buy Gauge" : "▶️  Buy Gauge"}
       </h1>
 
       <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>

@@ -374,7 +374,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
         onClick={toggleOpen}
       >
-        {isOpen ? "▼ Analysis" : "▶ Analysis"}
+        {isOpen ? "🔽  Analysis" : "▶️  Analysis"}
       </h1>
 
       <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>

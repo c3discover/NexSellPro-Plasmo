@@ -136,7 +136,7 @@ export const Variations: React.FC<VariationsProps> = ({ variantsMap, areSections
         className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
         onClick={toggleOpen}
       >
-        {isOpen ? "▼ Variations" : "▶ Variations"}
+        {isOpen ? "🔽  Variations" : "▶️  Variations"}
       </h1>
 
       {/* Conditional Rendering for No Variations Available */}
