@@ -1,3 +1,17 @@
+////////////////////////////////////////////////
+// Imports:
+////////////////////////////////////////////////
+// No imports needed here.
+
+////////////////////////////////////////////////
+// Constants and Variables:
+////////////////////////////////////////////////
+// No constants or variables defined here.
+
+////////////////////////////////////////////////
+// Props and Types:
+////////////////////////////////////////////////
+
 interface Product {
     weight: number;
     length: number;
@@ -9,6 +23,16 @@ interface Product {
     retailPrice?: number;
 }
 
+////////////////////////////////////////////////
+// State and Hooks:
+////////////////////////////////////////////////
+// No state or hooks defined here.
+
+////////////////////////////////////////////////
+// Helper Functions:
+////////////////////////////////////////////////
+
+// Function to calculate referral fee based on the sale price and contract category.
 export const calculateReferralFee = (salePrice: number, contractCategory: string): number => {
     let referralRate;
 
@@ -187,7 +211,6 @@ export const calculateAdditionalFees = (weight: number): number => {
     return additionalCostType === "per lb" ? additionalCostPerLb * weight : additionalCostEach;
 };
 
-// Update calculateWFSFee to include additional costs
 export const calculateWFSFee = (product: Product): number => {
     const { weight, length, width, height, isWalmartFulfilled, isApparel, isHazardousMaterial, retailPrice } = product;
 
@@ -250,10 +273,21 @@ export const calculateWFSFee = (product: Product): number => {
     return baseWFSFee + additionalFee + calculateAdditionalFees(weight);
 };
 
+////////////////////////////////////////////////
+// Event Handlers:
+////////////////////////////////////////////////
+// No event handlers defined here.
+
+////////////////////////////////////////////////
+// Main Calculations:
+////////////////////////////////////////////////
+
+// Update calculateWFSFee to include additional costs
 export const calculateInboundShipping = (weight: number, inboundShippingCost: number): number => {
     return weight * inboundShippingCost;
 };
 
+// Function to calculate storage fee
 export const calculateStorageFee = (season: string, cubicFeet: number, storageLength: number): string => {
     let storageRate: number;
 
@@ -267,10 +301,12 @@ export const calculateStorageFee = (season: string, cubicFeet: number, storageLe
     return storageFee.toFixed(2);
 };
 
+// Function to calculate cubic feet
 export const calculateCubicFeet = (length: number, width: number, height: number): number => {
     return (length * width * height) / 1728;
 };
 
+// Function to calculate total profit
 export const calculateTotalProfit = (
     salePrice: number,
     productCost: number,
@@ -284,14 +320,17 @@ export const calculateTotalProfit = (
     return salePrice - (productCost + referralFee + wfsFee + inboundShipping + storageFee + prepFee + additionalFees);
 };
 
+// Function to calculate ROI
 export const calculateROI = (totalProfit: number, productCost: number): string => {
     return ((totalProfit / productCost) * 100).toFixed(2);
 };
 
+// Function to calculate margin
 export const calculateMargin = (totalProfit: number, salePrice: number): string => {
     return ((totalProfit / salePrice) * 100).toFixed(2);
 };
 
+// Function to calculate starting product cost
 export const calculateStartingProductCost = (
     salePrice: number,
     ): number => {
@@ -303,7 +342,7 @@ export const calculateDimensionalWeight = (length: number, width: number, height
     return (length * width * height) / 139;
 };
 
-// Function to calculate final shipping weight following Walmart's guidelines
+// Function to calculate final shipping weight for WFS following Walmart's guidelines
 export const calculateFinalShippingWeightForWFS  = (weight: number, length: number, width: number, height: number): number => {
     // Calculate dimensional weight
     const dimensionalWeight = calculateDimensionalWeight(length, width, height);

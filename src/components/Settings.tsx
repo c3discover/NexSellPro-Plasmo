@@ -12,7 +12,7 @@ import React, { useState, useEffect } from "react";
 export const SettingsModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-  onSettingsChange: () => void; 
+  onSettingsChange: () => void;
 }> = ({ isOpen, onClose, onSettingsChange }) => {
 
   /////////////////////////////////////////////////////
@@ -20,7 +20,20 @@ export const SettingsModal: React.FC<{
   /////////////////////////////////////////////////////
 
   // User-defined metrics and fee settings
-  const [desiredMetrics, setDesiredMetrics] = useState({
+  const [desiredMetrics, setDesiredMetrics] = useState<{
+    minProfit: string;
+    minMargin: string;
+    minROI: string;
+    minMonthlySales: string;
+    minTotalRatings: string;
+    minRatings30Days: string;
+    maxSellers: string;
+    inboundShippingCost: string;
+    storageLength: string;
+    season: string;
+    prepCost: string;
+    additionalCosts: string;
+  }>({
     minProfit: "0.00",
     minMargin: "0",
     minROI: "0",
@@ -31,6 +44,8 @@ export const SettingsModal: React.FC<{
     inboundShippingCost: "0.00",
     storageLength: "1",
     season: "Jan-Sep",
+    prepCost: "0.00",
+    additionalCosts: "0.00"
   });
 
   // Prep and additional costs settings
@@ -43,6 +58,24 @@ export const SettingsModal: React.FC<{
 
   // Fulfillment preference settings
   const [defaultFulfillment, setDefaultFulfillment] = useState<string>("Walmart Fulfilled");
+
+  // New state to handle the raw values for all metrics
+  const [rawMetrics, setRawMetrics] = useState<Partial<typeof desiredMetrics>>({});
+
+
+  // New state to handle the raw value
+  const [rawMinProfit, setRawMinProfit] = useState<string | null>(null);
+  const [rawMinMargin, setRawMinMargin] = useState<string | null>(null);
+  const [rawMinROI, setRawMinROI] = useState<string | null>(null);
+  const [rawMinMonthlySales, setRawMinMonthlySales] = useState<string | null>(null);
+  const [rawMinTotalRatings, setRawMinTotalRatings] = useState<string | null>(null);
+  const [rawMinRatings30Days, setRawMinRatings30Days] = useState<string | null>(null);
+  const [rawMaxSellers, setRawMaxSellers] = useState<string | null>(null);
+  const [rawInboundShippingCost, setRawInboundShippingCost] = useState<string | null>(null);
+  const [rawStorageLength, setRawStorageLength] = useState<string | null>(null);
+  const [rawSeason, setRawSeason] = useState<string | null>(null);
+  const [rawPrepCost, setRawPrepCost] = useState<string | null>(null);
+  const [rawAdditionalCosts, setRawAdditionalCosts] = useState<string | null>(null);
 
   /////////////////////////////////////////////////////
   // Effect Hooks for Loading and Saving Settings
@@ -80,6 +113,8 @@ export const SettingsModal: React.FC<{
       inboundShippingCost: "0.00",
       storageLength: "1",
       season: "Jan-Sep",
+      prepCost: "0.00",
+      additionalCosts: "0.00"
     });
     setDefaultFulfillment("Walmart Fulfilled");
     onSettingsChange(); // Notify parent component of changes
@@ -88,23 +123,44 @@ export const SettingsModal: React.FC<{
   // Handle changes in user-defined metrics with proper formatting
   const handleDesiredMetricsChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const fieldName = e.target.name;
-    let input = e.target.value;
+    const input = e.target.value;
 
-    // Format numeric inputs for specific fields
-    if (fieldName === "minProfit" || fieldName === "inboundShippingCost") {
-      input = input ? (parseFloat(input) / 100).toFixed(2) : "0.00"; // Format to 2 decimal places
-    } else if (!isNaN(Number(input))) {
-      input = input.startsWith("0") ? input.replace(/^0+/, "") : input || "0"; // Format as an integer
-    }
-
-    // Update the state
-    setDesiredMetrics((prev) => ({ ...prev, [fieldName]: input }));
+    // Update rawMetrics to keep the bold text while editing
+    setRawMetrics((prev: Record<string, string | null>) => ({
+      ...prev,
+      [fieldName]: input,
+    }));
   };
 
   // Handle changes in default fulfillment preference
   const handleFulfillmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setDefaultFulfillment(e.target.value);
   };
+
+  // Handle changes when user stops editing
+  const handleBlur = (fieldName: string) => {
+    setRawMetrics((prev: Record<string, string | null>) => {
+      const updated = { ...prev };
+      delete updated[fieldName]; // Remove the field from rawMetrics
+      return updated;
+    });
+
+    setDesiredMetrics((prev: typeof desiredMetrics) => {
+      let formattedValue = prev[fieldName];
+      if (["minProfit", "inboundShippingCost", "prepCost", "additionalCosts"].includes(fieldName)) {
+        // Format monetary values to 2 decimal places
+        formattedValue = parseFloat(rawMetrics[fieldName] ?? "0").toFixed(2);
+      } else {
+        // Format other fields as integers
+        formattedValue = Math.round(parseFloat(rawMetrics[fieldName] ?? "0")).toString();
+      }
+      return {
+        ...prev,
+        [fieldName]: formattedValue,
+      };
+    });
+  };
+
 
   // Save all settings and close the modal
   const handleSaveSettings = () => {
@@ -126,8 +182,9 @@ export const SettingsModal: React.FC<{
 
   if (!isOpen) return null; // Do not render if modal is closed
 
-
-
+  /////////////////////////////////////////////////////
+  // JSX (Return)
+  /////////////////////////////////////////////////////
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
@@ -146,65 +203,81 @@ export const SettingsModal: React.FC<{
 
         {/* Baseline Metrics Section */}
         <div className="space-y-1">
-          <h3 className="text-md font-semibold">Baseline Metrics</h3>
+          <h3 className="text-base font-semibold">Baseline Metrics</h3>
           <p className="italic text-gray-600 mb-2 ml-2">Enter the desired values below</p>
 
           {/* Baseline Metrics Inputs */}
           <div className="flex flex-col flex-1 space-y-2">
+
             {/* Minimum Profit */}
             <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[170px] whitespace-nowrap">
+              <label className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
                 Minimum Profit
               </label>
               <div className="flex items-center w-full">
-                <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                <span
+                  className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
+                  style={{ fontSize: "14px", height: "28px" }}
+                >$</span>
                 <input
                   type="text"
                   name="minProfit"
-                  value={desiredMetrics.minProfit}
+                  value={rawMetrics.minProfit !== undefined ? rawMetrics.minProfit : desiredMetrics.minProfit}
                   onChange={handleDesiredMetricsChange}
-                  className="p-1 pr-3 text-right w-full border rounded-r"
+                  onBlur={() => handleBlur("minProfit")}
+                  className={`p-1 pr-3 text-right w-full border rounded-r ${rawMetrics.minProfit !== undefined ? "font-bold" : ""}`}
+                  style={{ fontSize: "14px", height: "28px" }} // Adjust the height and font size as needed
                 />
               </div>
             </div>
 
             {/* Minimum Margin */}
             <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[170px] whitespace-nowrap">
+              <label className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
                 Minimum Margin
               </label>
               <div className="flex items-center w-full">
                 <input
                   type="text"
                   name="minMargin"
-                  value={desiredMetrics.minMargin}
+                  value={rawMetrics.minMargin !== undefined ? rawMetrics.minMargin : desiredMetrics.minMargin}
                   onChange={handleDesiredMetricsChange}
-                  className="p-1 pr-3 text-right w-full border rounded-l"
+                  onBlur={() => handleBlur("minMargin")}
+                  className={`p-1 pr-3 text-right w-full border rounded-l ${rawMetrics.minMargin !== undefined ? "font-bold" : ""}`}
+                  style={{ fontSize: "14px", height: "28px" }} // Adjust height and font size
                 />
-                <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">%</span>
+                <span
+                  className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
+                  style={{ fontSize: "14px", height: "28px" }}
+                >%</span>
               </div>
             </div>
 
             {/* Minimum ROI */}
             <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[170px] whitespace-nowrap">
+              <label className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
                 Minimum ROI
               </label>
               <div className="flex items-center w-full">
                 <input
                   type="text"
                   name="minROI"
-                  value={desiredMetrics.minROI}
+                  value={rawMetrics.minROI !== undefined ? rawMetrics.minROI : desiredMetrics.minROI}
                   onChange={handleDesiredMetricsChange}
-                  className="p-1 pr-3 text-right w-full border rounded-l"
+                  onBlur={() => handleBlur("minROI")}
+                  className={`p-1 pr-3 text-right w-full border rounded-l ${rawMetrics.minROI !== undefined ? "font-bold" : ""}`}
+                  style={{ fontSize: "14px", height: "28px" }}
                 />
-                <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">%</span>
+                <span
+                  className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
+                  style={{ fontSize: "14px", height: "28px" }}
+                >%</span>
               </div>
             </div>
 
             {/* Minimum Monthly Sales */}
             <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[170px]">
+              <label className="p-1 mr-2 min-w-[160px]">
                 Minimum Monthly Sales
               </label>
               <input
@@ -214,48 +287,55 @@ export const SettingsModal: React.FC<{
                 onChange={handleDesiredMetricsChange}
                 className="p-1 pr-3 text-right w-full border rounded"
                 placeholder="Coming Soon..."
+                style={{ fontSize: "14px", height: "28px" }}
               />
             </div>
 
             {/* Minimum Total Ratings */}
             <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[170px]">
+              <label className="p-1 mr-2 min-w-[160px]">
                 Minimum Total Ratings
               </label>
               <input
                 type="text"
                 name="minTotalRatings"
-                value={desiredMetrics.minTotalRatings}
+                value={rawMetrics.minTotalRatings !== undefined ? rawMetrics.minTotalRatings : desiredMetrics.minTotalRatings}
                 onChange={handleDesiredMetricsChange}
-                className="p-1 pr-3 text-right w-full border rounded"
+                onBlur={() => handleBlur("minTotalRatings")}
+                className={`p-1 pr-3 text-right w-full border rounded ${rawMetrics.minTotalRatings !== undefined ? "font-bold" : ""}`}
+                style={{ fontSize: "14px", height: "28px" }}
               />
             </div>
 
             {/* Minimum Ratings in Last 30 Days */}
             <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[170px]">
+              <label className="p-1 mr-2 min-w-[160px]">
                 Minimum Ratings (30 Days)
               </label>
               <input
                 type="text"
                 name="minRatings30Days"
-                value={desiredMetrics.minRatings30Days}
+                value={rawMetrics.minRatings30Days !== undefined ? rawMetrics.minRatings30Days : desiredMetrics.minRatings30Days}
                 onChange={handleDesiredMetricsChange}
-                className="p-1 pr-3 text-right w-full border rounded"
+                onBlur={() => handleBlur("minRatings30Days")}
+                className={`p-1 pr-3 text-right w-full border rounded ${rawMetrics.minRatings30Days !== undefined ? "font-bold" : ""}`}
+                style={{ fontSize: "14px", height: "28px" }}
               />
             </div>
 
             {/* Maximum Number of Sellers */}
             <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[170px]">
+              <label className="p-1 mr-2 min-w-[160px]">
                 Maximum Sellers
               </label>
               <input
                 type="text"
                 name="maxSellers"
-                value={desiredMetrics.maxSellers}
+                value={rawMetrics.maxSellers !== undefined ? rawMetrics.maxSellers : desiredMetrics.maxSellers}
                 onChange={handleDesiredMetricsChange}
-                className="p-1 pr-3 text-right w-full border rounded"
+                onBlur={() => handleBlur("maxSellers")}
+                className={`p-1 pr-3 text-right w-full border rounded ${rawMetrics.maxSellers !== undefined ? "font-bold" : ""}`}
+                style={{ fontSize: "14px", height: "28px" }}
               />
             </div>
           </div>
@@ -263,51 +343,67 @@ export const SettingsModal: React.FC<{
 
         {/* Fee Settings Section */}
         <div className="space-y-1 mt-4">
-          <h3 className="text-md font-semibold">Fee Settings</h3>
+          <h3 className="text-base font-semibold">Fee Settings</h3>
           <p className="italic text-gray-600 mb-2 ml-2">Enter your estimated values below</p>
 
           {/* Inbound Shipping Cost */}
           <div className="flex items-center">
-            <label className="p-1 mr-2 min-w-[170px] whitespace-nowrap">
+            <label className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
               Inbound Shipping Cost
             </label>
-            <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+            <span
+              className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
+              style={{ fontSize: "14px", height: "28px" }}
+            >$</span>
             <input
               type="text"
               name="inboundShippingCost"
-              value={desiredMetrics.inboundShippingCost}
+              value={rawMetrics.inboundShippingCost !== undefined ? rawMetrics.inboundShippingCost : desiredMetrics.inboundShippingCost}
               onChange={handleDesiredMetricsChange}
-              className="p-1 pr-3 text-right w-full border"
+              onBlur={() => handleBlur("inboundShippingCost")}
+              className={`p-1 pr-3 text-right w-full border ${rawMetrics.inboundShippingCost !== undefined ? "font-bold" : ""}`}
+              style={{ fontSize: "14px", height: "28px" }}
             />
-            <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">/lb</span>
+            <span
+              className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
+              style={{ fontSize: "14px", height: "28px" }}
+            >/lb</span>
           </div>
 
           {/* Storage Length */}
           <div className="flex items-center">
-            <label className="p-1 mr-2 min-w-[170px]">
+            <label className="p-1 mr-2 min-w-[160px]">
               Storage Length
             </label>
             <input
               type="number"
               name="storageLength"
-              value={desiredMetrics.storageLength}
+              value={rawMetrics.storageLength !== undefined ? rawMetrics.storageLength : desiredMetrics.storageLength}
               onChange={handleDesiredMetricsChange}
-              className="p-1 text-right w-full border rounded"
+              onBlur={() => handleBlur("storageLength")}
+              className={`p-1 text-right w-full border rounded-l ${rawMetrics.storageLength !== undefined ? "font-bold" : ""}`}
+              style={{ fontSize: "14px", height: "28px" }}
             />
-            <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">months</span>
+            <span
+              className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
+              style={{ fontSize: "14px", height: "28px" }}
+            >months</span>
           </div>
 
           {/* Season */}
           <div className="flex items-center mb-2">
-            <label className="p-1 mr-2 min-w-[170px]">
+            <label className="p-1 mr-2 min-w-[160px]">
               Season
             </label>
             <div className="flex items-center w-full">
               <select
                 name="season"
                 value={desiredMetrics.season}
-                onChange={handleDesiredMetricsChange}
+                onChange={(e) => {
+                  setDesiredMetrics({ ...desiredMetrics, season: e.target.value });
+                }}
                 className="p-1 text-right w-full border rounded"
+                style={{ fontSize: "14px", height: "28px", lineHeight: "14px", paddingRight: "2rem" }}
               >
                 <option value="Jan-Sep">Jan-Sep</option>
                 <option value="Oct-Dec">Oct-Dec</option>
@@ -315,28 +411,34 @@ export const SettingsModal: React.FC<{
             </div>
           </div>
 
-          {/* Pre Cost */}
+          {/* Prep Cost */}
           <div className="flex items-center mb-2">
-            <label className="p-1 mr-2 min-w-[170px] whitespace-nowrap">
+            <label className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
               Prep Cost
             </label>
-            <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+            <span
+              className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
+              style={{ fontSize: "14px", height: "28px" }}
+            >$</span>
             <div className="flex items-center w-full">
               <input
                 type="text"
                 name="prepCost"
-                value={prepCostType === "per lb" ? prepCostPerLb : prepCostEach}
+                value={rawMetrics.prepCost !== undefined ? rawMetrics.prepCost : (prepCostType === "per lb" ? prepCostPerLb : prepCostEach)}
                 onChange={(e) =>
                   prepCostType === "per lb"
                     ? setPrepCostPerLb(parseFloat(e.target.value) || 0.00)
                     : setPrepCostEach(parseFloat(e.target.value) || 0.00)
                 }
-                className="p-1 pr-3 text-right w-full border"
+                onBlur={() => handleBlur("prepCost")}
+                className={`p-1 pr-3 text-right w-full border ${rawMetrics.prepCost !== undefined ? "font-bold" : ""}`}
+                style={{ fontSize: "14px", height: "28px" }}
               />
               <select
                 value={prepCostType}
                 onChange={(e) => setPrepCostType(e.target.value)}
-                className="p-1 border-l rounded-r bg-gray-100 text-gray-700"
+                className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
+                style={{ fontSize: "14px", height: "28px", paddingRight: "1rem" }}
               >
                 <option value="per lb">/lb</option>
                 <option value="per unit">each</option>
@@ -344,28 +446,35 @@ export const SettingsModal: React.FC<{
             </div>
           </div>
 
-          {/* Additional Fees */}
+          {/* Additional Costs */}
           <div className="flex items-center mb-2">
-            <label className="p-1 mr-2 min-w-[170px] whitespace-nowrap">
-              Additional Fees
+            <label className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
+              Additional Costs
             </label>
-            <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+            <span
+              className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
+              style={{ fontSize: "14px", height: "28px" }}
+            >$</span>
             <div className="flex items-center w-full">
               <input
                 type="text"
-                name="aditionalCosts"
-                value={additionalCostType === "per lb" ? additionalCostPerLb : additionalCostEach}
+                name="additionalCosts"
+                value={rawMetrics.additionalCosts !== undefined ? rawMetrics.additionalCosts : (additionalCostType === "per lb" ? additionalCostPerLb : additionalCostEach)}
                 onChange={(e) =>
                   additionalCostType === "per lb"
-                    ? setAdditionalCostPerLb(parseFloat(e.target.value) || 0.00)
-                    : setAdditionalCostEach(parseFloat(e.target.value) || 0.00)
+                    ? setAdditionalCostPerLb(parseFloat(e.target.value) || 0.0)
+                    : setAdditionalCostEach(parseFloat(e.target.value) || 0.0)
                 }
-                className="p-1 pr-3 text-right w-full border"
+                onBlur={() => handleBlur("additionalCosts")}
+                className={`text-sm p-1 pr-3 text-right w-full border ${rawMetrics.additionalCosts !== undefined ? "font-bold" : ""}`}
+                style={{ fontSize: "14px", height: "30px" }}
               />
               <select
                 value={additionalCostType}
                 onChange={(e) => setAdditionalCostType(e.target.value)}
-                className="p-1 border-l rounded-r bg-gray-100 text-gray-700"
+                className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
+                style={{ fontSize: "14px", height: "28px", paddingRight: "1rem" }}
+
               >
                 <option value="per lb">/lb</option>
                 <option value="per unit">each</option>
@@ -376,7 +485,7 @@ export const SettingsModal: React.FC<{
 
           {/* Fulfillment Method */}
           <div className="flex items-center">
-            <label htmlFor="fulfillment-select" className="p-1 mr-2 min-w-[170px] whitespace-nowrap">
+            <label htmlFor="fulfillment-select" className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
               Default Fulfillment
             </label>
             <select
