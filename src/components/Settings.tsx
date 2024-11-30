@@ -424,13 +424,19 @@ export const SettingsModal: React.FC<{
               <input
                 type="text"
                 name="prepCost"
-                value={rawMetrics.prepCost !== undefined ? rawMetrics.prepCost : (prepCostType === "per lb" ? prepCostPerLb : prepCostEach)}
-                onChange={(e) =>
+                value={rawMetrics.prepCost !== undefined ? rawMetrics.prepCost : (prepCostType === "per lb" ? prepCostPerLb.toFixed(2) : prepCostEach.toFixed(2))}
+                onChange={(e) => {
+                  handleDesiredMetricsChange(e);
+                  const value = e.target.value;
+                  setRawMetrics((prev) => ({ ...prev, prepCost: value }));
+                }}
+                onBlur={() => {
+                  handleBlur("prepCost");
+                  // Set correct precision and convert back to number
                   prepCostType === "per lb"
-                    ? setPrepCostPerLb(parseFloat(e.target.value) || 0.00)
-                    : setPrepCostEach(parseFloat(e.target.value) || 0.00)
-                }
-                onBlur={() => handleBlur("prepCost")}
+                    ? setPrepCostPerLb(parseFloat(parseFloat(rawMetrics.prepCost || "0").toFixed(2)))
+                    : setPrepCostEach(parseFloat(parseFloat(rawMetrics.prepCost || "0").toFixed(2)));
+                }}
                 className={`p-1 pr-3 text-right w-full border ${rawMetrics.prepCost !== undefined ? "font-bold" : ""}`}
                 style={{ fontSize: "14px", height: "28px" }}
               />
@@ -459,13 +465,19 @@ export const SettingsModal: React.FC<{
               <input
                 type="text"
                 name="additionalCosts"
-                value={rawMetrics.additionalCosts !== undefined ? rawMetrics.additionalCosts : (additionalCostType === "per lb" ? additionalCostPerLb : additionalCostEach)}
-                onChange={(e) =>
+                value={rawMetrics.additionalCosts !== undefined ? rawMetrics.additionalCosts : (additionalCostType === "per lb" ? additionalCostPerLb.toFixed(2) : additionalCostEach.toFixed(2))}
+                onChange={(e) => {
+                  handleDesiredMetricsChange(e);
+                  const value = e.target.value;
+                  setRawMetrics((prev) => ({ ...prev, additionalCosts: value }));
+                }}
+                onBlur={() => {
+                  handleBlur("additionalCosts");
+                  // Set correct precision and convert back to number
                   additionalCostType === "per lb"
-                    ? setAdditionalCostPerLb(parseFloat(e.target.value) || 0.0)
-                    : setAdditionalCostEach(parseFloat(e.target.value) || 0.0)
-                }
-                onBlur={() => handleBlur("additionalCosts")}
+                    ? setAdditionalCostPerLb(parseFloat(parseFloat(rawMetrics.additionalCosts || "0").toFixed(2)))
+                    : setAdditionalCostEach(parseFloat(parseFloat(rawMetrics.additionalCosts || "0").toFixed(2)));
+                }}
                 className={`text-sm p-1 pr-3 text-right w-full border ${rawMetrics.additionalCosts !== undefined ? "font-bold" : ""}`}
                 style={{ fontSize: "14px", height: "30px" }}
               />
@@ -492,7 +504,7 @@ export const SettingsModal: React.FC<{
               id="fulfillment-select"
               value={defaultFulfillment}
               onChange={handleFulfillmentChange}
-              className="p-2 text-2xs border rounded w-full"
+              className="p-2 text-xs border rounded w-full"
             >
               <option value="Walmart Fulfilled">Walmart Fulfilled</option>
               <option value="Seller Fulfilled">Seller Fulfilled</option>

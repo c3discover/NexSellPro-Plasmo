@@ -51,10 +51,10 @@ export const TopHeader: React.FC = () => {
       }}
     >
       {/* Header Bar */}
-      <div className="w-full flex items-center justify-between p-4 pt-5">
+      <div className="w-full flex items-center justify-between p-1">
         {/* Left Icon with more drastic drop shadow */}
         <div
-          className="text-2xs p-0 m-0 hover:text-gray-400 transition duration-300 ease-in-out"
+          className="text-2xs pl-3 m-0 hover:text-gray-400 transition duration-300 ease-in-out"
           style={{ filter: 'drop-shadow(8px 8px 15px rgba(0, 0, 0, 1))' }} // Larger offset, darker shadow
         >
           <button onClick={handleSettingsToggle} className="text-white text-2xl">
@@ -71,7 +71,7 @@ export const TopHeader: React.FC = () => {
         />
 
         {/* Right Icon with more drastic drop shadow */}
-        <button onClick={handleProfileToggle} className="text-white text-2xl">
+        <button onClick={handleProfileToggle} className="text-white text-2xl pr-3">
           <img
             src={profileIconBase64}
             alt="Profile Icon"

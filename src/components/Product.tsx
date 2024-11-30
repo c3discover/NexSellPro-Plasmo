@@ -1,30 +1,64 @@
+////////////////////////////////////////////////
+// Imports:
+////////////////////////////////////////////////
 import { useState, useEffect } from "react";
 import getData from "../utils/getData"; // Import your getData function to retrieve product details
 
-export const Product = ({ product }: any) => {
-  const [copied, setCopied] = useState(false);
-  const [badges, setBadges] = useState([]);
-  const [categories, setCategories] = useState([]); // Add state to store categories
-  const [totalSellers, setTotalSellers] = useState(0);
+////////////////////////////////////////////////
+// Constants and Variables:
+////////////////////////////////////////////////
+// No constants defined at this point
 
+////////////////////////////////////////////////
+// Props and Types:
+////////////////////////////////////////////////
 
-  // Fetch badges and categories when the component mounts
+// Define the structure of ProductDetails and ProductProps to ensure type safety
+interface ProductDetails {
+  name: string;
+  imageUrl: string;
+  images?: string[];
+  videos?: string[];
+  currentPrice: string;
+  numberOfRatings: number;
+  sellerName: string;
+  badges?: string[];
+  brand: string;
+  totalSellers?: number;
+  categories?: { name: string; url: string }[];
+}
+
+interface ProductProps {
+  product: ProductDetails;
+}
+
+////////////////////////////////////////////////
+// State and Hooks:
+////////////////////////////////////////////////
+export const Product = () => {
+  // State to manage product details
+  const [productDetailsUsed, setProductDetailsUsed] = useState<any | null>(null);
+  const [copied, setCopied] = useState<boolean>(false);
+
+  // Fetch product data on component mount
   useEffect(() => {
-    const productDetails = getData();
-    console.log("Product Details:", productDetails);
-
-    setBadges(productDetails.badges || []);
-    setCategories(productDetails.categories || []); // Fetch categories from product details
-    setTotalSellers(productDetails.totalSellers || 0);
+    const fetchedProductDetails = getData();
+    if (fetchedProductDetails) {
+      setProductDetailsUsed(fetchedProductDetails);
+    }
   }, []);
 
-  // Helper function to render shelving path as links
+
+  //////////////////////////////////////////////////
+  // Helper Functions:
+  //////////////////////////////////////////////////
+  // Render shelving path as links
   const renderShelvingPath = () => {
-    if (categories.length === 0) {
+    if (!productDetailsUsed || productDetailsUsed.categories.length === 0) {
       return <span>No shelving path available</span>;
     }
 
-    return categories.map((category: any, index: number) => (
+    return productDetailsUsed.categories.map((category: any, index: number) => (
       <span key={index}>
         <a
           href={`https://www.walmart.com${category.url}`}
@@ -34,30 +68,53 @@ export const Product = ({ product }: any) => {
         >
           {category.name}
         </a>
-        {index < categories.length - 1 && " > "} {/* Add '>' between links */}
+        {/* Add '>' between links */}
+        {index < productDetailsUsed.categories.length - 1 && " > "}
       </span>
     ));
   };
 
   // Extract the first category from the path
-  const firstCategory = categories.length > 0 ? categories[0] : null;
+  const firstCategory = productDetailsUsed && productDetailsUsed.categories.length > 0 ? productDetailsUsed.categories[0] : null;
+
+  ////////////////////////////////////////////////
+  // Event Handlers:
+  ////////////////////////////////////////////////
+  // Handler to copy product name to clipboard
+  const handleCopy = () => {
+    if (productDetailsUsed) {
+      navigator.clipboard.writeText(productDetailsUsed.name);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+
+  //////////////////////////////////////////////////
+  // JSX (Return):
+  //////////////////////////////////////////////////
+  if (!productDetailsUsed) {
+    return <div></div>; // Fallback if data is not yet loaded
+  }
 
   return (
     <div
       id="product"
       key="product"
-      className="font-montserrat flex items-center justify-start flex-col bg-[#d7d7d7] max-w-[100%] p-2 gap-2 rounded-lg shadow-2xl"
+      className="flex items-center justify-start flex-col bg-[#d7d7d7] max-w-[100%] p-2 gap-2 rounded-lg shadow-2xl"
     >
 
 
       {/* Product Name Section */}
       <div id="productName" className="flex items-center justify-between w-full">
-        <p className="text-black font-bold text-xs text-center p-1 mb-2 mr-1 ml-2 rounded-lg bg-[#bfbfbf] shadow-black shadow-xl">{product.name}</p>
+        <p className="text-black font-bold text-xs text-center p-1 mb-2 mr-1 ml-2 rounded-lg bg-[#bfbfbf] shadow-black shadow-xl">
+          {productDetailsUsed.name}
+          </p>
 
         {/* Copy and Copied Icons */}
         <svg
           onClick={() => {
-            navigator.clipboard.writeText(product.name);
+            navigator.clipboard.writeText(productDetailsUsed.name);
             setCopied(!copied);
           }}
           xmlns="http://www.w3.org/2000/svg"
@@ -75,7 +132,7 @@ export const Product = ({ product }: any) => {
 
         <svg
           onClick={() => {
-            navigator.clipboard.writeText(product.name);
+            navigator.clipboard.writeText(productDetailsUsed.name);
             setCopied(!copied);
           }}
           xmlns="http://www.w3.org/2000/svg"
@@ -91,74 +148,79 @@ export const Product = ({ product }: any) => {
         </svg>
       </div>
 
-
-
-
-
-
-
       {/* Product General Info */}
       <div id="productGeneralInfo" className="flex flex-col lg:flex-row items-stretch items-center justify-between w-full gap-3">
 
         {/* Product Image Section */}
         <div id="productImage" className="w-full lg:w-1/2 flex flex-col items-center justify-center bg-white p-1 rounded-lg shadow-lg">
-          <img src={product.imageUrl} alt={product.name} className="w-1/2 hover:w-full p-2 rounded-lg" />
+          <img
+            src={productDetailsUsed.imageUrl}
+            alt={productDetailsUsed.name}
+            className="w-2/3 hover:w-full p-2 rounded-lg" />
           <p className="font-bold text-center text-black text-sm">
-            Images: <span className="font-normal">{product?.images?.length || 0}</span>
+            Images: <span className="font-normal">{productDetailsUsed.images?.length || 0}</span>
           </p>
           <p className="font-bold text-center text-black text-sm p-1">
-            Videos: <span className="font-normal">{product?.videos?.length || 0}</span>
+            Videos: <span className="font-normal">{productDetailsUsed.videos?.length || 0}</span>
           </p>
         </div>
 
         {/* Product Details Section */}
         <div id="productDetails" className="w-full lg:w-1/2 flex flex-col items-center justify-center bg-white p-1 rounded-lg shadow-lg">
+
           {/* Quick Stats Section */}
-            <p className="text-black text-xs p-1">
-              <span className="font-bold">Current Price </span>
-            </p>
-            <p>
-              <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">${product.currentPrice ? parseFloat(product.currentPrice).toFixed(2) : '0.00'}</span>
-            </p>
-            <p className="text-black text-xs p-1 mt-2">
-              <span className="font-bold mt-2">Total Ratings </span>
-            </p>
-            <p>
-              <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">{product.numberOfRatings} ⭐ </span>
-            </p>
-            <p className="text-black text-xs p-1 mt-2">
-              <span className="font-bold mt-2">Total Sellers </span>
-              <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">{totalSellers} </span>
-            </p>
-            <p className="text-black text-xs p-1 mt-2">
-              <span className="font-bold mt-2">Walmart Selling? </span>
-              {product.sellerName === "Walmart.com" ? (
-                <span className="px-1 py-1 text-xs bg-red-100 text-red-700 font-bold border border-red-500 rounded-lg shadow-sm">YES</span>
-              ) : (
-                <span className="px-1 py-1 text-xs bg-green-100 text-green-700 font-bold border border-green-500 rounded-lg shadow-sm">NO</span>
-              )}
-            </p>
-          </div>
+          <p className="text-black text-xs p-1">
+            <span className="font-bold">Current Price </span>
+            <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">
+              ${productDetailsUsed.currentPrice ? parseFloat(productDetailsUsed.currentPrice).toFixed(2) : '0.00'}
+            </span>
+          </p>
+
+          <p className="text-black text-xs p-1 mt-2">
+            <span className="font-bold mt-2">Total Ratings </span>
+            <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">
+              {productDetailsUsed.numberOfRatings}
+            </span>
+          </p>
+
+          <p className="text-black text-xs p-1 mt-2">
+            <span className="font-bold mt-2">Total Sellers </span>
+            <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">
+              {productDetailsUsed.totalSellers}
+            </span>
+          </p>
+
+          <p className="text-black text-xs p-1 mt-2">
+            <span className="font-bold mt-2">Walmart Selling? </span>
+            {productDetailsUsed.sellerName === "Walmart.com" ? (
+              <span className="px-1 py-1 text-xs bg-red-100 text-red-700 font-bold border border-red-500 rounded-lg shadow-sm">YES</span>
+            ) : (
+              <span className="px-1 py-1 text-xs bg-green-100 text-green-700 font-bold border border-green-500 rounded-lg shadow-sm">NO</span>
+            )}
+          </p>
+
+          <p className="text-black text-xs p-1 mt-2">
+            <span className="font-bold mt-2">Variations</span>
+            <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">
+              {productDetailsUsed.numberOfVariants || 0}
+            </span>
+          </p>
+
         </div>
+      </div>
 
-
-
-
-
-
-
-
+      {/* Brand and Category Info */}
       <div className="flex flex-col items-left px-3 py-1 rounded-lg shadow-2xl bg-white w-full">
         {/* Brand - Link to Walmart search */}
         <p className="text-black font-bold text-start text-md">
           Brand:{" "}
           <a
-            href={`https://www.walmart.com/search?q=${product.brand}`}
+            href={`https://www.walmart.com/search?q=${productDetailsUsed.brand}`}
             target="_blank"
             rel="noopener noreferrer"
             className="ml-2 text-blue-500 hover:underline"
           >
-            {product.brand}
+            {productDetailsUsed.brand}
           </a>
         </p>
 
@@ -175,7 +237,7 @@ export const Product = ({ product }: any) => {
               {firstCategory.name}
             </a>
           ) : (
-            <span>No category available</span>
+            <span>No Category Available</span>
           )}
         </p>
 
@@ -185,14 +247,11 @@ export const Product = ({ product }: any) => {
         </p>
       </div>
 
-
-
-
       {/* Badges */}
       <div className="text-center p-1 rounded-lg shadow-2xl shadow-lg bg-slate-500">
-        {badges.length > 0 ? (
+        {productDetailsUsed.badges.length > 0 ? (
           <div className="grid grid-cols-2 gap-2 p-1 place-items-center">
-            {badges.map((badge, index) => {
+            {productDetailsUsed.badges.map((badge, index) => {
               const containsNumber = /\d+/.test(badge); // Check if the badge contains a number
 
               // Style for badge with a number (outline style)
@@ -202,7 +261,7 @@ export const Product = ({ product }: any) => {
               const filledStyle = "bg-blue-100 text-blue-900";
 
               // If it's the last badge and there's an odd number of badges, make it span both columns (centered)
-              const isLastSingleBadge = index === badges.length - 1 && badges.length % 2 !== 0;
+              const isLastSingleBadge = index === productDetailsUsed.badges.length - 1 && productDetailsUsed.badges.length % 2 !== 0;
 
               return (
                 <div
@@ -219,6 +278,12 @@ export const Product = ({ product }: any) => {
           <p className="text-sm text-gray-300 italic">No badges available.</p>
         )}
       </div>
+
     </div>
   );
 };
+
+////////////////////////////////////////////////
+// Export Statement:
+////////////////////////////////////////////////
+export default Product;

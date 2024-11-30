@@ -144,10 +144,10 @@ const ContentUI = () => {
 
       {/* Toggle button for sidebar open/close */}
       <button
-        className="fixed right-[25px] top-2 bg-[#d7d7d7] p-1.5 text-xs font-semibold rounded-lg shadow-lg transition-transform duration-200 ease-in-out hover:scale-110 hover:shadow-lg border-2 border-gray-500"
+        className="fixed right-[-10px] top-6 p-1 transform rotate-90 bg-[#d7d7d7] p-1.5 text-xl font-semibold rounded-lg shadow-lg transition-transform duration-200 ease-in-out hover:scale-110 hover:shadow-lg border-2 border-gray-500"
         onClick={() => setIsOpen(!isOpen)}
       >
-        {isOpen ? "🔴 Close" : "🟢 Open"}
+        {isOpen ? "🔴" : "🟢"}
       </button>
 
 
