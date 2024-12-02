@@ -80,43 +80,62 @@ function getProductDetails(product, idml, reviews) {
     totalSellers: 0,
 
     //Categories from product getData
-    productID: product.usItemId,
-    name: product.name,
-    upc: product.upc,
-    brand: product.brand,
-    brandUrl: product.brandUrl,
-    imageUrl: product.imageInfo.thumbnailUrl,
-    mainCategory: product.category.path[0].name, // This holds the last/main category name
+    productID: product?.usItemId || null,
+    name: product?.name || null,
+    upc: product?.upc || null,
+    brand: product?.brand || null,
+    brandUrl: product?.brandUrl || null,
+    imageUrl: product?.imageInfo?.thumbnailUrl || null,
+    mainCategory: product?.category?.path?.[0]?.name || null, // This holds the last/main category name
     fulfillmentOptions: [] as { type: string; availableQuantity: number }[], // Store details for each fulfillment option
-    modelNumber: product.model,
-    currentPrice: product.priceInfo.currentPrice.price,
-    variantCriteria: product.variantCriteria,
-    variantsMap: product.variantsMap,
-    sellerName: product.sellerName,
-    sellerDisplayName: product.sellerDisplayName,
-    sellerType: product.sellerType,
+    modelNumber: product?.model || null,
+    currentPrice: product?.priceInfo?.currentPrice?.price || null,
+    variantCriteria: product?.variantCriteria || [],
+    variantsMap: product?.variantsMap || {},
+    sellerName: product?.sellerName || null,
+    sellerDisplayName: product?.sellerDisplayName || null,
+    sellerType: product?.sellerType || null,
     images: product?.imageInfo?.allImages || [],
 
     //Categories from idml getData
     videos: idml?.videos || [],
 
     //Categories from reviews getData
-    averageOverallRating:
-      reviews.roundedAverageOverallRating ||
-      product.averageRating ||
-      "not available",
-    numberOfRatings: reviews.totalReviewCount || "0",
-    numberOfReviews: reviews.reviewsWithTextCount || "0",
-    overallRating: reviews.roundedAverageOverallRating || "0",
-    customerReviews: reviews?.customerReviews,
+    averageOverallRating: reviews?.roundedAverageOverallRating || product?.averageRating || "not available",
+    numberOfRatings: reviews?.totalReviewCount || "0",
+    numberOfReviews: reviews?.reviewsWithTextCount || "0",
+    overallRating: reviews?.roundedAverageOverallRating || "0",
+    customerReviews: reviews?.customerReviews || [],
   };
 
+  console.log("Variants Map:", product.variantsMap);
+  console.log("Variants Criteria:", product.variantCriteria);
+
   // Extract shipping information from product specifications.
-  const shippingInfo = getProductSpecification(idml, "Assembled Product Dimensions (L x W x H)")?.split("x");
-  productDetailsUsed.weight = getProductSpecification(idml, "Assembled Product Weight")?.split(" ")[0] || null;
-  productDetailsUsed.shippingLength = shippingInfo[0]?.trim();
-  productDetailsUsed.shippingWidth = shippingInfo[1]?.trim();
-  productDetailsUsed.shippingHeight = shippingInfo[2]?.split(" ")[1]?.trim();
+  const shippingInfo = idml?.productHighlights?.find(
+    (highlight) => highlight.name === "Dimensions"
+  )?.value?.split("x");
+
+  if (shippingInfo && shippingInfo.length === 3) {
+    productDetailsUsed.shippingLength = shippingInfo[0]?.trim();
+    productDetailsUsed.shippingWidth = shippingInfo[1]?.trim();
+    productDetailsUsed.shippingHeight = shippingInfo[2]?.split(" ")[1]?.trim();
+  } else {
+    // Extract from specifications if available
+    const specShippingInfo = idml?.specifications?.find(
+      (spec) => spec.name === "Assembled Product Dimensions (L x W x H)"
+    )?.value?.split("x");
+    
+    if (specShippingInfo && specShippingInfo.length === 3) {
+      productDetailsUsed.shippingLength = specShippingInfo[0]?.trim();
+      productDetailsUsed.shippingWidth = specShippingInfo[1]?.trim();
+      productDetailsUsed.shippingHeight = specShippingInfo[2]?.split(" ")[1]?.trim();
+    }
+  }
+
+  productDetailsUsed.weight = idml?.specifications?.find(
+    (spec) => spec.name === "Assembled Product Weight"
+  )?.value?.split(" ")[0] || null;
 
   // Extract the last category in the path as the main category.
   productDetailsUsed.categories = product.category.path.map((category) => ({
@@ -149,11 +168,6 @@ function getProductDetails(product, idml, reviews) {
   productDetailsUsed.badges =
     product.badges?.flags?.map((badge) => badge.text) || ["No Badges Available"];
 
-  // Logging for debugging purposes.
-  console.log("product  getData : ", product);
-  console.log("idml  getData : ", idml);
-  console.log("reviews  getData : ", reviews);
-
   // Logging the data used for transparency and debugging.
   console.log("Product Details Used Summary:", productDetailsUsed);
 
@@ -164,16 +178,18 @@ function getProductDetails(product, idml, reviews) {
 function getData() {
   const dataDiv = getDataDiv();
   if (!dataDiv) {
+    console.error("Data div not found.");
     return null; // Return null if data div is not found
   }
-
   try {
-    const data = JSON.parse(dataDiv.innerText).props.pageProps.initialData.data;
+    const rawData = dataDiv.innerText; // Get the raw data as a string
+    const data = JSON.parse(rawData).props.pageProps.initialData.data;
+    console.log("All Extracted Data:", data);
     const { product, idml, reviews } = data;
     const productDetailsUsed = getProductDetails(product, idml, reviews);
     return productDetailsUsed;
   } catch (error) {
-    console.error("Failed to parse product data:", error);
+    console.error("Failed to parse product data in getData():", error);
     return null;
   }
 }

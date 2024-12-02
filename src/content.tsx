@@ -107,7 +107,6 @@ const ContentUI = () => {
 
   // useEffect hook to fetch product details whenever the refresh state changes
   useEffect(() => {
-    console.log("page refreshed");
     setProductDetails(getData());
   }, [refresh]);
 

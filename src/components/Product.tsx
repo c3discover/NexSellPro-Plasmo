@@ -202,7 +202,7 @@ export const Product = () => {
           <p className="text-black text-xs p-1 mt-2">
             <span className="font-bold mt-2">Variations</span>
             <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">
-              {productDetailsUsed.numberOfVariants || 0}
+            {Object.keys(productDetailsUsed?.variantsMap || {}).length || "-"}
             </span>
           </p>
 
