@@ -43,6 +43,8 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
   const [isOpen, setIsOpen] = useState(areSectionsOpen);
   const [productDetailsUsed, setProductDetailsUsed] = useState<any | null>(null);
   const [isVariantTableExpanded, setIsVariantTableExpanded] = useState(true); // Default to expanded
+  const [sortedVariantIds, setSortedVariantIds] = useState<string[]>([]);
+  const [variantData, setVariantData] = useState<{ [variantId: string]: any }>({});
 
 
   // Sync visibility with the prop `areSectionsOpen`
@@ -124,8 +126,10 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
       }
 
       // Fallback if data isn't found
+      console.warn("No data found in the HTML response.");
       return { image: "-", title: "-", ratings: "-", sellers: "-", upc: "-" };
     } catch (error) {
+      console.error("Error fetching variant data:", error);
       return { image: "-", title: "-", ratings: "-", sellers: "-", upc: "-" };
     }
   }
@@ -141,26 +145,80 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
       .join(", "); // Join with a comma and space
   };
 
-  // Sort the variant IDs based on availability and attribute order
-  const sortedVariantIds = productDetailsUsed?.variantsMap
-    ? Object.keys(productDetailsUsed.variantsMap).sort((a, b) => {
-      const variantA = productDetailsUsed.variantsMap[a];
-      const variantB = productDetailsUsed.variantsMap[b];
+  // Fetch product data on component mount
+  useEffect(() => {
+    try {
+      const fetchedProductDetails = getData();
+      if (fetchedProductDetails) {
+        setProductDetailsUsed(fetchedProductDetails);
+      } else {
+        console.error("Failed to fetch product details.");
+      }
+    } catch (error) {
+      console.error("Error fetching product details:", error);
+    }
+  }, []);
 
-      // Prioritize items in stock
-      const isInStockA = variantA.availabilityStatus === "IN_STOCK";
-      const isInStockB = variantB.availabilityStatus === "IN_STOCK";
+  useEffect(() => {
+    if (productDetailsUsed && productDetailsUsed.variantsMap) {
+      // Step 1: Identify the current variant based on productID
+      const currentVariantId = Object.keys(productDetailsUsed.variantsMap).find(
+        (variantId) =>
+          productDetailsUsed.variantsMap[variantId].usItemId === productDetailsUsed.productID
+      );
 
-      if (isInStockA && !isInStockB) return -1;
-      if (!isInStockA && isInStockB) return 1;
+      // Step 2: Filter variants excluding the current variant
+      const filteredVariantIds = Object.keys(productDetailsUsed.variantsMap).filter(
+        (variantId) => variantId !== currentVariantId
+      );
 
-      // Sort by attribute name if both are in stock or out of stock
-      const attrA = variantA.variants?.[0]?.split("-")[1] || "";
-      const attrB = variantB.variants?.[0]?.split("-")[1] || "";
+      // Step 3: Sort by availability
+      const sortedVariantIds = filteredVariantIds.sort((a, b) => {
+        const variantA = productDetailsUsed.variantsMap[a];
+        const variantB = productDetailsUsed.variantsMap[b];
 
-      return attrA.localeCompare(attrB);
-    })
-    : [];
+        const isInStockA = variantA.availabilityStatus === "IN_STOCK";
+        const isInStockB = variantB.availabilityStatus === "IN_STOCK";
+
+        if (isInStockA && !isInStockB) return -1;
+        if (!isInStockA && isInStockB) return 1;
+        return 0;
+      });
+
+      // Step 4: Add the current variant to the front of the list
+      if (currentVariantId) {
+        sortedVariantIds.unshift(currentVariantId);
+      }
+
+      // Set the sorted variant IDs
+      setSortedVariantIds(sortedVariantIds);
+    }
+  }, [productDetailsUsed]);
+
+  // Inside useEffect that fetches data for each variant and update `variantData` state
+  useEffect(() => {
+    if (productDetailsUsed && productDetailsUsed.variantsMap) {
+      const fetchAllVariants = async () => {
+        const fetchedData: { [variantId: string]: any } = {};
+
+        // Loop through each variant and fetch its data
+        await Promise.all(
+          Object.keys(productDetailsUsed.variantsMap).map(async (variantId) => {
+            const usItemId = productDetailsUsed.variantsMap[variantId]?.usItemId;
+            if (usItemId) {
+              const variantInfo = await fetchVariantData(usItemId);
+              fetchedData[variantId] = variantInfo;
+            }
+          })
+        );
+
+        // Update the state with fetched variant data
+        setVariantData(fetchedData);
+      };
+
+      fetchAllVariants();
+    }
+  }, [productDetailsUsed]);
 
 
   ////////////////////////////////////////////////
@@ -300,10 +358,9 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
                               key={variantId}
                               className="px-2 py-1 text-2xs border-2 border-black text-center"
                             >
-                              {/* Render variant image if available */}
-                              {productDetailsUsed?.variantsMap[variantId]?.imageUrl ? (
+                              {variantData[variantId]?.image ? (
                                 <img
-                                  src={productDetailsUsed?.variantsMap?.[variantId].imageUrl}
+                                  src={variantData[variantId].image}
                                   alt={`Image for ${variantId}`}
                                   className="w-16 h-16 object-contain mx-auto" // Added mx-auto to center image
                                 />
@@ -313,6 +370,7 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
                             </td>
                           ))}
                       </tr>
+
 
                       {/* Title Row */}
                       <tr>
@@ -325,8 +383,8 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
                               key={variantId}
                               className="px-2 py-1 text-2xs border-2 border-black text-center"
                             >
-                              {/* Render the variant title if available, otherwise show "-" */}
-                              {productDetailsUsed?.variantsMap?.[variantId]?.title ?? "-"}
+                              {/* Check if variant title if available on product page*/}
+                              {variantData[variantId]?.title || "-"}
                             </td>
                           ))}
                       </tr>
@@ -344,16 +402,15 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
                             >
                               {/* Render attributes if available, otherwise show "-" */}
                               {productDetailsUsed?.variantsMap?.[variantId]?.variants ? (
-                                productDetailsUsed?.variantsMap?.[variantId]?.variants ?? []
-                                  .map((attribute: string) => attribute.split('-')[1]) // Get the attribute value after the dash
-                                  .map((attributeValue, index) => (
-                                    <div key={index}>
-                                      {attributeValue
-                                        .split('_') // Split on underscores
-                                        .map(word => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize each word
-                                        .join(' ')} {/* Join with spaces for readability */}
-                                    </div>
-                                  ))
+                                productDetailsUsed.variantsMap[variantId].variants.map((attribute: string, index: number) => (
+                                  <div key={index}>
+                                    {attribute
+                                      .split('-')[1] // Extract the attribute value after the dash
+                                      .split('_') // Split on underscores
+                                      .map((word) => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize each word
+                                      .join(' ')} {/* Join with spaces for readability */}
+                                  </div>
+                                ))
                               ) : (
                                 <div>-</div> // Display a dash if there are no attributes
                               )}
@@ -381,26 +438,6 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
                           ))}
                       </tr>
 
-                      {/* Ratings Row */}
-                      <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
-                          Ratings
-                        </td>
-                        {isVariantTableExpanded &&
-                          sortedVariantIds.map((variantId) => (
-                            <td
-                              key={variantId}
-                              className="px-2 py-1 text-2xs border-2 border-black text-center"
-                            >
-                              {/* Check if productDetailsUsed and ratings info is available */}
-                              {productDetailsUsed?.variantsMap?.[variantId]?.ratings
-                                ? productDetailsUsed?.variantsMap?.[variantId]?.ratings ?? 0
-                                : 0
-                              }
-                            </td>
-                          ))}
-                      </tr>
-
                       {/* Sellers Row */}
                       <tr>
                         <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
@@ -412,11 +449,8 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
                               key={variantId}
                               className="px-2 py-1 text-2xs border-2 border-black text-center"
                             >
-                              {/* Check if productDetailsUsed and sellers info is available */}
-                              {productDetailsUsed?.variantsMap?.[variantId]?.sellers
-                                ? productDetailsUsed?.variantsMap?.[variantId]?.sellers ?? 0
-                                : 0
-                              }
+                              {/* Check if sellers info is available on product page */}
+                              {variantData[variantId]?.sellers || 0}
                             </td>
                           ))}
                       </tr>
@@ -452,11 +486,8 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
                               key={variantId}
                               className="px-2 py-1 text-2xs border-2 border-black text-center"
                             >
-                              {/* Check if productDetailsUsed and upc are available */}
-                              {productDetailsUsed?.variantsMap?.[variantId]?.upc
-                                ? productDetailsUsed?.variantsMap?.[variantId]?.upc ?? "-"
-                                : "-"
-                              }
+                              {/* Check if upc are available on product page */}
+                              {variantData[variantId]?.upc || "-"}
                             </td>
                           ))}
                       </tr>
@@ -479,16 +510,18 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
                             </td>))}
                       </tr>
 
-
                     </tbody>
+
                   </table>
+
                 </div>
               )}
             </>
           )}
         </>
-      )}
-    </div>
+      )
+      }
+    </div >
   );
 }
 

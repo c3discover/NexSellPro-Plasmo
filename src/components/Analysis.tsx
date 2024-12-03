@@ -300,7 +300,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       });
     });
 
-    console.log("Final captured data from modal:", data); // Log the final data array
+    console.log("Captured data from multiple sellers:", data); // Log the final data array
 
     closeModal();
 

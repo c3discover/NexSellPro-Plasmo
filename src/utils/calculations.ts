@@ -216,7 +216,6 @@ export const calculateWFSFee = (product: Product): number => {
 
     // If the item is Seller Fulfilled, WFS Fee is 0
     if (!isWalmartFulfilled) {
-        console.log("WFS Fee Calculation: Item is Seller Fulfilled, fee is 0");
         return 0.00;
     }
 

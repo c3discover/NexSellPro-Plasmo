@@ -208,34 +208,34 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
       typeof product.shippingLength === "string"
         ? parseFloat(product.shippingLength)
         : product.shippingLength ?? 0;
-  
+
     const newWidth =
       typeof product.shippingWidth === "string"
         ? parseFloat(product.shippingWidth)
         : product.shippingWidth ?? 0;
-  
+
     const newHeight =
       typeof product.shippingHeight === "string"
         ? parseFloat(product.shippingHeight)
         : product.shippingHeight ?? 0;
-  
+
     const newWeight =
       typeof product.weight === "string"
         ? parseFloat(product.weight)
         : product.weight ?? 0;
-  
+
     // Update state with calculated values
     setShippingLength(newLength);
     setShippingWidth(newWidth);
     setShippingHeight(newHeight);
     setWeight(newWeight);
-  
+
     // Reset raw input values to match the state
     setRawLength(null);
     setRawWidth(null);
     setRawHeight(null);
     setRawWeight(null);
-  
+
     // Reset "hasEdited" flags for these fields
     setHasEdited((prev) => ({
       ...prev,
@@ -245,7 +245,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
       weight: false,
     }));
   };
-  
+
 
   // Reset Fees Section
   const resetFees = () => {
@@ -286,7 +286,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
       prepFee: false,
       additionalFees: false,
     }));
-    
+
   };
 
   useEffect(() => {
@@ -327,25 +327,21 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
 
   useEffect(() => {
     if (!hasInitializedProductCost.current) {
-      console.log("Initial Values:", {
-        salePrice,
-        referralFee,
-        wfsFee,
-        inboundShippingFee,
-        storageFee,
-        prepFee,
-        additionalFees,
-      });
-  
+      salePrice
+      referralFee
+      wfsFee
+      inboundShippingFee
+      storageFee
+      prepFee
+      additionalFees        
+
       const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
       const minMargin = parseFloat(storedMetrics.minMargin || "0");
-  
+
       const initialProductCost = calculateStartingProductCost(
         salePrice,
       );
-  
-      console.log("Initial Product Cost Calculated:", initialProductCost);
-  
+
       setProductCost(initialProductCost);
       hasInitializedProductCost.current = true;
     }
@@ -358,8 +354,8 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     prepFee,
     additionalFees,
   ]);
-  
-  
+
+
 
   useEffect(() => {
     if (isWalmartFulfilled) {
@@ -514,7 +510,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     <div
       id="Pricing"
       className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}>
-      
+
       <h1
         className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
         onClick={toggleOpen}>
@@ -956,7 +952,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 <input
                   type="radio"
                   checked={isWalmartFulfilled}
-                  onChange={() => {}}
+                  onChange={() => { }}
                   className="hidden"
                 />
                 <span className="block font-bold">Walmart</span>
@@ -979,7 +975,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 <input
                   type="radio"
                   checked={!isWalmartFulfilled}
-                  onChange={() => {}}
+                  onChange={() => { }}
                   className="hidden"
                 />
                 <span className="block font-bold">Seller</span>

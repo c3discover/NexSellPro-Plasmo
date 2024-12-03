@@ -108,9 +108,6 @@ function getProductDetails(product, idml, reviews) {
     customerReviews: reviews?.customerReviews || [],
   };
 
-  console.log("Variants Map:", product.variantsMap);
-  console.log("Variants Criteria:", product.variantCriteria);
-
   // Extract shipping information from product specifications.
   const shippingInfo = idml?.productHighlights?.find(
     (highlight) => highlight.name === "Dimensions"
