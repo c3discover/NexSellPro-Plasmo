@@ -1,10 +1,26 @@
+////////////////////////////////////////////////
+// Imports:
+////////////////////////////////////////////////
 import React, { useState, useEffect } from "react";
 import GaugeImgBase64 from "data-base64:~../assets/Gauge.jpg"
 
+////////////////////////////////////////////////
+// Constants and Variables:
+////////////////////////////////////////////////
+// No constants or variables are defined yet.
+
+////////////////////////////////////////////////
+// Props and Types:
+////////////////////////////////////////////////
+
+// Define the props for the BuyGauge component.
 interface BuyGaugeProps {
   areSectionsOpen: boolean;  // Add this prop
 }
 
+////////////////////////////////////////////////
+// State and Hooks:
+////////////////////////////////////////////////
 export const BuyGauge: React.FC<BuyGaugeProps> = ({ areSectionsOpen }) => {
   const [isOpen, setIsOpen] = useState(areSectionsOpen);
 
@@ -12,7 +28,21 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({ areSectionsOpen }) => {
     setIsOpen(areSectionsOpen);
   }, [areSectionsOpen]);
 
+  //////////////////////////////////////////////////
+  // Helper Functions:
+  //////////////////////////////////////////////////
+  // No helper functions are defined yet.
+
+  //////////////////////////////////////////////////
+  // Event Handlers:
+  //////////////////////////////////////////////////
+
+  // Handler to toggle the visibility of the component.
   const toggleOpen = () => setIsOpen(!isOpen);
+
+  //////////////////////////////////////////////////
+  // JSX (Return):
+  //////////////////////////////////////////////////
 
   return (
     <div
@@ -28,7 +58,7 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({ areSectionsOpen }) => {
 
       <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>
         <div id="BuyGauge" className="flex items-center justify-center p-4 w-full">
-          <div className="m-4 p-1 pl-8 pr-8 bg-[#3a3f47] flex flex-col items-center justify-center">
+          <div className="m-4 p-1 pl-8 pr-8 flex flex-col items-center justify-center">
             <img src={GaugeImgBase64} alt="Gadgeo" width={180} />
             <p>coming soon</p>
           </div>
@@ -37,3 +67,8 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({ areSectionsOpen }) => {
     </div>
   )
 }
+
+////////////////////////////////////////////////
+// Export Statement:
+////////////////////////////////////////////////
+export default BuyGauge;

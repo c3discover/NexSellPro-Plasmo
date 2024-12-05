@@ -254,8 +254,8 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
         <>
           {/* If no variations are available, display a message */}
           {sortedVariantIds.length === 0 ? (
-            <div className="w-full h-full flex justify-center items-center py-4">
-              <p className="text-gray-600 italic">No variations available.</p>
+            <div className="w-full h-[100px] flex justify-center items-center py-4">
+              <p className="text-gray-600 italic text-center">No variations available.</p>
             </div>
           ) : (
             <>
