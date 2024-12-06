@@ -2,19 +2,58 @@
 // Imports 
 /////////////////////////////////////////////////
 import React, { useState, useEffect } from "react";
-import getData from '../utils/getData';
-
+// Import the centralized data extraction function
+import getProductDetails from '../utils/getData';
 
 /////////////////////////////////////////////////
 // Constants and Variables
 /////////////////////////////////////////////////
-// (No standalone constants and variables in this file yet)
+
+// Define class names as constants to maintain consistency and avoid repeating strings
+const CLASS_SECTION_HEADER = "bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black";
+const CLASS_SECTION_CONTENT_GREEN = "bg-green-100 text-green-700 border-green-500 text-center rounded-b-lg shadow-md shadow-black border-2";
+const CLASS_SECTION_CONTENT_RED = "bg-red-100 text-red-700 border-red-500 text-center rounded-b-lg shadow-md shadow-black border-2";
+const CLASS_DEFAULT_CONTENT = "bg-white text-black border-gray-500 text-xs p-1";
+const CLASS_BUTTON_STYLE = "text-black text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl";
+
+// Default values and thresholds
+const MODAL_WAIT_INTERVAL = 500; // Interval in ms for checking modal presence
+const MODAL_WAIT_TIMEOUT = 5000; // Timeout in ms for the modal to be closed
+const MODAL_CLOSE_BUTTON_SELECTOR = "[aria-label='Close dialog']";
+const MODAL_SELECTOR = ".w_g1_b";
+const SINGLE_SELLER_INFO_SELECTOR = "[data-testid='product-seller-info']";
+const WALMART_DELIVERY_SELECTOR = "[data-automation-id='Walmart-delivery']";
+const PRO_SELLER_INDICATOR = "span.inline-flex.items-center.blue strong";
+
+// Other important default values (if required, add more here)
+const UNKNOWN_SELLER = "Unknown Seller";
+
+// Local Storage Keys
+const LOCAL_STORAGE_METRICS_KEY = "desiredMetrics";
+
+// Fetch the centralized product details data from productDetailsUsed
+const productDetailsUsed = getProductDetails();
+
+// Destructured data from productDetailsUsed for easier access
+const {
+  currentPrice,
+  sellerDisplayName,
+  sellerName,
+  brand,
+  totalSellers,
+  averageOverallRating,
+  numberOfRatings,
+  numberOfReviews,
+  fulfillmentOptions,
+  images
+} = productDetailsUsed || {};
 
 /////////////////////////////////////////////////
 // Props and Types
 /////////////////////////////////////////////////
 // Define the interface for the Product type
 interface Product {
+  productID?: string;
   shippingLength?: number;
   shippingWidth?: number;
   shippingHeight?: number;
@@ -23,14 +62,33 @@ interface Product {
   totalSellers?: number;
   stock?: number;
   brand?: string;
+  brandUrl?: string;
   sellerName?: string;
   sellerDisplayName?: string;
   totalReviewCount?: number;
-  fulfillmentOptions?: number;
+  fulfillmentOptions?: { type: string; availableQuantity: number }[];
   numberOfRatings?: number;
   numberOfReviews?: number;
-  overallRating?: number;
+  averageOverallRating?: number | string;
+  overallRating?: number | string;
   reviewDates?: string[];
+  modelNumber?: string;
+  variantCriteria?: string[];
+  variantsMap?: Record<string, Variant>;
+  images?: { url: string }[];
+}
+
+// Define the interface for the Variant type (for use in the variantsMap)
+interface Variant {
+  availabilityStatus?: string;
+  imageUrl?: string;
+  priceInfo?: {
+    currentPrice?: {
+      price: number;
+      priceString: string;
+    };
+  };
+  variants?: string[];
 }
 
 // Define the interface for Analysis component props
@@ -43,19 +101,28 @@ interface AnalysisProps {
 // State and Hooks
 /////////////////////////////////////////////////
 export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) => {
+  // State for controlling section visibility
   const [isOpen, setIsOpen] = useState(areSectionsOpen);
-  const [productDetails, setProductDetails] = useState<Product | null>(null);
+
+  // State to store detailed product information, fetched using `getData.ts`
+  const [productDetailsUsed, setProductDetailsUsed] = useState<Product | null>(null);
+
+  // State to keep track of the extracted data of all captured sellers
   const [capturedData, setCapturedData] = useState<any[]>([]);
-  const [totalSellers, setTotalSellers] = useState(0);
-  const [isTableExpanded, setIsTableExpanded] = useState(true); // Start with the table expanded
+
+  // State to control if the seller table is expanded or collapsed
+  const [isTableExpanded, setIsTableExpanded] = useState(true);
+
+  // State to track when specific data is copied to the clipboard
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   // Calculate the number of WFS sellers from capturedData
   const wfsSellerCount = capturedData.filter(seller => seller.fulfillmentStatus === "WFS").length;
 
   // Check if the brand is one of the sellers
-  const isBrandSelling = capturedData.some(seller =>
-    product.brand && seller.sellerName &&
-    product.brand.toLowerCase().split(' ').some(brandPart =>
+  const isBrandSelling = capturedData.some((seller) =>
+    productDetailsUsed?.brand && seller.sellerName &&
+    productDetailsUsed?.brand.toLowerCase().split(' ').some(brandPart =>
       seller.sellerName.toLowerCase().includes(brandPart)
     )
   );
@@ -67,10 +134,9 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
   // Fetch product data from getData and update the state for productDetails and totalSellers
   useEffect(() => {
-    const productData = getData();
+    const productData = getProductDetails();
     if (productData) {
-      setProductDetails(productData);
-      setTotalSellers(productData.totalSellers || 0); // Initialize with total sellers count
+      setProductDetailsUsed(productData);
     } else {
       console.error("Error loading product data");
     }
@@ -78,126 +144,149 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
   // Primary function to capture seller data based on the number of sellers
   useEffect(() => {
-    const captureSellerData = async () => {
-      const compareSellersButton = document.querySelector("[aria-label='Compare all sellers']") as HTMLButtonElement;
+    if (productDetailsUsed?.totalSellers && productDetailsUsed.totalSellers > 1) {
 
-      if (compareSellersButton) {
-        // Multi-seller scenario
-        compareSellersButton.click();
-        const modalNode = await waitForModal();
+      // Multi-seller scenario
+      const captureSellerData = async () => {
+        const compareSellersButton = document.querySelector("[aria-label='Compare all sellers']") as HTMLButtonElement;
 
-        // Observe changes in the modal to capture seller data
-        const observer = observeDomChanges(modalNode);
+        if (compareSellersButton) {
+          compareSellersButton.click();
+          const modalNode = await waitForModal();
 
-        // Disconnect observer after a set period
-        setTimeout(() => {
-          if (observer) observer.disconnect();
-          closeModalIfOpen(); // Close modal after extraction
-        }, 5000);
-      } else {
-        // Single-seller scenario
-        extractSingleSellerData();
-      }
-    };
+          // Observe changes in the modal to capture seller data
+          const observer = observeDomChanges(modalNode);
 
-    captureSellerData();
-  }, [totalSellers]);
+          // Disconnect observer after a set period
+          setTimeout(() => {
+            if (observer) observer.disconnect();
+            closeModalIfOpen();
+          }, MODAL_WAIT_TIMEOUT); // Using constant instead of hard-coding the value
+        } else {
+          extractSingleSellerData();
+        }
+      };
+
+      captureSellerData();
+    } else {
+      // Single seller scenario
+      extractSingleSellerData();
+    }
+  }, [productDetailsUsed?.totalSellers]);
 
 
 
   /////////////////////////////////////////////////////
   // Helper Functions
   /////////////////////////////////////////////////////
-  // Function to calculate the age of a review in days based on a date string
-  const getDaysAgo = (dateString: string) => {
+  /**
+   * Function to get the number of days ago from a given date.
+   * @param {string} dateString - Date in string format.
+   * @returns {number} Number of days since the given date.
+   */
+  const getDaysAgo = (dateString: string): number => {
     const today = new Date();
     const reviewDate = new Date(dateString);
     const differenceInTime = today.getTime() - reviewDate.getTime();
     return Math.floor(differenceInTime / (1000 * 3600 * 24));
   };
 
-  // Function to observe modal DOM changes for dynamic data capture
-  const observeDomChanges = (targetNode: HTMLElement) => {
+  /**
+   * Function to observe DOM changes for a given target node.
+   * @param {HTMLElement} targetNode - The HTML node to observe.
+   * @returns {MutationObserver | null} The observer instance or null if no node provided.
+   */
+  const observeDomChanges = (targetNode: HTMLElement): MutationObserver | null => {
     if (targetNode) {
       const observer = new MutationObserver((mutationsList) => {
         mutationsList.forEach((mutation) => {
           if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
-
-            // Delay data extraction to ensure all content is fully loaded
             setTimeout(() => {
               const jsonData = extractDataFromModal(targetNode);
               setCapturedData(jsonData);
-              closeModalIfOpen(); // Close modal after extraction
-            }, 500);
+              closeModalIfOpen();
+            }, MODAL_WAIT_INTERVAL); // Extract data after interval
           }
         });
       });
 
-      // Start observing the modal for child node changes
       observer.observe(targetNode, { childList: true, subtree: true });
       return observer;
     }
     return null;
   };
 
-  // Helper function: Waits for modal to appear in the DOM
-  const waitForModal = () => {
+  /**
+   * Function to wait for a modal to appear in the DOM.
+   * @returns {Promise<HTMLElement>} Resolves with the modal node.
+   */
+  const waitForModal = (): Promise<HTMLElement> => {
     return new Promise<HTMLElement>((resolve) => {
       const checkButtonExist = setInterval(() => {
-        const compareButton = document.querySelector(
-          "button[aria-label='Compare all sellers']"
-        ) as HTMLButtonElement;
+        const compareButton = document.querySelector("button[aria-label='Compare all sellers']") as HTMLButtonElement;
 
         if (compareButton) {
           compareButton.click();
           clearInterval(checkButtonExist);
 
-          // Wait for the modal to appear after clicking
           const checkModalExist = setInterval(() => {
-            const modalNode = document.querySelector(".w_g1_b") as HTMLElement;
+            const modalNode = document.querySelector(MODAL_SELECTOR) as HTMLElement;
             if (modalNode) {
               clearInterval(checkModalExist);
               resolve(modalNode);
             }
-          }, 500); // Check every 500ms for modal
+          }, MODAL_WAIT_INTERVAL); // Using polling interval constant
         }
-      }, 500); // Check every 500ms for the button
+      }, MODAL_WAIT_INTERVAL);
     });
   };
 
-  // Closes the "More seller options" modal if its open
+  /**
+   * Function to close a modal if it is currently open.
+   */
   const closeModalIfOpen = () => {
-    const closeButton = document.querySelector("[aria-label='Close']");
+    const closeButton = document.querySelector(MODAL_CLOSE_BUTTON_SELECTOR) as HTMLElement | null;
+
     if (closeButton) {
-      (closeButton as HTMLElement).click();
+      closeButton.click(); // Close modal using close button if found
+    } else {
+      const modalNode = document.querySelector(MODAL_SELECTOR) as HTMLElement | null;
+      if (modalNode) {
+        modalNode.style.display = "none"; // Hide modal if no close button available
+      }
     }
   };
 
-  // Extract single seller data
+  /**
+   * Function to extract data from a single seller if no comparison modal is present.
+   */
   const extractSingleSellerData = () => {
-
+    if (!productDetailsUsed) {
+      console.error("Product details are not available for single seller extraction.");
+      return;
+    }
     // Extract offer price
-    const price = product.currentPrice || null;
-    let seller = product.sellerDisplayName || product.sellerName || "Unknown Seller";
+    const price = productDetailsUsed.currentPrice || null;
+    let seller = productDetailsUsed.sellerDisplayName || productDetailsUsed.sellerName || UNKNOWN_SELLER;
 
     // Extract seller name
-    const sellerElement = document.querySelector("[data-testid='product-seller-info']");
+    const sellerElement = document.querySelector(SINGLE_SELLER_INFO_SELECTOR);
     if (!seller && sellerElement) {
       const sellerLink = sellerElement.querySelector("a[data-testid='seller-name-link']");
-      seller = sellerLink ? sellerLink.textContent.trim() : sellerElement.getAttribute('aria-label')?.replace("Sold and shipped by ", "").trim();
+      seller = sellerLink ? sellerLink.textContent.trim() : sellerElement.getAttribute("aria-label")?.replace("Sold and shipped by ", "").trim() || UNKNOWN_SELLER;
     }
 
     // Determine if pro seller 
-    const isProSeller = !!document.querySelector("span.inline-flex.items-center.blue strong")?.textContent.includes("Pro Seller");
+    const isProSeller = !!document.querySelector(PRO_SELLER_INDICATOR)?.textContent.includes("Pro Seller");
 
     // Determine if WFS
-    const walmartFulfilled = !!document.querySelector("[data-automation-id='Walmart-delivery']");
+    const walmartFulfilled = !!document.querySelector(WALMART_DELIVERY_SELECTOR);
 
     // Determine if brand is the seller
     const brandMatchesSeller =
-      product.brand &&
+      productDetailsUsed?.brand &&
       seller &&
-      product.brand.toLowerCase().split(' ').some(brandPart => seller.toLowerCase().includes(brandPart));
+      productDetailsUsed.brand.toLowerCase().split(" ").some((brandPart) => seller.toLowerCase().includes(brandPart));
 
     // Set fulfillment status based on conditions
     const fulfillmentStatus =
@@ -212,7 +301,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
             : "SF";
 
     // Update `capturedData` with the single seller's data
-    setCapturedData([{
+    const singleSellerData = [{
       priceInfo: {
         currentPrice: {
           price: price,
@@ -222,24 +311,30 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       sellerName: seller,
       isProSeller,
       fulfillmentStatus
-    }]);
+    }];
+    setCapturedData(singleSellerData);
 
-    console.log("Captured data for single seller:", [{
-      priceInfo: { currentPrice: { price, priceString: price !== null ? `$${price.toFixed(2)}` : "-" } },
-      sellerName: seller,
-      isProSeller,
-      fulfillmentStatus
-    }]);
+    console.log("Captured data for single seller:", singleSellerData);
   };
 
-// Extracts multiple seller data from the modal
+  /**
+   * Function to extract JSON data from a modal and return an array of seller details.
+   * @param {HTMLElement} modalNode - The modal node to extract data from.
+   * @returns {Array} Array of extracted seller data.
+   */
   const extractDataFromModal = (modalNode: HTMLElement) => {
-    const data = [];
+    const data: Array<{
+      priceInfo: { currentPrice: { price: number | null; priceString: string } };
+      sellerName: string | null;
+      isProSeller: boolean;
+      fulfillmentStatus: string;
+    }> = [];
+
+    // Select all offers for the sellers in the modal
     const offers = modalNode.querySelectorAll("[data-testid='allSellersOfferLine']");
 
-    offers.forEach((offer, index) => {
-      // Further details of data extraction for each seller
-
+    // Iterate through each offer to extract seller information
+    offers.forEach((offer) => {
       // Extract price
       const priceElement = offer.querySelector(".b.f4.w-50");
       const price = priceElement ? parseFloat(priceElement.textContent.replace(/[^0-9.]/g, '')) : null;
@@ -247,11 +342,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       // Extract seller name, prioritizing `aria-label` if it includes "Sold and shipped by"
       const sellerInfoElement = offer.querySelector("[data-testid='product-seller-info']");
       const sellerAriaLabel = sellerInfoElement?.getAttribute("aria-label")?.toLowerCase();
-
-      // Extract pro seller status
-      const isProSeller = Array.from(offer.querySelectorAll("strong")).some(
-        (el) => el.textContent?.trim() === "Pro Seller"
-      );
 
       // Determine the seller name, prioritizing `aria-label` when necessary
       let seller = sellerInfoElement?.querySelector("[data-testid='seller-name-link']")?.textContent.trim() || null;
@@ -261,14 +351,19 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         seller = sellerAriaLabel.replace("sold and shipped by", "").trim();
       }
 
+      // Extract pro seller status
+      const isProSeller = !!offer.querySelector("strong")?.textContent?.includes("Pro Seller");
+      //OLD const isProSeller = Array.from(offer.querySelectorAll("strong")).some((el) => el.textContent?.trim() === "Pro Seller");
+
       // Check for Walmart Fulfilled
       const walmartFulfilled = !!offer.querySelector("[data-automation-id='Walmart-delivery']");
 
-      // Check if the seller name matches the brand
-      const brandMatchesSeller = product.brand && seller &&
-        product.brand.toLowerCase().split(' ').some(brandPart =>
-          seller.toLowerCase().includes(brandPart)
-        );
+      // Determine if brand matches seller
+      const brandMatchesSeller =
+        productDetailsUsed?.brand &&
+        seller &&
+        productDetailsUsed.brand.toLowerCase().split(" ").some((brandPart) => seller.toLowerCase().includes(brandPart));
+      //OLD const brandMatchesSeller = product.brand && seller && product.brand.toLowerCase().split(' ').some(brandPart => seller.toLowerCase().includes(brandPart));
 
 
       // Set fulfillment status based on the conditions
@@ -292,7 +387,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       }
 
       data.push({
-        priceInfo: { currentPrice: { price, priceString: price !== null ? `$${price.toFixed(2)}` : "-" } },
+        priceInfo: { currentPrice: { price: price, priceString: price !== null ? `$${price.toFixed(2)}` : "-" } },
         sellerName: seller,
         isProSeller,
         fulfillmentStatus
@@ -301,7 +396,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
     console.log("Captured data from multiple sellers:", data); // Log the final data array
 
-    closeModal();
+    closeModalIfOpen();
 
     return data;
   };
@@ -310,39 +405,41 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
   /////////////////////////////////////////////////////
   // OTHER FUNCTIONS
   /////////////////////////////////////////////////////
-  // Apply formatting for total ratings highlight
-  const applyTotalRatingsHighlight = () => {
+  /**
+   * Apply formatting to the total ratings element based on the settings and product ratings.
+   * @returns {string} The CSS classes to apply for styling the total ratings element.
+   */
+  const applyTotalRatingsHighlight = (): string => {
     // Get total ratings from product details
-    const totalRatings = productDetails?.numberOfRatings || 0;
+    const totalRatings = productDetailsUsed?.numberOfRatings || 0;
 
     // Get minimum total ratings from settings
-    const storedSettings = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+    const storedSettings = JSON.parse(localStorage.getItem(LOCAL_STORAGE_METRICS_KEY) || "{}");
     const minTotalRatings =
       typeof storedSettings.minTotalRatings === "string"
         ? parseFloat(storedSettings.minTotalRatings)
         : storedSettings.minTotalRatings || null;
 
-    // If no threshold or set to 0, return default formatting
+    // Determine CSS classes based on the threshold
     if (minTotalRatings === null || minTotalRatings === 0) {
-      return "bg-white text-black border-gray-500 text-xs p-1"; // Default (no highlight)
+      return CLASS_DEFAULT_CONTENT; // Default formatting
     }
     // Apply green or red formatting based on comparison
     return totalRatings >= minTotalRatings
-      ? "bg-green-100 text-green-700 border-green-500" // Green for valid
-      : "bg-red-100 text-red-700 border-red-500"; // Red for invalid
+      ? CLASS_SECTION_CONTENT_GREEN // Green for meeting or exceeding threshold
+      : CLASS_SECTION_CONTENT_RED;  // Red for below threshold
   };
 
   // Function to close the modal after extracting data
   const closeModal = () => {
-    const closeButton = document.querySelector("button[aria-label='Close dialog']") as HTMLButtonElement | null;
+    const closeButton = document.querySelector(MODAL_CLOSE_BUTTON_SELECTOR) as HTMLButtonElement | null;
 
     if (closeButton) {
       closeButton.click(); // Close the modal if button is found
     } else {
-      const modalNode = document.querySelector(".w_g1_b") as HTMLElement | null;
+      const modalNode = document.querySelector(MODAL_SELECTOR) as HTMLElement | null;
       if (modalNode) {
         modalNode.style.display = "none"; // Hide modal if no close button
-      } else {
       }
     }
   };
@@ -351,15 +448,30 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
   /////////////////////////////////////////////////////
   // Event Handlers
   /////////////////////////////////////////////////////
-  // Function to toggle the component open or closed when clicking the header
-  const toggleOpen = () => setIsOpen((prev) => !prev);
-
-  // Toggle function to expand/collapse the table
-  const toggleTable = () => {
+  /**
+   * Event handler to toggle the visibility of the analysis component.
+   * Updates the state to either expand or collapse the component.
+   */
+  const toggleOpen = (): void => {
+    setIsOpen((prev) => !prev);
+  };
+  /**
+   * Event handler to expand or collapse the seller data table.
+   * Updates the state controlling the table's expanded view.
+   */
+  const toggleTable = (): void => {
     setIsTableExpanded((prev) => !prev);
   };
 
-
+  /**
+   * Event handler for copying specific product information to the clipboard.
+   * @param {string | number} value - The value to be copied to the clipboard.
+   * @param {number} index - The index of the copied item.
+   */
+  const handleCopy = (value: string | number, index: number): void => {
+    navigator.clipboard.writeText(String(value));
+    setCopiedIndex(index);
+  };
 
   /////////////////////////////////////////////////////
   // JSX (Return)
@@ -389,7 +501,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
             <p
               className={`text-center rounded-b-lg shadow-md shadow-black border-2 ${applyTotalRatingsHighlight()}`}
             >
-              {productDetails ? productDetails.numberOfRatings : "-"}
+              {productDetailsUsed ? productDetailsUsed.numberOfRatings : "-"}
             </p>
           </div>
 
@@ -399,7 +511,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
               Total Reviews
             </p>
             <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
-              {productDetails ? productDetails.numberOfReviews : "-"} {/* Display total reviews */}
+              {productDetailsUsed ? productDetailsUsed.numberOfReviews : "-"} {/* Display total reviews */}
             </p>
           </div>
 
@@ -408,7 +520,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
               Overall Rating
             </p>
             <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
-              {productDetails ? productDetails.overallRating : "-"} {/* Display overall rating */}
+              {productDetailsUsed ? productDetailsUsed.overallRating : "-"} {/* Display overall rating */}
             </p>
           </div>
         </div>
@@ -422,10 +534,10 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
               Date of Most Recent Reviews
             </p>
             <div className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
-              {productDetails && productDetails.reviewDates && productDetails.reviewDates.length > 0
+              {productDetailsUsed && productDetailsUsed.reviewDates && productDetailsUsed.reviewDates.length > 0
                 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 mx-10 justify-center"> {/* Use grid layout for 3 columns */}
-                    {productDetails.reviewDates
+                    {productDetailsUsed.reviewDates
                       .map(dateString => new Date(dateString)) // Convert strings to Date objects
                       .sort((a, b) => b.getTime() - a.getTime()) // Sort by time (newest to oldest)
                       .map((date, index) => {
@@ -555,8 +667,8 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
               Walmart Sells
             </p>
             <p className={`text-xs text-center p-1 w-full rounded-b-lg shadow-md shadow-black border-2 border-black font-bold ${product.sellerName === "Walmart.com"
-              ? "bg-red-100 text-red-700 border-red-500"
-              : "bg-green-100 text-green-700 border-green-500"
+              ? CLASS_SECTION_CONTENT_RED
+              : CLASS_SECTION_CONTENT_GREEN
               }`}>
               {product.sellerName === "Walmart.com" ? "YES" : "NO"}
             </p>
@@ -568,8 +680,8 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
             </p>
             <p
               className={`text-xs text-center p-1 w-full rounded-b-lg shadow-md shadow-black border-2 border-black font-bold ${isBrandSelling
-                ? "bg-red-100 text-red-700 border-red-500"
-                : "bg-green-100 text-green-700 border-green-500"
+                ? CLASS_SECTION_CONTENT_RED
+                : CLASS_SECTION_CONTENT_GREEN
                 }`}
             >
               {isBrandSelling ? "YES" : "NO"}
