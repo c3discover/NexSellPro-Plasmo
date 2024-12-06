@@ -1,10 +1,18 @@
 /////////////////////////////////////////////////
-// Imports and Type Definitions
+// Imports 
 /////////////////////////////////////////////////
-
 import React, { useState, useEffect } from "react";
 import getData from '../utils/getData';
 
+
+/////////////////////////////////////////////////
+// Constants and Variables
+/////////////////////////////////////////////////
+// (No standalone constants and variables in this file yet)
+
+/////////////////////////////////////////////////
+// Props and Types
+/////////////////////////////////////////////////
 // Define the interface for the Product type
 interface Product {
   shippingLength?: number;
@@ -31,21 +39,19 @@ interface AnalysisProps {
   areSectionsOpen: boolean;
 }
 
-
 /////////////////////////////////////////////////
-// Component Definition: Displays product details, ratings, and seller information
+// State and Hooks
 /////////////////////////////////////////////////
 export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) => {
-
-  /////////////////////////////////////////////////////
-  // State Management
-  /////////////////////////////////////////////////////  
   const [isOpen, setIsOpen] = useState(areSectionsOpen);
   const [productDetails, setProductDetails] = useState<Product | null>(null);
   const [capturedData, setCapturedData] = useState<any[]>([]);
   const [totalSellers, setTotalSellers] = useState(0);
+  const [isTableExpanded, setIsTableExpanded] = useState(true); // Start with the table expanded
+
   // Calculate the number of WFS sellers from capturedData
   const wfsSellerCount = capturedData.filter(seller => seller.fulfillmentStatus === "WFS").length;
+
   // Check if the brand is one of the sellers
   const isBrandSelling = capturedData.some(seller =>
     product.brand && seller.sellerName &&
@@ -53,11 +59,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       seller.sellerName.toLowerCase().includes(brandPart)
     )
   );
-
-
-  /////////////////////////////////////////////////////
-  // Effect Hooks
-  /////////////////////////////////////////////////////
 
   // Sync isOpen state with the passed prop value to control visibility externally
   useEffect(() => {
@@ -105,12 +106,8 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
 
   /////////////////////////////////////////////////////
-  // Utility Functions
+  // Helper Functions
   /////////////////////////////////////////////////////
-
-  // Function to toggle the component open or closed when clicking the header
-  const toggleOpen = () => setIsOpen((prev) => !prev);
-
   // Function to calculate the age of a review in days based on a date string
   const getDaysAgo = (dateString: string) => {
     const today = new Date();
@@ -119,7 +116,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     return Math.floor(differenceInTime / (1000 * 3600 * 24));
   };
 
-  //////////////////////////////////////////////
   // Function to observe modal DOM changes for dynamic data capture
   const observeDomChanges = (targetNode: HTMLElement) => {
     if (targetNode) {
@@ -177,10 +173,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     }
   };
 
-  /////////////////////////////////////////////////////
-  // Data Extraction Functions
-  /////////////////////////////////////////////////////
-
   // Extract single seller data
   const extractSingleSellerData = () => {
 
@@ -202,15 +194,22 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     const walmartFulfilled = !!document.querySelector("[data-automation-id='Walmart-delivery']");
 
     // Determine if brand is the seller
-    const brandMatchesSeller = product.brand && seller && product.brand.toLowerCase().split(' ').some(brandPart =>
-      seller.toLowerCase().includes(brandPart)
-    );
+    const brandMatchesSeller =
+      product.brand &&
+      seller &&
+      product.brand.toLowerCase().split(' ').some(brandPart => seller.toLowerCase().includes(brandPart));
 
     // Set fulfillment status based on conditions
-    const fulfillmentStatus = seller === "Walmart.com" ? "WMT" :
-      brandMatchesSeller ? (walmartFulfilled ? "Brand-WFS" : "Brand-SF") :
-        walmartFulfilled ? "WFS" : "SF";
-
+    const fulfillmentStatus =
+      seller === "Walmart.com"
+        ? "WMT"
+        : brandMatchesSeller
+          ? (walmartFulfilled
+            ? "Brand-WFS"
+            : "Brand-SF")
+          : walmartFulfilled
+            ? "WFS"
+            : "SF";
 
     // Update `capturedData` with the single seller's data
     setCapturedData([{
@@ -233,7 +232,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     }]);
   };
 
-  // Extracts multiple seller data from the modal
+// Extracts multiple seller data from the modal
   const extractDataFromModal = (modalNode: HTMLElement) => {
     const data = [];
     const offers = modalNode.querySelectorAll("[data-testid='allSellersOfferLine']");
@@ -309,9 +308,8 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
 
   /////////////////////////////////////////////////////
-  // Formatting Functions
+  // OTHER FUNCTIONS
   /////////////////////////////////////////////////////
-
   // Apply formatting for total ratings highlight
   const applyTotalRatingsHighlight = () => {
     // Get total ratings from product details
@@ -334,11 +332,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       : "bg-red-100 text-red-700 border-red-500"; // Red for invalid
   };
 
-
-  /////////////////////////////////////////////////////
-  // OTHER
-  /////////////////////////////////////////////////////
-
   // Function to close the modal after extracting data
   const closeModal = () => {
     const closeButton = document.querySelector("button[aria-label='Close dialog']") as HTMLButtonElement | null;
@@ -354,8 +347,12 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     }
   };
 
-  // State for controlling the seller table visibility
-  const [isTableExpanded, setIsTableExpanded] = useState(true); // Start with the table expanded
+
+  /////////////////////////////////////////////////////
+  // Event Handlers
+  /////////////////////////////////////////////////////
+  // Function to toggle the component open or closed when clicking the header
+  const toggleOpen = () => setIsOpen((prev) => !prev);
 
   // Toggle function to expand/collapse the table
   const toggleTable = () => {
@@ -363,7 +360,10 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
   };
 
 
-  //////////////////////////////////////////////
+
+  /////////////////////////////////////////////////////
+  // JSX (Return)
+  /////////////////////////////////////////////////////
   return (
     <div
       id="Analysis"
@@ -686,4 +686,8 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
   );
 };
 
+
+////////////////////////////////////////////////
+// Export Statement
+////////////////////////////////////////////////
 export default Analysis;

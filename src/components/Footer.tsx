@@ -35,7 +35,7 @@ interface FooterProps {
 ////////////////////////////////////////////////
 // JSX (Return)
 ////////////////////////////////////////////////
-export const Footer: React.FC<FooterProps> = ({ version }) => {
+export const Footer = () => {
   return (
     <div
       id="footer"
@@ -47,7 +47,7 @@ export const Footer: React.FC<FooterProps> = ({ version }) => {
         WalAIWiz - Empowering Walmart Sellers with AI
       </p>
       <p className="text-xs font-light">
-        Version {version}
+      Version: {version || "N/A"}
       </p>
 
       {/* Links Section */}
