@@ -1,8 +1,10 @@
 /////////////////////////////////////////////////
-// Imports and Type Definitions
+// Imports 
 /////////////////////////////////////////////////
-
+// React hooks for managing state, side effects, and mutable references.
 import React, { useState, useEffect, useRef } from "react";
+
+// Utility functions for calculating fees, dimensions, and profitability.
 import {
   calculateReferralFee,
   calculateWFSFee,
@@ -17,9 +19,35 @@ import {
   calculateStartingProductCost
 } from "../utils/calculations";
 
+// Constants used for dropdowns or selection fields related to contract categories.
 import { contractCategoryOptions } from "../constants/options";
 
-// Types for component props
+
+
+/////////////////////////////////////////////////
+// Constants and Variables
+/////////////////////////////////////////////////
+
+// CSS Classes
+const DEFAULT_LABEL_CLASS = "text-xs p-1 mr-2 min-w-[150px] text-left whitespace-nowrap";
+const DEFAULT_RIGHT_INPUT_CLASS = "text-sm p-1 pr-3 text-right w-full border rounded-r h-7";
+const DEFAULT_LEFT_INPUT_CLASS = "text-sm p-1 pl-3 text-left w-full border rounded-l h-7";
+const DEFAULT_LEFT_PREFIX_SUFFIX_CLASS = "p-1 inline-block border border-black rounded-l bg-gray-100 text-gray-700 text-xs h-7 flex items-center justify-center";
+const DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS = "p-1 inline-block border border-black rounded-r bg-gray-100 text-gray-700 text-xs h-7 flex items-center justify-center";
+
+// Default Values
+const DEFAULT_CONTRACT_CATEGORY = "Everything Else";
+const DEFAULT_SEASON = "Jan-Sep";
+const DEFAULT_STORAGE_LENGTH = 1;
+const DEFAULT_INBOUND_RATE = 0.5;
+const UNKNOWN_SELLER = "Unknown Seller";
+
+
+
+/////////////////////////////////////////////////
+// Props and Types
+/////////////////////////////////////////////////
+// Represents product-specific data used for calculations and UI rendering.
 interface Product {
   shippingLength?: number;
   shippingWidth?: number;
@@ -32,119 +60,75 @@ interface Product {
   retailPrice?: number;
 }
 
+// Represents props passed to the Pricing component, including product data and section visibility state.
 interface PricingProps {
   product: Product;
   areSectionsOpen: boolean;
 }
 
-/////////////////////////////////////////////////
-// Component Definition
-/////////////////////////////////////////////////
 
+
+/////////////////////////////////////////////////
+// State and Hooks
+/////////////////////////////////////////////////
 export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) => {
-  /////////////////////////////////////////////////////
-  // State Initialization
-  /////////////////////////////////////////////////////
 
-  // MISC
+  // General State (Group 1)
   const [contractCategory, setContractCategory] = useState<string>("Everything Else");
   const [season, setSeason] = useState<string>("Jan-Sep");
   const [storageLength, setStorageLength] = useState<number>(1);
   const [inboundShippingRate, setInboundShippingRate] = useState<number>(0.0);
+  const [totalProfit, setTotalProfit] = useState(0);
+  const [roi, setROI] = useState(0);
+  const [margin, setMargin] = useState(0);
   const [hasEdited, setHasEdited] = useState<{ [key: string]: boolean }>({});
+  const [isOpen, setIsOpen] = useState<boolean>(areSectionsOpen);
 
-  // Pricing (Group 2)
-  const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
-  const minMargin = parseFloat(storedMetrics.minMargin || "0");
-
-  const initialProductCost = calculateStartingProductCost(
-    product.currentPrice || 0
-  );
-
-  const hasInitializedProductCost = useRef(false);
-
+  // Pricing State (Group 2)
   const [productCost, setProductCost] = useState<number>(0.0);
   const [rawProductCost, setRawProductCost] = useState<string | null>(null);
-
-
   const [salePrice, setSalePrice] = useState<number>(product.currentPrice || 0);
   const [rawSalePrice, setRawSalePrice] = useState<string | null>(null);
 
-  // Shipping Dimensions (Group 3)
-  const [shippingLength, setShippingLength] = useState<number>(
-    typeof product.shippingLength === "string"
-      ? parseFloat(product.shippingLength)
-      : product.shippingLength ?? 0
-  );
-  const [rawLength, setRawLength] = useState<string | null>(null);
-
-  const [shippingWidth, setShippingWidth] = useState<number>(
-    typeof product.shippingWidth === "string"
-      ? parseFloat(product.shippingWidth)
-      : product.shippingWidth ?? 0
-  );
-  const [rawWidth, setRawWidth] = useState<string | null>(null);
-
-  const [shippingHeight, setShippingHeight] = useState<number>(
-    typeof product.shippingHeight === "string"
-      ? parseFloat(product.shippingHeight)
-      : product.shippingHeight ?? 0
-  );
-  const [rawHeight, setRawHeight] = useState<string | null>(null);
-
-  const [weight, setWeight] = useState<number>(
-    typeof product.weight === "string"
-      ? parseFloat(product.weight)
-      : product.weight ?? 0
-  );
-  const [rawWeight, setRawWeight] = useState<string | null>(null);
-
-  // Fees (Group 4)
-  const [referralFee, setReferralFee] = useState<number>(
-    calculateReferralFee(product.currentPrice || 0, contractCategory)
-  ); const [rawReferralFee, setRawReferralFee] = useState<string | null>(null);
-
-  const [inboundShippingFee, setInboundShippingFee] = useState<number>(0);
-  const [rawInboundShippingFee, setRawInboundShippingFee] = useState<string | null>(null);
-
-  const [storageFee, setStorageFee] = useState<number>(0);
-  const [rawStorageFee, setRawStorageFee] = useState<string | null>(null);
-
-  const [prepFee, setPrepFee] = useState<number>(0);
-  const [rawPrepFee, setRawPrepFee] = useState<string | null>(null);
-
-  const [additionalFees, setAdditionalFees] = useState<number>(0);
-  const [rawAdditionalFees, setRawAdditionalFees] = useState<string | null>(null);
-
-  const [wfsFee, setWfsFee] = useState<number>(0);
-  const [rawWfsFee, setRawWfsFee] = useState<string | null>(null);
   const [isWalmartFulfilled, setIsWalmartFulfilled] = useState<boolean>(() => {
     const savedPreference = localStorage.getItem("isWalmartFulfilled");
-    return savedPreference === "true" || savedPreference === null; // Default to true if no preference
+    return savedPreference === "true" || savedPreference === null; // Default to true
   });
-  const initializeWfsFee = () => {
-    const recalculatedFee = calculateWFSFee(productForWFSFee); // Calculate WFS Fee
-    setWfsFee(recalculatedFee); // Set the initial value
-    setRawWfsFee(null); // Ensure no raw edits are active
-    setHasEdited((prev) => ({ ...prev, wfsFee: false })); // Mark as unedited
-  };
 
-  useEffect(() => {
-    initializeWfsFee(); // Simulate button click logic
-  }, []); // Empty dependency array ensures it runs only once
+  // Shipping Dimensions State (Group 3)
+  const [shippingLength, setShippingLength] = useState<number>(typeof product.shippingLength === "string" ? parseFloat(product.shippingLength) : product.shippingLength ?? 0);
+  const [rawLength, setRawLength] = useState<string | null>(null);
+  const [shippingWidth, setShippingWidth] = useState<number>(typeof product.shippingWidth === "string" ? parseFloat(product.shippingWidth) : product.shippingWidth ?? 0);
+  const [rawWidth, setRawWidth] = useState<string | null>(null);
+  const [shippingHeight, setShippingHeight] = useState<number>(typeof product.shippingHeight === "string" ? parseFloat(product.shippingHeight) : product.shippingHeight ?? 0);
+  const [rawHeight, setRawHeight] = useState<string | null>(null);
+  const [weight, setWeight] = useState<number>(typeof product.weight === "string" ? parseFloat(product.weight) : product.weight ?? 0);
+  const [rawWeight, setRawWeight] = useState<string | null>(null);
 
-  /////////////////////////////////////////////////////
-  // Derived Values
-  /////////////////////////////////////////////////////
+  // Fees State (Group 4)
+  const [referralFee, setReferralFee] = useState<number>(calculateReferralFee(product.currentPrice || 0, contractCategory));
+  const [rawReferralFee, setRawReferralFee] = useState<string | null>(null);
+  const [inboundShippingFee, setInboundShippingFee] = useState<number>(0);
+  const [rawInboundShippingFee, setRawInboundShippingFee] = useState<string | null>(null);
+  const [storageFee, setStorageFee] = useState<number>(0);
+  const [rawStorageFee, setRawStorageFee] = useState<string | null>(null);
+  const [prepFee, setPrepFee] = useState<number>(0);
+  const [rawPrepFee, setRawPrepFee] = useState<string | null>(null);
+  const [additionalFees, setAdditionalFees] = useState<number>(0);
+  const [rawAdditionalFees, setRawAdditionalFees] = useState<string | null>(null);
+  const [wfsFee, setWfsFee] = useState<number>(0);
+  const [rawWfsFee, setRawWfsFee] = useState<string | null>(null);
 
-  // Calculate dimensions and weights
+  // Dynamically calculate values needed for WFS fee and other dimensions.
   const cubicFeet = calculateCubicFeet(shippingLength, shippingWidth, shippingHeight);
+
   const finalShippingWeightForInbound = calculateFinalShippingWeightForInbound(
     weight,
     shippingLength,
     shippingWidth,
     shippingHeight
   );
+
   const finalShippingWeightForWFS = calculateFinalShippingWeightForWFS(
     weight,
     shippingLength,
@@ -152,143 +136,43 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     shippingHeight
   );
 
-  // Product data for WFS Fee calculation
+  // Dynamically calculated product data for WFS fee calculation.
   const productForWFSFee = {
     weight: finalShippingWeightForWFS,
     length: shippingLength,
     width: shippingWidth,
     height: shippingHeight,
     isWalmartFulfilled: isWalmartFulfilled,
-    isApparel: product.isApparel || false,
-    isHazardousMaterial: product.isHazardousMaterial || false,
-    retailPrice: product.retailPrice || 0,
+    isApparel: product?.isApparel || false,
+    isHazardousMaterial: product?.isHazardousMaterial || false,
+    retailPrice: product?.retailPrice || 0,
   };
 
-  // Profit, ROI, and Margin calculations
-  const [totalProfit, setTotalProfit] = useState(0); // Store Total Profit
-  const [roi, setROI] = useState(0);                 // Store ROI
-  const [margin, setMargin] = useState(0);           // Store Margin
+  // Mutable reference for initialization checks
+  const hasInitializedProductCost = useRef(false);
 
-
-  // State to manage the visibility of the Pricing section
-  const [isOpen, setIsOpen] = useState<boolean>(areSectionsOpen);
-  useEffect(() => setIsOpen(areSectionsOpen), [areSectionsOpen]); // Sync with props
 
 
   /////////////////////////////////////////////////////
-  // Reset Button
+  // Effects
   /////////////////////////////////////////////////////
 
-  // Reset Pricing Section
-  const resetPricing = () => {
-    const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
-    const minMargin = parseFloat(storedMetrics.minMargin || "0");
-
-    const initialProductCost = calculateStartingProductCost(
-      salePrice
-    );
-
-    setProductCost(initialProductCost);
-    setSalePrice(product.currentPrice || 0);
-    setRawProductCost(null);
-    setRawSalePrice(null);
-
-    // Reset text color
-    setHasEdited((prev) => ({
-      ...prev,
-      productCost: false,
-      salePrice: false,
-    }));
-  };
-
-  // Reset Shipping Dimensions Section
-  const resetShippingDimensions = () => {
-    // Reset dimensions using the same logic as initial display
-    const newLength =
-      typeof product.shippingLength === "string"
-        ? parseFloat(product.shippingLength)
-        : product.shippingLength ?? 0;
-
-    const newWidth =
-      typeof product.shippingWidth === "string"
-        ? parseFloat(product.shippingWidth)
-        : product.shippingWidth ?? 0;
-
-    const newHeight =
-      typeof product.shippingHeight === "string"
-        ? parseFloat(product.shippingHeight)
-        : product.shippingHeight ?? 0;
-
-    const newWeight =
-      typeof product.weight === "string"
-        ? parseFloat(product.weight)
-        : product.weight ?? 0;
-
-    // Update state with calculated values
-    setShippingLength(newLength);
-    setShippingWidth(newWidth);
-    setShippingHeight(newHeight);
-    setWeight(newWeight);
-
-    // Reset raw input values to match the state
-    setRawLength(null);
-    setRawWidth(null);
-    setRawHeight(null);
-    setRawWeight(null);
-
-    // Reset "hasEdited" flags for these fields
-    setHasEdited((prev) => ({
-      ...prev,
-      shippingLength: false,
-      shippingWidth: false,
-      shippingHeight: false,
-      weight: false,
-    }));
-  };
-
-
-  // Reset Fees Section
-  const resetFees = () => {
-    if (isWalmartFulfilled) {
-      const recalculatedWfsFee = calculateWFSFee(productForWFSFee);
-      const recalculatedStorageFee = parseFloat(
-        calculateStorageFee(season, cubicFeet, storageLength)
-      ) || 0;
-      const recalculatedInboundShippingFee =
-        finalShippingWeightForInbound * inboundShippingRate;
-
-      setWfsFee(recalculatedWfsFee);
-      setInboundShippingFee(recalculatedInboundShippingFee);
-      setStorageFee(recalculatedStorageFee);
-    } else {
-
-      setWfsFee(0);
-      setInboundShippingFee(0);
-      setStorageFee(0);
+  // Initialize WFS Fee and ensure product cost is initialized.
+  useEffect(() => {
+    if (!hasInitializedProductCost.current) {
+      const initialProductCost = calculateStartingProductCost(salePrice);
+      setProductCost(initialProductCost);
+      initializeWfsFee();
+      hasInitializedProductCost.current = true;
     }
+  }, [salePrice]);
 
-    // Reset other fees
-    setPrepFee(0);
-    setAdditionalFees(0);
+  // Synchronize section visibility with props.
+  useEffect(() => {
+    setIsOpen(areSectionsOpen);
+  }, [areSectionsOpen]);
 
-    // Clear raw inputs and reset edit state
-    setRawWfsFee(null);
-    setRawInboundShippingFee(null);
-    setRawStorageFee(null);
-    setRawPrepFee(null);
-    setRawAdditionalFees(null);
-
-    setHasEdited((prev) => ({
-      ...prev,
-      wfsFee: false,
-      inboundShippingFee: false,
-      storageFee: false,
-      prepFee: false,
-      additionalFees: false,
-    }));
-
-  };
-
+  // Recalculate profit, ROI, and margin whenever key pricing variables change.
   useEffect(() => {
     const updatedTotalProfit = calculateTotalProfit(
       salePrice,
@@ -301,13 +185,16 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
       additionalFees
     );
 
-    setTotalProfit(updatedTotalProfit); // Update Total Profit
+    setTotalProfit(updatedTotalProfit);
 
-    const calculatedROI = parseFloat(calculateROI(updatedTotalProfit, productCost)); // Parse ROI
+    // Convert calculateROI result to a number before setting state
+    const calculatedROI = parseFloat(calculateROI(updatedTotalProfit, productCost));
     setROI(isNaN(calculatedROI) ? 0 : calculatedROI); // Handle invalid ROI
 
-    const calculatedMargin = parseFloat(calculateMargin(updatedTotalProfit, salePrice)); // Parse Margin
-    setMargin(isNaN(calculatedMargin) ? 0 : calculatedMargin); // Handle invalid Margin
+    // Set margin directly (assuming calculateMargin also returns a string)
+    const calculatedMargin = parseFloat(calculateMargin(updatedTotalProfit, salePrice));
+    setMargin(isNaN(calculatedMargin) ? 0 : calculatedMargin); // Handle invalid margin
+
   }, [
     salePrice,
     productCost,
@@ -319,81 +206,24 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     additionalFees,
   ]);
 
-
-
-  /////////////////////////////////////////////////////
-  // Effects
-  /////////////////////////////////////////////////////
-
-  useEffect(() => {
-    if (!hasInitializedProductCost.current) {
-      salePrice
-      referralFee
-      wfsFee
-      inboundShippingFee
-      storageFee
-      prepFee
-      additionalFees        
-
-      const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
-      const minMargin = parseFloat(storedMetrics.minMargin || "0");
-
-      const initialProductCost = calculateStartingProductCost(
-        salePrice,
-      );
-
-      setProductCost(initialProductCost);
-      hasInitializedProductCost.current = true;
-    }
-  }, [
-    salePrice,
-    referralFee,
-    wfsFee,
-    inboundShippingFee,
-    storageFee,
-    prepFee,
-    additionalFees,
-  ]);
-
-
-
+  // Dynamically recalculate fees based on fulfillment type and user edits.
   useEffect(() => {
     if (isWalmartFulfilled) {
-      // Only recalculate WFS Fee if it has not been manually edited
       if (!hasEdited.wfsFee) {
-        const recalculatedWfsFee = calculateWFSFee(productForWFSFee);
-        setWfsFee(recalculatedWfsFee);
+        setWfsFee(calculateWFSFee(productForWFSFee));
       }
-
-      // Only reset inbound shipping fee if not manually edited
       if (!hasEdited.inboundShippingFee) {
-        const recalculatedInboundShippingFee =
-          finalShippingWeightForInbound * inboundShippingRate;
-        setInboundShippingFee(recalculatedInboundShippingFee); // No inbound shipping for Walmart Fulfilled
+        setInboundShippingFee(finalShippingWeightForInbound * inboundShippingRate);
       }
-
-      // Only reset storage fee if not manually edited
       if (!hasEdited.storageFee) {
-        const recalculatedStorageFee = parseFloat(
-          calculateStorageFee(season, cubicFeet, storageLength)
-        ) || 0;
-        setStorageFee(recalculatedStorageFee);
+        setStorageFee(parseFloat(calculateStorageFee(season, cubicFeet, storageLength)) || 0);
       }
     } else {
-      // Seller Fulfilled logic
-      if (!hasEdited.wfsFee) {
-        setWfsFee(0); // No WFS Fee for Seller Fulfilled
-      }
-
+      if (!hasEdited.wfsFee) setWfsFee(0);
       if (!hasEdited.inboundShippingFee) {
-        const recalculatedInboundShippingFee =
-          finalShippingWeightForInbound * inboundShippingRate;
-        setInboundShippingFee(recalculatedInboundShippingFee);
+        setInboundShippingFee(finalShippingWeightForInbound * inboundShippingRate);
       }
-
-      if (!hasEdited.storageFee) {
-        setStorageFee(0); // No storage fee for Seller Fulfilled
-      }
+      if (!hasEdited.storageFee) setStorageFee(0);
     }
   }, [
     isWalmartFulfilled,
@@ -403,46 +233,30 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     storageLength,
     finalShippingWeightForInbound,
     inboundShippingRate,
-    hasEdited, // Track edits to prevent overwrites
+    hasEdited,
   ]);
 
-
+  // Load and save fulfillment preferences to localStorage.
   useEffect(() => {
     const savedPreference = localStorage.getItem("isWalmartFulfilled");
-    const initialFulfillment = savedPreference === "true" || savedPreference === null;
-
-    setIsWalmartFulfilled(initialFulfillment); // Default to Walmart Fulfilled
+    setIsWalmartFulfilled(savedPreference === "true" || savedPreference === null);
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem("isWalmartFulfilled", isWalmartFulfilled.toString());
+  }, [isWalmartFulfilled]);
 
-  // Sync state with product data
+  // Recalculate dimensions and weight based on product data changes.
   useEffect(() => {
     if (product) {
-      setShippingLength(
-        typeof product.shippingLength === "string"
-          ? parseFloat(product.shippingLength)
-          : product.shippingLength ?? 0
-      );
-      setShippingWidth(
-        typeof product.shippingWidth === "string"
-          ? parseFloat(product.shippingWidth)
-          : product.shippingWidth ?? 0
-      );
-      setShippingHeight(
-        typeof product.shippingHeight === "string"
-          ? parseFloat(product.shippingHeight)
-          : product.shippingHeight ?? 0
-      );
-      setWeight(
-        typeof product.weight === "string"
-          ? parseFloat(product.weight)
-          : product.weight ?? 0
-      );
+      setShippingLength(product.shippingLength ?? 0);
+      setShippingWidth(product.shippingWidth ?? 0);
+      setShippingHeight(product.shippingHeight ?? 0);
+      setWeight(product.weight ?? 0);
     }
   }, [product]);
 
-
-  // Load settings from localStorage
+  // Load user settings for season, storage length, and inbound rate.
   useEffect(() => {
     const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
     setSeason(storedMetrics.season || "Jan-Sep");
@@ -450,13 +264,12 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     setInboundShippingRate(parseFloat(storedMetrics.inboundShippingCost) || 0.5);
   }, []);
 
-  // Update inbound shipping fee
+  // Dynamically update inbound shipping fee based on weight and rate.
   useEffect(() => {
-    const newInboundShippingFee = finalShippingWeightForInbound * inboundShippingRate;
-    setInboundShippingFee(newInboundShippingFee);
+    setInboundShippingFee(finalShippingWeightForInbound * inboundShippingRate);
   }, [finalShippingWeightForInbound, inboundShippingRate]);
 
-  // Update storage fee
+  // Dynamically update storage fee based on product dimensions and season.
   useEffect(() => {
     const calculatedStorageFee = parseFloat(
       calculateStorageFee(season, cubicFeet, storageLength) || "0"
@@ -464,71 +277,135 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     setStorageFee(isNaN(calculatedStorageFee) ? 0 : calculatedStorageFee);
   }, [shippingLength, shippingWidth, shippingHeight, cubicFeet, season, storageLength]);
 
-  // Update referral fee
+  // Dynamically update referral fee based on sale price and contract category.
   useEffect(() => {
-    const updatedReferralFee = calculateReferralFee(salePrice, contractCategory);
-    setReferralFee(updatedReferralFee);
+    setReferralFee(calculateReferralFee(salePrice, contractCategory));
   }, [salePrice, contractCategory]);
 
-  // Additional Fees Calculation
+  // Dynamically recalculate additional fees based on weight.
   useEffect(() => {
-    const recalculatedAdditionalFees = calculateAdditionalFees(weight);
-    setAdditionalFees(recalculatedAdditionalFees);
+    setAdditionalFees(calculateAdditionalFees(weight));
   }, [weight]);
 
 
-  /////////////////////////////////////////////////////
-  // Fulfilment Buttons
-  /////////////////////////////////////////////////////
-  // Load preference on mount
-  useEffect(() => {
-    const savedPreference = localStorage.getItem("isWalmartFulfilled");
-    setIsWalmartFulfilled(savedPreference === "true" || savedPreference === null); // Default to Walmart Fulfilled if no preference
-  }, []);
-
-  // Save preference whenever it changes
-  useEffect(() => {
-    localStorage.setItem("isWalmartFulfilled", isWalmartFulfilled.toString());
-  }, [isWalmartFulfilled]);
-
-  /////////////////////////////////////////////////////
+  /////////////////////////////////////////////////
   // Helper Functions
-  /////////////////////////////////////////////////////
+  /////////////////////////////////////////////////
 
+  // Fetch stored metrics and preferences from localStorage.
+  const getStoredMetrics = () => {
+    return JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+  };
+
+  // Format numbers to two decimal places.
   const formatToTwoDecimalPlaces = (value: number): string => value.toFixed(2);
 
+  // Initialize WFS Fee and reset related states.
+  const initializeWfsFee = () => {
+    const recalculatedFee = calculateWFSFee(productForWFSFee);
+    setWfsFee(recalculatedFee);
+    setRawWfsFee(null);
+    setHasEdited((prev) => ({ ...prev, wfsFee: false }));
+  };
+
+  // Reset all pricing-related states.
+  const resetPricing = () => {
+    const initialProductCost = calculateStartingProductCost(salePrice);
+    setProductCost(initialProductCost);
+    setSalePrice(product.currentPrice || 0);
+    setRawProductCost(null);
+    setRawSalePrice(null);
+    setHasEdited((prev) => ({
+      ...prev,
+      productCost: false,
+      salePrice: false,
+    }));
+  };
+
+  // Reset all shipping dimensions to their initial values.
+  const resetShippingDimensions = () => {
+    setShippingLength(product.shippingLength ?? 0);
+    setShippingWidth(product.shippingWidth ?? 0);
+    setShippingHeight(product.shippingHeight ?? 0);
+    setWeight(product.weight ?? 0);
+    setRawLength(null);
+    setRawWidth(null);
+    setRawHeight(null);
+    setRawWeight(null);
+    setHasEdited((prev) => ({
+      ...prev,
+      shippingLength: false,
+      shippingWidth: false,
+      shippingHeight: false,
+      weight: false,
+    }));
+  };
+
+  // Reset all fee-related states.
+  const resetFees = () => {
+    if (isWalmartFulfilled) {
+      setWfsFee(calculateWFSFee(productForWFSFee));
+      setInboundShippingFee(finalShippingWeightForInbound * inboundShippingRate);
+      setStorageFee(parseFloat(calculateStorageFee(season, cubicFeet, storageLength)) || 0);
+    } else {
+      setWfsFee(0);
+      setInboundShippingFee(0);
+      setStorageFee(0);
+    }
+    setPrepFee(0);
+    setAdditionalFees(0);
+    setRawWfsFee(null);
+    setRawInboundShippingFee(null);
+    setRawStorageFee(null);
+    setRawPrepFee(null);
+    setRawAdditionalFees(null);
+    setHasEdited((prev) => ({
+      ...prev,
+      wfsFee: false,
+      inboundShippingFee: false,
+      storageFee: false,
+      prepFee: false,
+      additionalFees: false,
+    }));
+  };
+
+  /////////////////////////////////////////////////////
+  // Event Handlers
+  /////////////////////////////////////////////////////
   const toggleOpen = () => setIsOpen(!isOpen);
 
 
 
 
 
-  /////////////////////////////////////////////////
-
+  /////////////////////////////////////////////////////
+  // JSX (Return)
+  /////////////////////////////////////////////////////
 
   return (
     <div
       id="Pricing"
       className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}>
 
+      {/* Section Header */}
       <h1
         className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
-        onClick={toggleOpen}>
+        onClick={toggleOpen}
+      >
         {isOpen ? "🔽  Pricing" : "▶️  Pricing"}
       </h1>
 
+      {/* Section Content */}
       <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>
 
-
-
+        {/* Pricing Group */}
         <div id="Pricing" className="p-1 bg-[#d7d7d7] rounded-lg shadow-sm">
-
 
           {/*----------------------------------------------------------------*/}
           {/*Group 1: Revenue - Key Metrics*/}
           <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
             <h2 className="text-base font-bold mb-3 mx-2">Revenue Metrics</h2>
-            <div className="space-y-2"> {/* Adds spacing between items */}
+            <div className="space-y-2">
 
               {/* Monthly Sales Est Row */}
               <div className="flex justify-between items-center mx-5 text-sm">
@@ -559,12 +436,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
             </div>
           </div>
 
-
-
-
           {/*----------------------------------------------------------------*/}
           { /* Group 2: Pricing */}
           <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
+
+            {/* Section Header */}
             <div className="flex justify-between items-center mb-3 mx-2">
               <h2 className="text-base font-bold">Pricing</h2>
               <button
@@ -575,63 +451,65 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 ↻
               </button>
             </div>
-            <div className="space-y-2 text-sm">
 
+            {/* Section Content */}
+            <div className="space-y-2 text-sm">
 
               {/* Product Cost Row */}
               <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                <label className={DEFAULT_LABEL_CLASS}>
                   Product Cost
                 </label>
                 <div className="flex items-center w-full">
-                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                   <input
                     type="text"
                     value={rawProductCost !== null ? rawProductCost : productCost.toFixed(2)}
                     onChange={(e) => {
-                      setRawProductCost(e.target.value); // Capture raw input
-                      setHasEdited((prev) => ({ ...prev, productCost: true })); // Mark as edited
+                      setRawProductCost(e.target.value);
+                      setHasEdited((prev) => ({ ...prev, productCost: true }));
                     }}
                     onBlur={() => {
                       if (rawProductCost !== null) {
-                        const formattedValue = parseFloat(rawProductCost).toFixed(2); // Format input
-                        setProductCost(parseFloat(formattedValue)); // Update state
-                        setRawProductCost(null); // Clear raw input
+                        const formattedValue = parseFloat(rawProductCost).toFixed(2);
+                        setProductCost(parseFloat(formattedValue));
+                        setRawProductCost(null);
                       }
                     }}
-                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.productCost ? "text-black font-bold" : "text-gray-700"}`}
+                    className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.productCost ? "text-black font-bold" : "text-gray-700"}`}
                   />
                 </div>
               </div>
 
               {/* Sale Price Row */}
               <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                <label className={DEFAULT_LABEL_CLASS}>
                   Sale Price
                 </label>
                 <div className="flex items-center w-full">
-                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                   <input
                     type="text"
                     value={rawSalePrice !== null ? rawSalePrice : salePrice.toFixed(2)}
-                    onChange={(e) => setRawSalePrice(e.target.value)} // Update raw input
+                    onChange={(e) => setRawSalePrice(e.target.value)}
                     onBlur={() => {
                       const formattedValue = parseFloat(rawSalePrice || salePrice.toString()).toFixed(2);
-                      setSalePrice(parseFloat(formattedValue)); // Update salePrice state
-                      setRawSalePrice(null); // Clear raw input state
-                      setHasEdited((prev) => ({ ...prev, salePrice: true })); // Mark Additional Fees as edited
+                      setSalePrice(parseFloat(formattedValue));
+                      setRawSalePrice(null);
+                      setHasEdited((prev) => ({ ...prev, salePrice: true }));
                     }}
-                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.salePrice ? "text-black font-bold" : "text-gray-700"}`}
+                    className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.salePrice ? "text-black font-bold" : "text-gray-700"}`}
                   />
                 </div>
               </div>
             </div>
           </div>
 
-
           {/*----------------------------------------------------------------*/}
           {/* Group 3: Shipping Dimensions */}
           <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
+
+            {/* Section Header */}
             <div className="flex justify-between items-center mb-3 mx-2">
               <h2 className="text-base font-bold">Shipping Dimensions</h2>
               <button
@@ -642,11 +520,13 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 ↻
               </button>
             </div>
+
+            {/* Section Content */}
             <div className="space-y-2 text-sm">
 
               {/* Length Row */}
               <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                <label className={DEFAULT_LABEL_CLASS}>
                   Length
                 </label>
                 <div className="flex items-center w-full">
@@ -660,15 +540,15 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       setRawLength(null); // Clear raw input state
                       setHasEdited((prev) => ({ ...prev, shippingLength: true })); // Mark Additional Fees as edited
                     }}
-                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.shippingLength ? "text-black font-bold" : "text-gray-700"}`}
+                    className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingLength ? "text-black font-bold" : "text-gray-700"}`}
                   />
-                  <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">in</span>
+                  <span className={DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS}>in</span>
                 </div>
               </div>
 
               {/* Width Row */}
               <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                <label className={DEFAULT_LABEL_CLASS}>
                   Width
                 </label>
                 <div className="flex items-center w-full">
@@ -682,15 +562,15 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       setRawWidth(null); // Clear raw input state
                       setHasEdited((prev) => ({ ...prev, shippingWidth: true })); // Mark Additional Fees as edited
                     }}
-                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.shippingWidth ? "text-black font-bold" : "text-gray-700"}`}
+                    className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingWidth ? "text-black font-bold" : "text-gray-700"}`}
                   />
-                  <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">in</span>
+                  <span className={DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS}>in</span>
                 </div>
               </div>
 
               {/* Height Row */}
               <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                <label className={DEFAULT_LABEL_CLASS}>
                   Height
                 </label>
                 <div className="flex items-center w-full">
@@ -704,15 +584,15 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       setRawHeight(null); // Clear raw input state
                       setHasEdited((prev) => ({ ...prev, shippingHeight: true })); // Mark Additional Fees as edited
                     }}
-                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.shippingHeight ? "text-black font-bold" : "text-gray-700"}`}
+                    className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingHeight ? "text-black font-bold" : "text-gray-700"}`}
                   />
-                  <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">in</span>
+                  <span className={DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS}>in</span>
                 </div>
               </div>
 
               {/* Weight Row */}
               <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                <label className={DEFAULT_LABEL_CLASS}>
                   Weight
                 </label>
                 <div className="flex items-center w-full">
@@ -726,20 +606,20 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       setRawWeight(null); // Clear raw input state
                       setHasEdited((prev) => ({ ...prev, weight: true })); // Mark Additional Fees as edited
                     }}
-                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.weight ? "text-black font-bold" : "text-gray-700"}`}
+                    className={`${DEFAULT_LEFT_INPUT_CLASS}  ${hasEdited.weight ? "text-black font-bold" : "text-gray-700"}`}
                   />
-                  <span className="p-1 inline-block border rounded-r bg-gray-100 text-gray-700">lbs</span>
+                  <span className={DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS}>lbs</span>
                 </div>
               </div>
 
             </div>
           </div>
 
-
-
           {/*----------------------------------------------------------------*/}
           {/* Group 4: Fees */}
           <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
+
+            {/* Section Header */}
             <div className="flex justify-between items-center mb-3 mx-2">
               <h2 className="text-base font-bold">Fees</h2>
               <button
@@ -750,15 +630,17 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 ↻
               </button>
             </div>
+
+            {/* Section Content */}
             <div className="space-y-2 text-sm">
 
               {/* Referral Fee Row */}
               <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                <label className={DEFAULT_LABEL_CLASS}>
                   Referral Fee
                 </label>
                 <div className="flex items-center w-full">
-                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                   <input
                     type="text"
                     value={rawReferralFee !== null ? rawReferralFee : referralFee.toFixed(2)} // Use rawReferralFee if editing, otherwise formatted referralFee
@@ -769,16 +651,16 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       setRawReferralFee(null); // Clear rawReferralFee state
                       setHasEdited((prev) => ({ ...prev, referralFee: true })); // Mark Additional Fees as edited
                     }}
-                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.referralFee ? "text-black font-bold" : "text-gray-700"}`}
+                    className={`${DEFAULT_RIGHT_INPUT_CLASS}  ${hasEdited.referralFee ? "text-black font-bold" : "text-gray-700"}`}
                   />
                 </div>
               </div>
 
               {/* WFS Fee Row */}
               <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">WFS Fee</label>
+                <label className={DEFAULT_LABEL_CLASS}>WFS Fee</label>
                 <div className="flex items-center w-full">
-                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                   <input
                     type="text"
                     value={rawWfsFee !== null ? rawWfsFee : wfsFee.toFixed(2)} // Show raw or formatted WFS Fee
@@ -794,7 +676,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                         setRawWfsFee(null); // Clear raw input
                       }
                     }}
-                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.wfsFee ? "text-black font-bold" : "text-gray-700"
+                    className={`${DEFAULT_RIGHT_INPUT_CLASS}  ${hasEdited.wfsFee ? "text-black font-bold" : "text-gray-700"
                       }`}
                   />
                 </div>
@@ -802,9 +684,9 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
 
               {/* Inbound Shipping Fee Row */}
               <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">Inbound Shipping Fee</label>
+                <label className={DEFAULT_LABEL_CLASS}>Inbound Shipping Fee</label>
                 <div className="flex items-center w-full">
-                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                   <input
                     type="text"
                     value={rawInboundShippingFee !== null ? rawInboundShippingFee : inboundShippingFee.toFixed(2)}
@@ -820,7 +702,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                         setHasEdited((prev) => ({ ...prev, inboundShippingFee: true })); // Mark as edited
                       }
                     }}
-                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.inboundShippingFee ? "text-black font-bold" : "text-gray-700"
+                    className={`${DEFAULT_RIGHT_INPUT_CLASS}  ${hasEdited.inboundShippingFee ? "text-black font-bold" : "text-gray-700"
                       }`}
                   />
                 </div>
@@ -828,9 +710,9 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
 
               {/* Storage Fee Row */}
               <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">Storage Fee</label>
+                <label className={DEFAULT_LABEL_CLASS}>Storage Fee</label>
                 <div className="flex items-center w-full">
-                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                   <input
                     type="text"
                     value={rawStorageFee !== null ? rawStorageFee : storageFee.toFixed(2)}
@@ -846,7 +728,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                         setHasEdited((prev) => ({ ...prev, storageFee: true })); // Mark as edited
                       }
                     }}
-                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.storageFee ? "text-black font-bold" : "text-gray-700"
+                    className={`${DEFAULT_RIGHT_INPUT_CLASS}  ${hasEdited.storageFee ? "text-black font-bold" : "text-gray-700"
                       }`}
                   />
                 </div>
@@ -854,11 +736,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
 
               {/* Prep Fee Row */}
               <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                <label className={DEFAULT_LABEL_CLASS}>
                   Prep Fee
                 </label>
                 <div className="flex items-center w-full">
-                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                   <input
                     type="text"
                     value={rawPrepFee !== null ? rawPrepFee : prepFee.toFixed(2)}
@@ -874,18 +756,18 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                         setHasEdited((prev) => ({ ...prev, prepFee: true })); // Mark Additional Fees as edited
                       }
                     }}
-                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.prepFee ? "text-black font-bold" : "text-gray-700"}`}
+                    className={`${DEFAULT_RIGHT_INPUT_CLASS}  ${hasEdited.prepFee ? "text-black font-bold" : "text-gray-700"}`}
                   />
                 </div>
               </div>
 
               {/* Additional Fees Row */}
               <div className="flex items-center mx-5">
-                <label className="p-1 mr-2 min-w-[150px] text-left whitespace-nowrap">
+                <label className={DEFAULT_LABEL_CLASS}>
                   Additional Fees
                 </label>
                 <div className="flex items-center w-full">
-                  <span className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700">$</span>
+                  <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                   <input
                     type="text"
                     value={rawAdditionalFees !== null ? rawAdditionalFees : additionalFees.toFixed(2)} // Display raw input if editing, otherwise formatted additionalFees
@@ -901,26 +783,31 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                         setRawAdditionalFees(null); // Clear raw input state
                       }
                     }}
-                    className={`p-1 pr-3 text-right w-full border rounded ${hasEdited.additionalFees ? "text-black font-bold" : "text-gray-700"}`}
+                    className={`${DEFAULT_RIGHT_INPUT_CLASS}  ${hasEdited.additionalFees ? "text-black font-bold" : "text-gray-700"}`}
                   />
                 </div>
               </div>
             </div>
           </div>
 
-
-
           {/*----------------------------------------------------------------*/}
           {/* Group 5: Contract Category */}
           <div className="w-full mb-2 p-1 bg-white rounded-lg shadow-sm">
-            <h2 className="text-base font-bold mb-3 mx-2">Contract Category</h2>
-            <div className="flex items-center mx-5 text-sm">
 
+            {/* Section Header */}
+            <h2 className="text-base font-bold mb-3 mx-2">Contract Category</h2>
+
+            {/* Dropdown for Contract Category */}
+            <div className="flex items-center mx-5 text-sm">
               <div className="w-full">
+
+                {/* Dropdown element */}
                 <select
                   value={contractCategory}
                   onChange={(e) => setContractCategory(e.target.value)}
                   className="p-1 w-full border border-gray-300 rounded bg-gray-100 text-gray-700">
+
+                  {/* Populate options dynamically */}
                   {contractCategoryOptions.map((option) => (
                     <option key={option} value={option}>
                       {option}
@@ -932,12 +819,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
 
           </div>
 
-
-
           {/*----------------------------------------------------------------*/}
           {/* Group 6: Fulfillment Buttons */}
           <div className="flex space-x-2 my-4 mx-5">
-            {/* Walmart Fulfilled */}
+
+            {/* Walmart Fulfilled Button */}
             <div className="flex-1">
               <label
                 className={`flex flex-col items-center justify-center p-2 border-2 cursor-pointer ${isWalmartFulfilled
@@ -945,10 +831,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                   : 'bg-gray-200 text-black shadow-none'
                   }`}
                 onClick={() => {
-                  setIsWalmartFulfilled(true);
+                  setIsWalmartFulfilled(true); // Set fulfillment state to Walmart Fulfilled
                   setHasEdited({}); // Clear edited states on toggle
                 }}
               >
+                {/* Hidden radio button for accessibility */}
                 <input
                   type="radio"
                   checked={isWalmartFulfilled}
@@ -960,7 +847,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
               </label>
             </div>
 
-            {/* Seller Fulfilled */}
+            {/* Seller Fulfilled Button */}
             <div className="flex-1">
               <label
                 className={`flex flex-col items-center justify-center p-2 border-2 cursor-pointer ${!isWalmartFulfilled
@@ -968,7 +855,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                   : 'bg-gray-200 text-black shadow-none'
                   }`}
                 onClick={() => {
-                  setIsWalmartFulfilled(false);
+                  setIsWalmartFulfilled(false); // Set fulfillment state to Seller Fulfilled
                   setHasEdited({}); // Clear edited states on toggle
                 }}
               >
@@ -990,3 +877,9 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     </div >
   );
 }
+
+/////////////////////////////////////////////////////
+// Export Statement
+/////////////////////////////////////////////////////
+
+export default Pricing;
