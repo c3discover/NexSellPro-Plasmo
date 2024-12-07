@@ -26,8 +26,10 @@ export const SettingsModal: React.FC<{
     minROI: string;
     minMonthlySales: string;
     minTotalRatings: string;
+    minOverallRating: string,
     minRatings30Days: string;
     maxSellers: string;
+    maxWfsSellers: string;
     inboundShippingCost: string;
     storageLength: string;
     season: string;
@@ -39,8 +41,10 @@ export const SettingsModal: React.FC<{
     minROI: "0",
     minMonthlySales: "Coming Soon...",
     minTotalRatings: "0",
+    minOverallRating: "0.0",
     minRatings30Days: "0",
     maxSellers: "0",
+    maxWfsSellers: "0",
     inboundShippingCost: "0.00",
     storageLength: "1",
     season: "Jan-Sep",
@@ -62,15 +66,16 @@ export const SettingsModal: React.FC<{
   // New state to handle the raw values for all metrics
   const [rawMetrics, setRawMetrics] = useState<Partial<typeof desiredMetrics>>({});
 
-
   // New state to handle the raw value
   const [rawMinProfit, setRawMinProfit] = useState<string | null>(null);
   const [rawMinMargin, setRawMinMargin] = useState<string | null>(null);
   const [rawMinROI, setRawMinROI] = useState<string | null>(null);
   const [rawMinMonthlySales, setRawMinMonthlySales] = useState<string | null>(null);
   const [rawMinTotalRatings, setRawMinTotalRatings] = useState<string | null>(null);
+  const [rawMinOverallRating, setRawMinOverallRating] = useState<string | null>(null);
   const [rawMinRatings30Days, setRawMinRatings30Days] = useState<string | null>(null);
   const [rawMaxSellers, setRawMaxSellers] = useState<string | null>(null);
+  const [rawMaxWfsSellers, setRawMaxWfsSellers] = useState<string | null>(null);
   const [rawInboundShippingCost, setRawInboundShippingCost] = useState<string | null>(null);
   const [rawStorageLength, setRawStorageLength] = useState<string | null>(null);
   const [rawSeason, setRawSeason] = useState<string | null>(null);
@@ -108,8 +113,10 @@ export const SettingsModal: React.FC<{
       minROI: "0",
       minMonthlySales: "Coming Soon...",
       minTotalRatings: "0",
+      minOverallRating: "0.0",
       minRatings30Days: "0",
       maxSellers: "0",
+      maxWfsSellers: "0",
       inboundShippingCost: "0.00",
       storageLength: "1",
       season: "Jan-Sep",
@@ -150,6 +157,8 @@ export const SettingsModal: React.FC<{
       if (["minProfit", "inboundShippingCost", "prepCost", "additionalCosts"].includes(fieldName)) {
         // Format monetary values to 2 decimal places
         formattedValue = parseFloat(rawMetrics[fieldName] ?? "0").toFixed(2);
+      } if (fieldName === "maxWfsSellers") {
+        formattedValue = Math.max(0, parseInt(rawMetrics[fieldName] ?? "0", 10)).toString();
       } else {
         // Format other fields as integers
         formattedValue = Math.round(parseFloat(rawMetrics[fieldName] ?? "0")).toString();
@@ -294,7 +303,7 @@ export const SettingsModal: React.FC<{
             {/* Minimum Total Ratings */}
             <div className="flex items-center">
               <label className="p-1 mr-2 min-w-[160px]">
-                Minimum Total Ratings
+                Minimum Total # of Ratings
               </label>
               <input
                 type="text"
@@ -303,6 +312,38 @@ export const SettingsModal: React.FC<{
                 onChange={handleDesiredMetricsChange}
                 onBlur={() => handleBlur("minTotalRatings")}
                 className={`p-1 pr-3 text-right w-full border rounded ${rawMetrics.minTotalRatings !== undefined ? "font-bold" : ""}`}
+                style={{ fontSize: "14px", height: "28px" }}
+              />
+            </div>
+            {/* Minimum Overall Rating */}
+            <div className="flex items-center">
+              <label className="p-1 mr-2 min-w-[160px]">
+                Minimum Overall Rating
+              </label>
+              <input
+                type="number"
+                name="minOverallRating"
+                step="0.1"
+                min="0.0"
+                max="5.0"
+                value={rawMetrics.minOverallRating !== undefined ? rawMetrics.minOverallRating : desiredMetrics.minOverallRating || "0.0"}
+                onChange={handleDesiredMetricsChange}
+                onBlur={(e) => {
+                  const inputValue = parseFloat(e.target.value || "0.0");
+                  const clampedValue = Math.min(Math.max(inputValue, 0.0), 5.0);
+                  const formattedValue = clampedValue.toFixed(1);
+
+                  setRawMetrics((prev) => ({
+                    ...prev,
+                    [e.target.name]: formattedValue,
+                  }));
+
+                  setDesiredMetrics((prev) => ({
+                    ...prev,
+                    [e.target.name]: formattedValue,
+                  }));
+                }}
+                className={`p-1 pr-3 text-right w-full border rounded ${rawMetrics.minOverallRating !== undefined ? "font-bold" : ""}`}
                 style={{ fontSize: "14px", height: "28px" }}
               />
             </div>
@@ -335,6 +376,37 @@ export const SettingsModal: React.FC<{
                 onChange={handleDesiredMetricsChange}
                 onBlur={() => handleBlur("maxSellers")}
                 className={`p-1 pr-3 text-right w-full border rounded ${rawMetrics.maxSellers !== undefined ? "font-bold" : ""}`}
+                style={{ fontSize: "14px", height: "28px" }}
+              />
+            </div>
+
+            {/* Maximum WFS Sellers */}
+            <div className="flex items-center">
+              <label className="p-1 mr-2 min-w-[160px]">
+                Maximum WFS Sellers
+              </label>
+              <input
+                type="number"
+                name="maxWfsSellers"
+                step="1"
+                min="0"
+                value={rawMetrics.maxWfsSellers !== undefined ? rawMetrics.maxWfsSellers : desiredMetrics.maxWfsSellers || "0"}
+                onChange={handleDesiredMetricsChange}
+                onBlur={(e) => {
+                  const inputValue = parseInt(e.target.value || "0", 10);
+                  const clampedValue = Math.max(inputValue, 0); // Ensure no negative values
+
+                  setRawMetrics((prev) => ({
+                    ...prev,
+                    [e.target.name]: clampedValue,
+                  }));
+
+                  setDesiredMetrics((prev) => ({
+                    ...prev,
+                    [e.target.name]: clampedValue,
+                  }));
+                }}
+                className={`p-1 pr-3 text-right w-full border rounded ${rawMetrics.maxWfsSellers !== undefined ? "font-bold" : ""}`}
                 style={{ fontSize: "14px", height: "28px" }}
               />
             </div>

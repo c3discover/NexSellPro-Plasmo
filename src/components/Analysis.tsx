@@ -11,9 +11,9 @@ import getProductDetails from '../utils/getData';
 
 // Define class names as constants to maintain consistency and avoid repeating strings
 const CLASS_SECTION_HEADER = "bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black";
-const CLASS_SECTION_CONTENT_GREEN = "bg-green-100 text-green-700 border-green-500 text-center rounded-b-lg shadow-md shadow-black border-2";
-const CLASS_SECTION_CONTENT_RED = "bg-red-100 text-red-700 border-red-500 text-center rounded-b-lg shadow-md shadow-black border-2";
-const CLASS_DEFAULT_CONTENT = "bg-white text-black border-gray-500 text-xs p-1";
+const CLASS_SECTION_CONTENT_GREEN = "text-xs font-bold bg-green-100 text-green-600 border-2 border-green-500 text-center p-1 w-full rounded-b-lg shadow-md shadow-black";
+const CLASS_SECTION_CONTENT_RED = "text-xs font-bold bg-red-200 text-red-600 border-2 border-red-500 text-center p-1 w-full rounded-b-lg shadow-md shadow-black";
+const CLASS_DEFAULT_CONTENT = "text-xs bg-white text-black text-center border-2 border-black p-1 w-full text-center rounded-b-lg shadow-md shadow-black";
 const CLASS_BUTTON_STYLE = "text-black text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl";
 
 // Default values and thresholds
@@ -328,6 +328,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       sellerName: string | null;
       isProSeller: boolean;
       fulfillmentStatus: string;
+      arrivalDate: string | null; // Add arrival date to captured data
     }> = [];
 
     // Select all offers for the sellers in the modal
@@ -338,6 +339,11 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       // Extract price
       const priceElement = offer.querySelector(".b.f4.w-50");
       const price = priceElement ? parseFloat(priceElement.textContent.replace(/[^0-9.]/g, '')) : null;
+
+      // Extract arrival date
+      const arrivalElement = offer.querySelector("span.b.black");
+      const arrivalDateMatch = arrivalElement?.textContent?.match(/arrives by [a-zA-Z]+, ([a-zA-Z]+ \d+)/);
+      const arrivalDate = arrivalDateMatch ? arrivalDateMatch[1] : null;
 
       // Extract seller name, prioritizing `aria-label` if it includes "Sold and shipped by"
       const sellerInfoElement = offer.querySelector("[data-testid='product-seller-info']");
@@ -365,7 +371,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         productDetailsUsed.brand.toLowerCase().split(" ").some((brandPart) => seller.toLowerCase().includes(brandPart));
       //OLD const brandMatchesSeller = product.brand && seller && product.brand.toLowerCase().split(' ').some(brandPart => seller.toLowerCase().includes(brandPart));
 
-
       // Set fulfillment status based on the conditions
       let fulfillmentStatus;
       if (seller === "Walmart.com") {
@@ -390,7 +395,8 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         priceInfo: { currentPrice: { price: price, priceString: price !== null ? `$${price.toFixed(2)}` : "-" } },
         sellerName: seller,
         isProSeller,
-        fulfillmentStatus
+        fulfillmentStatus,
+        arrivalDate, // Add extracted arrival date
       });
     });
 
@@ -429,6 +435,83 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       ? CLASS_SECTION_CONTENT_GREEN // Green for meeting or exceeding threshold
       : CLASS_SECTION_CONTENT_RED;  // Red for below threshold
   };
+
+  /**
+   * Apply formatting to the Date of Most Recent Reviews box based on the settings.
+   * @returns {string} The CSS classes to apply for styling the element.
+   */
+  const applyRecentReviewsHighlight = (): string => {
+    // Retrieve the minimum 30-day reviews threshold from settings
+    const minRatings30Days = parseFloat(
+      JSON.parse(localStorage.getItem(LOCAL_STORAGE_METRICS_KEY) || "{}")?.minRatings30Days || "0"
+    );
+
+    // Count reviews within the last 30 days
+    const recentReviewCount30Days =
+      productDetailsUsed?.reviewDates?.filter((date) => getDaysAgo(date) <= 30).length || 0;
+
+    // Determine CSS class based on the threshold
+    return recentReviewCount30Days >= minRatings30Days
+      ? CLASS_SECTION_CONTENT_GREEN // Green for sufficient 30-day reviews
+      : CLASS_DEFAULT_CONTENT; // Default for insufficient 30-day reviews
+  };
+
+  /**
+ * Apply formatting to the overall rating element based on the settings.
+ * @returns {string} The CSS classes to apply for styling the overall rating element.
+ */
+  const applyOverallRatingHighlight = (): string => {
+    // Get overall rating from product details
+    const overallRating =
+      typeof productDetailsUsed?.overallRating === "number"
+        ? productDetailsUsed.overallRating
+        : 0;
+
+    // Get minimum overall rating from settings
+    const storedSettings = JSON.parse(localStorage.getItem(LOCAL_STORAGE_METRICS_KEY) || "{}");
+    const minOverallRating =
+      typeof storedSettings.minOverallRating === "string"
+        ? parseFloat(storedSettings.minOverallRating)
+        : storedSettings.minOverallRating || 0;
+
+    // Determine CSS classes based on the threshold
+    if (minOverallRating === 0) {
+      return CLASS_DEFAULT_CONTENT; // Default formatting
+    }
+    return overallRating >= minOverallRating
+      ? CLASS_SECTION_CONTENT_GREEN // Green for meeting or exceeding threshold
+      : CLASS_SECTION_CONTENT_RED;  // Red for below threshold
+  };
+
+
+  /**
+   * Apply formatting to the WFS sellers element based on the settings.
+   * @returns {string} The CSS classes to apply for styling the WFS sellers element.
+   */
+  const applyMaxWfsSellersHighlight = (): string => {
+    // Get the current WFS seller count
+    const currentWfsSellers = capturedData.filter(
+      seller => seller.fulfillmentStatus === "WFS"
+    ).length;
+
+    // Get the maximum WFS sellers threshold from settings
+    const storedSettings = JSON.parse(localStorage.getItem(LOCAL_STORAGE_METRICS_KEY) || "{}");
+    const maxWfsSellers =
+      typeof storedSettings.maxWfsSellers === "string"
+        ? parseFloat(storedSettings.maxWfsSellers)
+        : storedSettings.maxWfsSellers || null;
+
+    // Determine CSS classes based on the threshold
+    if (maxWfsSellers === null || maxWfsSellers === 0) {
+      return CLASS_DEFAULT_CONTENT; // Default formatting
+    }
+
+    // Apply green or red formatting based on comparison
+    return currentWfsSellers <= maxWfsSellers
+      ? CLASS_SECTION_CONTENT_GREEN // Green if below or equal to max threshold
+      : CLASS_SECTION_CONTENT_RED;  // Red if above the max threshold
+  };
+
 
   // Function to close the modal after extracting data
   const closeModal = () => {
@@ -482,6 +565,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
       className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}
     >
 
+      {/* Section Header */}
       <h1
         className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
         onClick={toggleOpen}
@@ -489,54 +573,60 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         {isOpen ? "🔽  Analysis" : "▶️  Analysis"}
       </h1>
 
+      {/* Content Wrapper */}
       <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>
 
 
-        {/* Top Section: Total Reviews and Date of Last Review */}
+        {/* Top Review Section: Total Reviews and Date of Last Review */}
         <div className="w-full p-2 flex justify-between items-center">
+
+          {/* Total Ratings */}
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className={CLASS_SECTION_HEADER}>
               Total Ratings
             </p>
             <p
-              className={`text-center rounded-b-lg shadow-md shadow-black border-2 ${applyTotalRatingsHighlight()}`}
+              className={`${applyTotalRatingsHighlight()}`}
             >
               {productDetailsUsed ? productDetailsUsed.numberOfRatings : "-"}
             </p>
           </div>
 
-
+          {/* Total Reviews */}
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className={CLASS_SECTION_HEADER}>
               Total Reviews
             </p>
-            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
+            <p className={CLASS_DEFAULT_CONTENT}>
               {productDetailsUsed ? productDetailsUsed.numberOfReviews : "-"} {/* Display total reviews */}
             </p>
           </div>
 
+          {/* Overall Rating */}
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className={CLASS_SECTION_HEADER}>
               Overall Rating
             </p>
-            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
-              {productDetailsUsed ? productDetailsUsed.overallRating : "-"} {/* Display overall rating */}
+            <p className={`${applyOverallRatingHighlight()}`}>
+              {productDetailsUsed && typeof productDetailsUsed.overallRating === "number"
+                ? productDetailsUsed.overallRating.toFixed(1)
+                : "-"} {/* Display overall rating */}
             </p>
           </div>
+
+
         </div>
 
-
-
-        {/* Middle Section: New Reviews */}
+        {/* Top Review Section: New Reviews */}
         <div className="w-[95%] mx-auto px-2 pb-4 flex justify-between items-center">
           <div className="w-full p-1">
-            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className={CLASS_SECTION_HEADER}>
               Date of Most Recent Reviews
             </p>
-            <div className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
+            <div className={`${applyRecentReviewsHighlight()}`}>
               {productDetailsUsed && productDetailsUsed.reviewDates && productDetailsUsed.reviewDates.length > 0
                 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 mx-10 justify-center"> {/* Use grid layout for 3 columns */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 mx-10 justify-center">
                     {productDetailsUsed.reviewDates
                       .map(dateString => new Date(dateString)) // Convert strings to Date objects
                       .sort((a, b) => b.getTime() - a.getTime()) // Sort by time (newest to oldest)
@@ -570,13 +660,15 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
                                 style={{
                                   ...circleStyle,
                                   display: 'inline-block',
-                                  width: '15px',
-                                  height: '15px',
-                                  lineHeight: '15px',
+                                  width: '20px',
+                                  height: '20px',
+                                  lineHeight: '20px',
+                                  fontSize: '10px',
                                   borderRadius: '50%',
                                   textAlign: 'center',
                                   marginLeft: '10px',
                                   fontWeight: 'bold',
+                                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                                 }}
                               >
                                 {circleLabel}
@@ -591,121 +683,120 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
           </div>
         </div>
 
-
-        {/* Middle Section: Stock Information */}
+        {/* Top Stock Section: Stock Information */}
         <div className="w-full p-2 flex justify-between items-center">
+
+          {/* Total Stock */}
           <div className="w-full p-1">
-            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className={CLASS_SECTION_HEADER}>
               Total Stock
             </p>
-            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
-              {product.stock || "-"}
+            <p className={CLASS_DEFAULT_CONTENT}>
+              {productDetailsUsed?.stock || "-"}
             </p>
           </div>
         </div>
 
-
         <div className="w-[95%] mx-auto px-2 pb-4 flex justify-between items-center">
+
+          {/* Shipping Stock */}
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className={CLASS_SECTION_HEADER}>
               Shipping Stock
             </p>
-            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
-              {product.fulfillmentOptions?.[0]?.availableQuantity || 0}
+            <p className={CLASS_DEFAULT_CONTENT}>
+              {productDetailsUsed?.fulfillmentOptions?.[0]?.availableQuantity || 0}
             </p>
           </div>
 
+          {/* Pickup Stock */}
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className={CLASS_SECTION_HEADER}>
               Pickup Stock
             </p>
-            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
-              {product.fulfillmentOptions?.[1]?.availableQuantity || 0}
+            <p className={CLASS_DEFAULT_CONTENT}>
+              {productDetailsUsed?.fulfillmentOptions?.[1]?.availableQuantity || 0}
             </p>
           </div>
 
+          {/* Delivery Stock */}
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className={CLASS_SECTION_HEADER}>
               Delivery Stock
             </p>
-            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
-              {product.fulfillmentOptions?.[2]?.availableQuantity || 0}
+            <p className={CLASS_DEFAULT_CONTENT}>
+              {productDetailsUsed?.fulfillmentOptions?.[2]?.availableQuantity || 0}
             </p>
           </div>
         </div>
 
 
-
-
-
-
-
-
-        {/* Middle Section: Seller Information */}
+        {/* Top Seller Section: Seller Information */}
         <div className="w-full p-2 flex justify-between items-center">
+
+          {/* Total Sellers */}
           <div className="w-full p-1">
-            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className={CLASS_SECTION_HEADER}>
               Total Sellers
             </p>
-            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
-              {product.totalSellers || "-"}            </p>
+            <p className={CLASS_DEFAULT_CONTENT}>
+              {productDetailsUsed?.totalSellers || "-"}            </p>
           </div>
         </div>
 
         <div className="w-[95%] mx-auto px-2 pb-4 flex justify-between items-center">
+
+          {/* WFS Sellers */}
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className={CLASS_SECTION_HEADER}>
               WFS Sellers
             </p>
-            <p className="text-xs text-black text-center bg-white border-2 border-black p-1 w-full rounded-b-lg shadow-md shadow-black">
-              {wfsSellerCount || 0}
+            <p
+              className={`${applyMaxWfsSellersHighlight()}`}
+            >
+              {capturedData.filter(seller => seller.fulfillmentStatus === "WFS").length || "-"}
             </p>
           </div>
 
+          {/* Walmart Sells */}
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className={CLASS_SECTION_HEADER}>
               Walmart Sells
             </p>
-            <p className={`text-xs text-center p-1 w-full rounded-b-lg shadow-md shadow-black border-2 border-black font-bold ${product.sellerName === "Walmart.com"
-              ? CLASS_SECTION_CONTENT_RED
-              : CLASS_SECTION_CONTENT_GREEN
-              }`}>
-              {product.sellerName === "Walmart.com" ? "YES" : "NO"}
+            <p
+              className={`${CLASS_DEFAULT_CONTENT} ${productDetailsUsed?.sellerName === "Walmart.com"
+                ? CLASS_SECTION_CONTENT_RED
+                : CLASS_SECTION_CONTENT_GREEN
+                }`}
+            >
+              {productDetailsUsed?.sellerName === "Walmart.com" ? "YES" : "NO"}
             </p>
           </div>
 
+          {/* Brand Sells */}
           <div className="w-1/3 p-1">
-            <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+            <p className={CLASS_SECTION_HEADER}>
               Brand Sells
             </p>
             <p
-              className={`text-xs text-center p-1 w-full rounded-b-lg shadow-md shadow-black border-2 border-black font-bold ${isBrandSelling
+              className={`${CLASS_DEFAULT_CONTENT} ${isBrandSelling
                 ? CLASS_SECTION_CONTENT_RED
                 : CLASS_SECTION_CONTENT_GREEN
                 }`}
             >
               {isBrandSelling ? "YES" : "NO"}
-
             </p>
           </div>
 
         </div>
 
-
-
-
-
-
-
-
-
-        {/* Bottom Section: Seller Table */}
+        {/* Bottom Seller Section: Seller Table */}
 
         {/* Toggle Button for the Seller Table */}
-        <div className="flex items-center">
+        <div className="flex items-center justify-start px-2">
           <button
             onClick={toggleTable}
-            className="text-xs font-semibold px-2 py-0.5 ml-2 mb-0 bg-gray-200 rounded shadow hover:bg-gray-300"
+            className="text-xs font-semibold px-2 py-0.5 bg-gray-200 rounded shadow hover:bg-gray-300 border border-gray-400"
             aria-label="Toggle seller table"
           >
             {isTableExpanded ? "🔼" : "🔽"}
@@ -713,77 +804,94 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         </div>
 
         {/* Conditionally Render the Seller Table */}
-
         <div className="w-full px-2 pb-2">
-          <table className="min-w-full border-collapse">
+          <table className="min-w-full border-collapse border border-black">
+
+            {/* Table Header */}
             <thead>
               <tr>
-                <th className="px-4 py-2 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black">
-                  Seller Name
+                <th className={"py-1 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black"}>
+                  SELLER NAME
                 </th>
-                <th className="px-4 py-2 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black">
-                  Price
+                <th className={"py-1 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black"}>
+                  PRICE
                 </th>
-                <th className="px-4 py-2 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black">
-                  Fulfillment
+                <th className={"py-1 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black"}>
+                  TYPE
+                </th>
+                <th className={"py-1 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black"}>
+                  ARRIVES
                 </th>
               </tr>
             </thead>
+
+            {/* Table Body */}
             {isTableExpanded && (
               <tbody className="bg-white divide-y divide-gray-200">
+                {/* Check if capturedData has data */}
                 {capturedData && capturedData.length > 0 ? (
                   capturedData.map((item, index) => (
-                    <tr key={index}>
+                    <tr key={index} className="hover:bg-gray-100">
+
                       {/* Seller Name */}
-                      <td className="px-1 text-center align-middle whitespace-nowrap text-xs border-2 border-black bg-white">
+                      <td className="px-1 text-center text-2xs border-2 border-black bg-white">
                         {item.sellerName || "-"}
                         {item.isProSeller && (
                           <span className="checkmark-circle"></span>
                         )}
                       </td>
+
                       {/* Price */}
-                      <td className="px-1 text-center whitespace-nowrap text-xs border-2 border-black bg-white">
+                      <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
                         {item.priceInfo?.currentPrice?.priceString || "-"}
                       </td>
 
                       {/* Fulfillment Status */}
-                      <td className="px-1 text-center whitespace-nowrap text-xs border-2 border-black bg-white">
+                      <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
                         {item.fulfillmentStatus === "WMT" ? (
-                          <span className="bg-blue-100 border-blue-500 text-blue-700 font-bold border rounded-lg px-1">
+                          <span className="bg-blue-100 border-blue-500 text-blue-700 font-bold border rounded-lg px-2">
                             WMT
                           </span>
                         ) : item.fulfillmentStatus === "Brand-WFS" ? (
-                          <span className="bg-purple-100 border-purple-500 text-purple-700 font-bold border rounded-lg px-1">
+                          <span className="bg-purple-100 border-purple-500 text-purple-700 font-bold border rounded-lg px-2">
                             Brand-WFS
                           </span>
                         ) : item.fulfillmentStatus === "Brand-SF" ? (
-                          <span className="bg-purple-100 border-purple-500 text-purple-700 font-bold border rounded-lg px-1">
+                          <span className="bg-purple-100 border-purple-500 text-purple-700 font-bold border rounded-lg px-2">
                             Brand-SF
                           </span>
                         ) : item.fulfillmentStatus === "Brand-?" ? (
-                          <span className="bg-purple-100 border-purple-500 text-purple-700 font-bold border rounded-lg px-1">
+                          <span className="bg-purple-100 border-purple-500 text-purple-700 font-bold border rounded-lg px-2">
                             Brand-?
                           </span>
                         ) : item.fulfillmentStatus === "WFS" ? (
-                          <span className="bg-red-100 border-red-500 text-red-700 font-bold border rounded-lg px-1">
+                          <span className="bg-red-100 border-red-500 text-red-700 font-bold border rounded-lg px-2">
                             WFS
                           </span>
                         ) : item.fulfillmentStatus === "SF" ? (
-                          <span className="bg-green-100 border-green-500 text-green-700 font-bold border rounded-lg px-1">
+                          <span className="bg-green-100 border-green-500 text-green-700 font-bold border rounded-lg px-2">
                             SF
                           </span>
                         ) : (
-                          <span className="bg-yellow-100 text-black-700 font-bold border border-red-500 rounded-lg px-1">
+                          <span className="bg-yellow-100 text-black-700 font-bold border border-red-500 rounded-lg px-2">
                             ?
                           </span>
                         )}
                       </td>
+
+                      {/* Arrival Date */}
+                      <td className="px-1 text-center whitespace-nowrap text-2xs border-2 border-black bg-white">
+                        {item.arrivalDate || "-"} {/* Display extracted arrival date */}
+                      </td>
+
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={3} className="px-2 py-2 text-center text-xs border-2 border-black bg-white">
-                      No data available
+                    <td colSpan={4}
+                      className="px-2 py-4 text-center text-xs text-gray-500 italic border-2 border-black bg-white"
+                    >
+                      No seller data available
                     </td>
                   </tr>
                 )}
@@ -797,7 +905,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
     </div>
   );
 };
-
 
 ////////////////////////////////////////////////
 // Export Statement
