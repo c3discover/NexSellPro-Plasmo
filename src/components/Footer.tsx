@@ -44,7 +44,7 @@ export const Footer = () => {
     >
       {/* Company Information */}
       <p className="text-xs font-semibold">
-        WalAIWiz - Empowering Walmart Sellers with AI
+        WalAIWiz - Empowering Walmart Sellers with Data
       </p>
       <p className="text-xs font-light">
       Version: {version || "N/A"}
@@ -52,19 +52,19 @@ export const Footer = () => {
 
       {/* Links Section */}
       <div className="flex justify-center gap-4 mt-2">
-        <a href="/contact" className="text-sm underline hover:text-cyan-400">
+        <a href="/contact" className="text-xs underline hover:text-cyan-400">
           Contact Us
         </a>
-        <a href="/feedback" className="text-sm underline hover:text-cyan-400">
+        <a href="/feedback" className="text-xs underline hover:text-cyan-400">
           Send Feedback
         </a>
-        <a href="/about" className="text-sm underline hover:text-cyan-400">
+        <a href="/about" className="text-xs underline hover:text-cyan-400">
           About Us
         </a>
-        <a href="/privacy-policy" className="text-sm underline hover:text-cyan-400">
+        <a href="/privacy-policy" className="text-xs underline hover:text-cyan-400">
           Privacy Policy
         </a>
-        <a href="/terms" className="text-sm underline hover:text-cyan-400">
+        <a href="/terms" className="text-xs underline hover:text-cyan-400">
           Terms of Service
         </a>
       </div>

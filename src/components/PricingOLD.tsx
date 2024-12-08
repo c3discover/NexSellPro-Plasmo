@@ -403,46 +403,53 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
         <div id="Pricing" className="p-1 bg-[#d7d7d7] rounded-lg shadow-sm">
 
           {/*----------------------------------------------------------------*/}
-          {/*Group 1: Revenue - Key Metrics*/}
-          <div className="w-full mb-1 p-1 bg-[#FAFAF1] border border-1 rounded-lg shadow-lg shadow-black p-1">
+          <div className="section-wrapper">
+            {/*Group 1: Revenue - Key Metrics*/}
+            <div className="w-full mb-1 p-1 bg-white rounded-lg shadow-sm">
+              <h2 className={DEFAULT_HEADER_CLASS}>Revenue Metrics</h2>
+              <div className="space-y-2">
 
-            {/* Monthly Sales Est Row */}
-            <div className="flex justify-between items-center mx-8 text-xs">
-              <span className="font-semibold">Monthly Sales Est</span>
-              <span className="text-sm">Coming Soon...</span>
-            </div>
+                {/* Monthly Sales Est Row */}
+                <div className="flex justify-between items-center mx-5 text-sm">
+                  <span className="font-semibold">Monthly Sales Est</span>
+                  <span className="text-sm">Coming Soon...</span>
+                </div>
 
-            {/* Total Profit Row */}
-            <div className="flex justify-between items-center mx-8 text-xs">
-              <span className="font-semibold">Total Profit</span>
-              <span className="text-sm">{`$${totalProfit.toFixed(2)}`}</span>
-            </div>
+                {/* Total Profit Row */}
+                <div className="flex justify-between items-center mx-5 text-sm">
+                  <span className="font-semibold">Total Profit</span>
+                  <span className="text-sm">{`$${totalProfit.toFixed(2)}`}</span>
+                </div>
 
-            {/* Margin Row */}
-            <div className="flex justify-between items-center mx-8 text-xs">
-              <span className="font-semibold">Margin</span>
-              <span className="text-sm">{`${margin}%`}</span>
-            </div>
+                {/* Margin Row */}
+                <div className="flex justify-between items-center mx-5 text-sm">
+                  <span className="font-semibold">Margin</span>
+                  <span className="text-sm">{`${margin}%`}</span>
+                </div>
 
-            {/* ROI Row */}
-            <div className="flex justify-between items-center mx-8 text-xs">
-              <span className="font-semibold">ROI</span>
-              <span className={`text-sm  ${productCost === 0 ? "text-red-500 font-extrabold" : "text-black"}`}>
-                {productCost === 0 ? "Enter Cost" : `${roi}%`}
-              </span>
+                {/* ROI Row */}
+                <div className="flex justify-between items-center mx-5 text-sm">
+                  <span className="font-semibold">ROI</span>
+                  <span className={`text-sm  ${productCost === 0 ? "text-red-500 font-extrabold" : "text-black"}`}>
+                    {productCost === 0 ? "Enter Cost" : `${roi}%`}
+                  </span>
+                </div>
+
+              </div>
             </div>
           </div>
 
+          {/*----------------------------------------------------------------*/}
           <div className="section-wrapper">
-            {/* Group 2: Pricing */}
+            { /* Group 2: Pricing */}
             <div className="w-full mb-1 p-1 bg-white rounded-lg shadow-sm">
 
               {/* Section Header */}
-              <div className="flex justify-between items-center mb-1 mx-2">
+              <div className="flex justify-between items-center mb-3 mx-2">
                 <h2 className={DEFAULT_HEADER_CLASS}>Pricing</h2>
                 <button
                   onClick={resetPricing}
-                  className="reset-button"
+                  className="reset-button" // Updated class for better customization
                   aria-label="Reset Pricing"
                 >
                   ↻
@@ -450,11 +457,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
               </div>
 
               {/* Section Content */}
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1 mx-5">
+              <div className="space-y-2 text-sm">
 
                 {/* Product Cost Row */}
-                <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                <div className="flex items-center mx-5">
+                  <label className={DEFAULT_LABEL_CLASS}>
                     Product Cost
                   </label>
                   <div className="flex items-center w-full">
@@ -479,8 +486,8 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 </div>
 
                 {/* Sale Price Row */}
-                <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                <div className="flex items-center mx-5">
+                  <label className={DEFAULT_LABEL_CLASS}>
                     Sale Price
                   </label>
                   <div className="flex items-center w-full">
@@ -499,7 +506,6 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                     />
                   </div>
                 </div>
-
               </div>
             </div>
           </div>
@@ -510,11 +516,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
             <div className="w-full mb-1 p-1 bg-white rounded-lg shadow-sm">
 
               {/* Section Header */}
-              <div className="flex justify-between items-center mb-1 mx-2">
+              <div className="flex justify-between items-center mb-3 mx-2">
                 <h2 className={DEFAULT_HEADER_CLASS}>Shipping Dimensions</h2>
                 <button
                   onClick={resetShippingDimensions}
-                  className="reset-button"
+                  className="reset-button" // Updated class for better customization
                   aria-label="Reset Shipping Dimensions"
                 >
                   ↻
@@ -522,11 +528,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
               </div>
 
               {/* Section Content */}
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1 mx-5">
+              <div className="space-y-2 text-sm">
 
                 {/* Length Row */}
-                <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                <div className="flex items-center mx-5">
+                  <label className={DEFAULT_LABEL_CLASS}>
                     Length
                   </label>
                   <div className="flex items-center w-full">
@@ -536,9 +542,9 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       onChange={(e) => setRawLength(e.target.value)}
                       onBlur={() => {
                         const formattedValue = parseFloat(rawLength || shippingLength.toString()).toFixed(2);
-                        setShippingLength(parseFloat(formattedValue) || 0);
-                        setRawLength(null);
-                        setHasEdited((prev) => ({ ...prev, shippingLength: true }));
+                        setShippingLength(parseFloat(formattedValue) || 0); // Update actual length state
+                        setRawLength(null); // Clear raw input state
+                        setHasEdited((prev) => ({ ...prev, shippingLength: true })); // Mark Additional Fees as edited
                       }}
                       className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingLength ? "text-black font-bold" : "text-gray-700"}`}
                     />
@@ -547,8 +553,8 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 </div>
 
                 {/* Width Row */}
-                <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                <div className="flex items-center mx-5">
+                  <label className={DEFAULT_LABEL_CLASS}>
                     Width
                   </label>
                   <div className="flex items-center w-full">
@@ -558,9 +564,9 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       onChange={(e) => setRawWidth(e.target.value)}
                       onBlur={() => {
                         const formattedValue = parseFloat(rawWidth || shippingWidth.toString()).toFixed(2);
-                        setShippingWidth(parseFloat(formattedValue) || 0);
-                        setRawWidth(null);
-                        setHasEdited((prev) => ({ ...prev, shippingWidth: true }));
+                        setShippingWidth(parseFloat(formattedValue) || 0); // Update actual width state
+                        setRawWidth(null); // Clear raw input state
+                        setHasEdited((prev) => ({ ...prev, shippingWidth: true })); // Mark Additional Fees as edited
                       }}
                       className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingWidth ? "text-black font-bold" : "text-gray-700"}`}
                     />
@@ -569,8 +575,8 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 </div>
 
                 {/* Height Row */}
-                <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                <div className="flex items-center mx-5">
+                  <label className={DEFAULT_LABEL_CLASS}>
                     Height
                   </label>
                   <div className="flex items-center w-full">
@@ -580,9 +586,9 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       onChange={(e) => setRawHeight(e.target.value)}
                       onBlur={() => {
                         const formattedValue = parseFloat(rawHeight || shippingHeight.toString()).toFixed(2);
-                        setShippingHeight(parseFloat(formattedValue) || 0);
-                        setRawHeight(null);
-                        setHasEdited((prev) => ({ ...prev, shippingHeight: true }));
+                        setShippingHeight(parseFloat(formattedValue) || 0); // Update actual height state
+                        setRawHeight(null); // Clear raw input state
+                        setHasEdited((prev) => ({ ...prev, shippingHeight: true })); // Mark Additional Fees as edited
                       }}
                       className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingHeight ? "text-black font-bold" : "text-gray-700"}`}
                     />
@@ -591,8 +597,8 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 </div>
 
                 {/* Weight Row */}
-                <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                <div className="flex items-center mx-5">
+                  <label className={DEFAULT_LABEL_CLASS}>
                     Weight
                   </label>
                   <div className="flex items-center w-full">
@@ -602,11 +608,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                       onChange={(e) => setRawWeight(e.target.value)}
                       onBlur={() => {
                         const formattedValue = parseFloat(rawWeight || weight.toString()).toFixed(2);
-                        setWeight(parseFloat(formattedValue) || 0);
-                        setRawWeight(null);
-                        setHasEdited((prev) => ({ ...prev, weight: true }));
+                        setWeight(parseFloat(formattedValue) || 0); // Update actual weight state
+                        setRawWeight(null); // Clear raw input state
+                        setHasEdited((prev) => ({ ...prev, weight: true })); // Mark Additional Fees as edited
                       }}
-                      className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.weight ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`${DEFAULT_LEFT_INPUT_CLASS}  ${hasEdited.weight ? "text-black font-bold" : "text-gray-700"}`}
                     />
                     <span className={DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS}>lbs</span>
                   </div>
@@ -622,11 +628,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
             <div className="w-full mb-1 p-1 bg-white rounded-lg shadow-sm">
 
               {/* Section Header */}
-              <div className="flex justify-between items-center mb-1 mx-2">
+              <div className="flex justify-between items-center mb-3 mx-2">
                 <h2 className={DEFAULT_HEADER_CLASS}>Fees</h2>
                 <button
                   onClick={resetFees}
-                  className="reset-button"
+                  className="reset-button" // Updated class for better customization
                   aria-label="Reset Fees"
                 >
                   ↻
@@ -634,139 +640,161 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
               </div>
 
               {/* Section Content */}
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1 mx-5">
+              <div className="space-y-2 text-sm">
 
                 {/* Referral Fee Row */}
-                <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                <div className="flex items-center mx-5">
+                  <label className={DEFAULT_LABEL_CLASS}>
                     Referral Fee
                   </label>
                   <div className="flex items-center w-full">
                     <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                     <input
                       type="text"
-                      value={rawReferralFee !== null ? rawReferralFee : referralFee.toFixed(2)}
-                      onChange={(e) => setRawReferralFee(e.target.value)}
+                      value={rawReferralFee !== null ? rawReferralFee : referralFee.toFixed(2)} // Use rawReferralFee if editing, otherwise formatted referralFee
+                      onChange={(e) => setRawReferralFee(e.target.value)} // Update rawReferralFee on input change
                       onBlur={() => {
-                        const formattedValue = parseFloat(rawReferralFee || referralFee.toString()).toFixed(2);
-                        setReferralFee(parseFloat(formattedValue) || 0);
-                        setRawReferralFee(null);
-                        setHasEdited((prev) => ({ ...prev, referralFee: true }));
+                        const formattedValue = parseFloat(rawReferralFee || referralFee.toString()).toFixed(2); // Format input to 2 decimal places
+                        setReferralFee(parseFloat(formattedValue) || 0); // Update referralFee state
+                        setRawReferralFee(null); // Clear rawReferralFee state
+                        setHasEdited((prev) => ({ ...prev, referralFee: true })); // Mark Additional Fees as edited
                       }}
-                      className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.referralFee ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`${DEFAULT_RIGHT_INPUT_CLASS}  ${hasEdited.referralFee ? "text-black font-bold" : "text-gray-700"}`}
                     />
                   </div>
                 </div>
 
                 {/* WFS Fee Row */}
-                <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>WFS Fee</label>
+                <div className="flex items-center mx-5">
+                  <label className={DEFAULT_LABEL_CLASS}>WFS Fee</label>
                   <div className="flex items-center w-full">
                     <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                     <input
                       type="text"
-                      value={rawWfsFee !== null ? rawWfsFee : wfsFee.toFixed(2)}
-                      onChange={(e) => setRawWfsFee(e.target.value)}
+                      value={rawWfsFee !== null ? rawWfsFee : wfsFee.toFixed(2)} // Show raw or formatted WFS Fee
+                      onChange={(e) => {
+                        const input = e.target.value.replace(/[^0-9.]/g, ""); // Allow numbers and a single decimal point
+                        setRawWfsFee(input); // Store the raw input
+                        setHasEdited((prev) => ({ ...prev, wfsFee: true })); // Mark as edited
+                      }}
                       onBlur={() => {
                         if (rawWfsFee !== null) {
-                          const formattedValue = parseFloat(rawWfsFee).toFixed(2);
-                          setWfsFee(parseFloat(formattedValue));
-                          setRawWfsFee(null);
+                          const formattedValue = parseFloat(rawWfsFee).toFixed(2); // Format input to 2 decimals
+                          setWfsFee(parseFloat(formattedValue)); // Update WFS Fee state with formatted value
+                          setRawWfsFee(null); // Clear raw input
                         }
                       }}
-                      className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.wfsFee ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`${DEFAULT_RIGHT_INPUT_CLASS}  ${hasEdited.wfsFee ? "text-black font-bold" : "text-gray-700"
+                        }`}
                     />
                   </div>
                 </div>
 
                 {/* Inbound Shipping Fee Row */}
-                <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>Inbound Shipping Fee</label>
+                <div className="flex items-center mx-5">
+                  <label className={DEFAULT_LABEL_CLASS}>Inbound Shipping Fee</label>
                   <div className="flex items-center w-full">
                     <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                     <input
                       type="text"
                       value={rawInboundShippingFee !== null ? rawInboundShippingFee : inboundShippingFee.toFixed(2)}
-                      onChange={(e) => setRawInboundShippingFee(e.target.value)}
+                      onChange={(e) => {
+                        const input = e.target.value.replace(/[^0-9.]/g, ""); // Allow numbers and a single decimal point
+                        setRawInboundShippingFee(input); // Store the raw input
+                      }}
                       onBlur={() => {
                         if (rawInboundShippingFee !== null) {
-                          const formattedValue = parseFloat(rawInboundShippingFee).toFixed(2);
-                          setInboundShippingFee(parseFloat(formattedValue) || 0);
-                          setRawInboundShippingFee(null);
-                          setHasEdited((prev) => ({ ...prev, inboundShippingFee: true }));
+                          const formattedValue = parseFloat(rawInboundShippingFee).toFixed(2); // Format to 2 decimals
+                          setInboundShippingFee(parseFloat(formattedValue) || 0); // Update actual state
+                          setRawInboundShippingFee(null); // Clear raw input
+                          setHasEdited((prev) => ({ ...prev, inboundShippingFee: true })); // Mark as edited
                         }
                       }}
-                      className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.inboundShippingFee ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`${DEFAULT_RIGHT_INPUT_CLASS}  ${hasEdited.inboundShippingFee ? "text-black font-bold" : "text-gray-700"
+                        }`}
                     />
                   </div>
                 </div>
 
                 {/* Storage Fee Row */}
-                <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>Storage Fee</label>
+                <div className="flex items-center mx-5">
+                  <label className={DEFAULT_LABEL_CLASS}>Storage Fee</label>
                   <div className="flex items-center w-full">
                     <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                     <input
                       type="text"
                       value={rawStorageFee !== null ? rawStorageFee : storageFee.toFixed(2)}
-                      onChange={(e) => setRawStorageFee(e.target.value)}
+                      onChange={(e) => {
+                        const input = e.target.value.replace(/[^0-9.]/g, ""); // Allow numbers and a single decimal point
+                        setRawStorageFee(input); // Update raw input state
+                      }}
                       onBlur={() => {
                         if (rawStorageFee !== null) {
-                          const formattedValue = parseFloat(rawStorageFee).toFixed(2);
-                          setStorageFee(parseFloat(formattedValue) || 0);
-                          setRawStorageFee(null);
-                          setHasEdited((prev) => ({ ...prev, storageFee: true }));
+                          const formattedValue = parseFloat(rawStorageFee).toFixed(2); // Format to 2 decimals
+                          setStorageFee(parseFloat(formattedValue) || 0); // Update storage fee state
+                          setRawStorageFee(null); // Clear raw input state
+                          setHasEdited((prev) => ({ ...prev, storageFee: true })); // Mark as edited
                         }
                       }}
-                      className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.storageFee ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`${DEFAULT_RIGHT_INPUT_CLASS}  ${hasEdited.storageFee ? "text-black font-bold" : "text-gray-700"
+                        }`}
                     />
                   </div>
                 </div>
 
                 {/* Prep Fee Row */}
-                <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>Prep Fee</label>
+                <div className="flex items-center mx-5">
+                  <label className={DEFAULT_LABEL_CLASS}>
+                    Prep Fee
+                  </label>
                   <div className="flex items-center w-full">
                     <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                     <input
                       type="text"
                       value={rawPrepFee !== null ? rawPrepFee : prepFee.toFixed(2)}
-                      onChange={(e) => setRawPrepFee(e.target.value)}
+                      onChange={(e) => {
+                        const input = e.target.value.replace(/[^0-9.]/g, ""); // Allow only numbers and a single decimal point
+                        setRawPrepFee(input); // Update raw input state
+                      }}
                       onBlur={() => {
                         if (rawPrepFee !== null) {
-                          const formattedValue = parseFloat(rawPrepFee).toFixed(2);
-                          setPrepFee(parseFloat(formattedValue) || 0);
-                          setRawPrepFee(null);
-                          setHasEdited((prev) => ({ ...prev, prepFee: true }));
+                          const formattedValue = parseFloat(rawPrepFee).toFixed(2); // Format to 2 decimal places
+                          setPrepFee(parseFloat(formattedValue) || 0); // Update actual state
+                          setRawPrepFee(null); // Clear raw input state
+                          setHasEdited((prev) => ({ ...prev, prepFee: true })); // Mark Additional Fees as edited
                         }
                       }}
-                      className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.prepFee ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`${DEFAULT_RIGHT_INPUT_CLASS}  ${hasEdited.prepFee ? "text-black font-bold" : "text-gray-700"}`}
                     />
                   </div>
                 </div>
 
                 {/* Additional Fees Row */}
-                <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>Additional Fees</label>
+                <div className="flex items-center mx-5">
+                  <label className={DEFAULT_LABEL_CLASS}>
+                    Additional Fees
+                  </label>
                   <div className="flex items-center w-full">
                     <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                     <input
                       type="text"
-                      value={rawAdditionalFees !== null ? rawAdditionalFees : additionalFees.toFixed(2)}
-                      onChange={(e) => setRawAdditionalFees(e.target.value)}
+                      value={rawAdditionalFees !== null ? rawAdditionalFees : additionalFees.toFixed(2)} // Display raw input if editing, otherwise formatted additionalFees
+                      onChange={(e) => {
+                        const input = e.target.value.replace(/[^0-9.]/g, ""); // Allow numbers and a single decimal point
+                        setRawAdditionalFees(input); // Update raw input state
+                        setHasEdited((prev) => ({ ...prev, additionalFees: true })); // Mark Additional Fees as edited
+                      }}
                       onBlur={() => {
                         if (rawAdditionalFees !== null) {
-                          const formattedValue = parseFloat(rawAdditionalFees).toFixed(2);
-                          setAdditionalFees(parseFloat(formattedValue) || 0);
-                          setRawAdditionalFees(null);
-                          setHasEdited((prev) => ({ ...prev, additionalFees: true }));
+                          const formattedValue = parseFloat(rawAdditionalFees).toFixed(2); // Format to 2 decimal places
+                          setAdditionalFees(parseFloat(formattedValue) || 0); // Update actual state
+                          setRawAdditionalFees(null); // Clear raw input state
                         }
                       }}
-                      className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.additionalFees ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`${DEFAULT_RIGHT_INPUT_CLASS}  ${hasEdited.additionalFees ? "text-black font-bold" : "text-gray-700"}`}
                     />
                   </div>
                 </div>
-
               </div>
             </div>
           </div>
@@ -780,7 +808,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
               <h2 className={DEFAULT_HEADER_CLASS}>Contract Category</h2>
 
               {/* Dropdown for Contract Category */}
-              <div className="flex items-center mb-1 mx-5 text-sm">
+              <div className="flex items-center mx-5 text-sm">
                 <div className="w-full">
 
                   {/* Dropdown element */}
@@ -802,7 +830,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
             </div>
           </div>
 
-          {/*----------------------------------------------------------------*/}
+                    {/*----------------------------------------------------------------*/}
           {/* Fulfillment Buttons */}
           <div className="flex space-x-2 my-2 mx-5">
             {/* Walmart Fulfilled Button */}
@@ -851,8 +879,6 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
               </label>
             </div>
           </div>
-
-
 
         </div>
       </div >

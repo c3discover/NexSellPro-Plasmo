@@ -128,6 +128,38 @@ input[type="number"] {
   -moz-appearance: textfield;
 }
 
+/* ===================================== */
+/* Reset Buttons */
+/* ===================================== */
+
+.reset-button {
+  font-size: 0.8rem; /* Reduce font size slightly */
+  border: 1px solid #006EDC; /* Add an outline */
+  background-color: transparent; /* Make background transparent */
+  color: #006EDC; /* Blue color for the text */
+  padding: 1px 6px; /* Reduce padding */
+  border-radius: 4px; /* Add rounded corners */
+  transition: all 0.3s ease; /* Smooth transition for hover effects */
+}
+
+.reset-button:hover {
+  background-color: #006EDC; /* Blue background on hover */
+  color: white; /* White text on hover */
+}
+
+/* ===================================== */
+/* Pricing Section Wrapper */
+/* ===================================== */
+
+.section-wrapper {
+  padding: 0.5rem 1rem; /* Reduce padding */
+  border: 1px solid #ddd; /* Keep the subtle border */
+  border-radius: 6px; /* Slightly smaller rounded corners */
+  margin-bottom: 0.75rem; /* Reduce vertical spacing between sections */
+  background-color: white; /* Clean white background */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* Slightly lighter shadow */
+}
+
 /* ========================= */
 /* Fonts                     */
 /* ========================= */
