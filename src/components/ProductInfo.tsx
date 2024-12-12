@@ -8,9 +8,9 @@ import React, { useState, useEffect } from "react";
 // Constants and Variables:
 ////////////////////////////////////////////////
 const externalData = [
-  { store: "Store Name", link: "Link Coming Soon...", price: "$0.00" },
-  { store: "Store Name", link: "Link Coming Soon...", price: "$0.00" },
-  { store: "Store Name", link: "Link Coming Soon...", price: "$0.00" },
+  { store: "Store Name", link: "Link", price: "$0.00" },
+  { store: "Store Name", link: "Link", price: "$0.00" },
+  { store: "Store Name", link: "Link", price: "$0.00" },
 ];
 
 
@@ -49,11 +49,11 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ product, areSectionsOp
   ////////////////////////////////////////////////////
   const infoRows = [
     { label: "ITEM ID", value: product.productID || "" },
-    { label: "GTIN", value: "coming soon" },
+    { label: "GTIN", value: "Coming Soon" },
     { label: "UPC", value: product.upc || "" },
-    { label: "EAN", value: "coming soon" },
+    { label: "EAN", value: "Coming Soon" },
     { label: "Model Number", value: product.modelNumber || "" },
-    { label: "Country of Origin", value: "coming soon" },
+    { label: "Country of Origin", value: "Coming Soon" },
   ];
 
   //////////////////////////////////////////////////
@@ -117,7 +117,7 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ product, areSectionsOp
       {/* Top Section: EXTERNAL DATA */}
       <div className="flex flex-col w-full mt-2"> {/* Added spacing */}
         <p className="font-extrabold text-base text-center bg-[#d7d7d7] w-full p-2">
-          External Data
+          External Data (Coming Soon with AI)
         </p>
         <table className="table-auto border-2 border-black mx-2">
           <tbody>
@@ -145,7 +145,7 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ product, areSectionsOp
         </p>
         <div className="flex justify-center mb-2">
           <div className="text-xs text-center p-3 bg-white text-black border-2 border-black w-auto">
-            Coming Soon...
+            Coming Soon
           </div>
         </div>
       </div>

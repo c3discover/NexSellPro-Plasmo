@@ -101,10 +101,9 @@ function getProductDetails(product, idml, reviews) {
     videos: idml?.videos || [],
 
     //Categories from reviews getData
-    averageOverallRating: reviews?.roundedAverageOverallRating || product?.averageRating || "not available",
+    overallRating: reviews?.roundedAverageOverallRating || product?.averageRating || "not available",
     numberOfRatings: reviews?.totalReviewCount || "0",
     numberOfReviews: reviews?.reviewsWithTextCount || "0",
-    overallRating: reviews?.roundedAverageOverallRating || "0",
     customerReviews: reviews?.customerReviews || [],
   };
 

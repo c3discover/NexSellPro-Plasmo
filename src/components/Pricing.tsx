@@ -214,7 +214,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
         setWfsFee(calculateWFSFee(productForWFSFee));
       }
       if (!hasEdited.inboundShippingFee) {
-        setInboundShippingFee(finalShippingWeightForInbound * inboundShippingRate);
+        setInboundShippingFee((finalShippingWeightForInbound * inboundShippingRate) || 0);
       }
       if (!hasEdited.storageFee) {
         setStorageFee(parseFloat(calculateStorageFee(season, cubicFeet, storageLength)) || 0);
@@ -222,7 +222,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     } else {
       if (!hasEdited.wfsFee) setWfsFee(0);
       if (!hasEdited.inboundShippingFee) {
-        setInboundShippingFee(finalShippingWeightForInbound * inboundShippingRate);
+        setInboundShippingFee(0);
       }
       if (!hasEdited.storageFee) setStorageFee(0);
     }

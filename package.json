@@ -5,7 +5,10 @@
   "description": "WalAIWiz: Chrome extension to assist Walmart sellers with profitability calculations and product analysis",
   "author": "C3 Discover LLC <admin@c3discover.com>",
   "contributors": [
-    "Michael Latragna <michael@c3discover.com>"
+    {
+      "name": "Michael Latragna",
+      "email": "michael@c3discover.com"
+    }
   ],
   "scripts": {
     "dev": "plasmo dev",
@@ -17,7 +20,10 @@
     "test": "jest"
   },
   "dependencies": {
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
     "plasmo": "^0.89.4",
+    "qs": "^6.13.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-icons": "^5.4.0",
@@ -46,5 +52,8 @@
       "https://www.walmart.com/*"
     ]
   },
-  "packageManager": "pnpm@9.14.2+sha512.6e2baf77d06b9362294152c851c4f278ede37ab1eba3a55fda317a4a17b209f4dbb973fb250a77abc463a341fcb1f17f17cfa24091c4eb319cda0d9b84278387"
+  "packageManager": "pnpm@9.14.2+sha512.6e2baf77d06b9362294152c851c4f278ede37ab1eba3a55fda317a4a17b209f4dbb973fb250a77abc463a341fcb1f17f17cfa24091c4eb319cda0d9b84278387",
+  "main": "getAccessToken.js",
+  "keywords": [],
+  "license": "ISC"
 }

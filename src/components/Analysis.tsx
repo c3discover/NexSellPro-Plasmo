@@ -5,6 +5,9 @@ import React, { useState, useEffect } from "react";
 // Import the centralized data extraction function
 import getProductDetails from '../utils/getData';
 
+import { FiCheckCircle } from "react-icons/fi";
+
+
 /////////////////////////////////////////////////
 // Constants and Variables
 /////////////////////////////////////////////////
@@ -18,12 +21,12 @@ const CLASS_BUTTON_STYLE = "text-black text-base cursor-pointer w-full px-2 py-1
 
 // Default values and thresholds
 const MODAL_WAIT_INTERVAL = 500; // Interval in ms for checking modal presence
-const MODAL_WAIT_TIMEOUT = 5000; // Timeout in ms for the modal to be closed
+const MODAL_WAIT_TIMEOUT = 1000; // Timeout in ms for the modal to be closed
 const MODAL_CLOSE_BUTTON_SELECTOR = "[aria-label='Close dialog']";
 const MODAL_SELECTOR = ".w_g1_b";
 const SINGLE_SELLER_INFO_SELECTOR = "[data-testid='product-seller-info']";
 const WALMART_DELIVERY_SELECTOR = "[data-automation-id='Walmart-delivery']";
-const PRO_SELLER_INDICATOR = "span.inline-flex.items-center.blue strong";
+const PRO_SELLER_INDICATOR = "span.inline-flex.items-center.blue";
 
 // Other important default values (if required, add more here)
 const UNKNOWN_SELLER = "Unknown Seller";
@@ -41,7 +44,6 @@ const {
   sellerName,
   brand,
   totalSellers,
-  averageOverallRating,
   numberOfRatings,
   numberOfReviews,
   fulfillmentOptions,
@@ -69,8 +71,7 @@ interface Product {
   fulfillmentOptions?: { type: string; availableQuantity: number }[];
   numberOfRatings?: number;
   numberOfReviews?: number;
-  averageOverallRating?: number | string;
-  overallRating?: number | string;
+  overallRating?: number;
   reviewDates?: string[];
   modelNumber?: string;
   variantCriteria?: string[];
@@ -116,8 +117,11 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
   // State to track when specific data is copied to the clipboard
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
-  // Calculate the number of WFS sellers from capturedData
-  const wfsSellerCount = capturedData.filter(seller => seller.fulfillmentStatus === "WFS").length;
+  // Calculate the number of WFS sellers (including Brand-WFS)
+  const wfsSellerCount = capturedData.filter(
+    seller =>
+      seller.fulfillmentStatus === "WFS" || seller.fulfillmentStatus === "Brand-WFS"
+  ).length;
 
   // Check if the brand is one of the sellers
   const isBrandSelling = capturedData.some((seller) =>
@@ -145,7 +149,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
   // Primary function to capture seller data based on the number of sellers
   useEffect(() => {
     if (productDetailsUsed?.totalSellers && productDetailsUsed.totalSellers > 1) {
-
       // Multi-seller scenario
       const captureSellerData = async () => {
         const compareSellersButton = document.querySelector("[aria-label='Compare all sellers']") as HTMLButtonElement;
@@ -161,18 +164,19 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
           setTimeout(() => {
             if (observer) observer.disconnect();
             closeModalIfOpen();
-          }, MODAL_WAIT_TIMEOUT); // Using constant instead of hard-coding the value
+          }, MODAL_WAIT_TIMEOUT);
         } else {
           extractSingleSellerData();
         }
       };
 
       captureSellerData();
-    } else {
+    } else if (productDetailsUsed?.totalSellers === 1) {
       // Single seller scenario
       extractSingleSellerData();
     }
   }, [productDetailsUsed?.totalSellers]);
+
 
 
 
@@ -357,12 +361,11 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
         seller = sellerAriaLabel.replace("sold and shipped by", "").trim();
       }
 
-      // Extract pro seller status
-      const isProSeller = !!offer.querySelector("strong")?.textContent?.includes("Pro Seller");
-      //OLD const isProSeller = Array.from(offer.querySelectorAll("strong")).some((el) => el.textContent?.trim() === "Pro Seller");
+      // Determine if pro seller 
+      const isProSeller = !!document.querySelector(PRO_SELLER_INDICATOR)?.textContent.includes("Pro Seller");
 
       // Check for Walmart Fulfilled
-      const walmartFulfilled = !!offer.querySelector("[data-automation-id='Walmart-delivery']");
+      const walmartFulfilled = !!document.querySelector(WALMART_DELIVERY_SELECTOR);
 
       // Determine if brand matches seller
       const brandMatchesSeller =
@@ -752,9 +755,9 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
               WFS Sellers
             </p>
             <p
-              className={`${applyMaxWfsSellersHighlight()}`}
+              className={`${applyMaxWfsSellersHighlight()}`} // Apply visual styling based on the settings
             >
-              {capturedData.filter(seller => seller.fulfillmentStatus === "WFS").length || "-"}
+              {wfsSellerCount || "-"}
             </p>
           </div>
 
@@ -835,10 +838,12 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
 
                       {/* Seller Name */}
                       <td className="px-1 text-center text-2xs border-2 border-black bg-white">
-                        {item.sellerName || "-"}
-                        {item.isProSeller && (
-                          <span className="checkmark-circle"></span>
-                        )}
+                        <span style={{ display: "inline-flex", alignItems: "center" }}>
+                          {item.sellerName || "-"}
+                          {item.isProSeller && (
+                            <FiCheckCircle style={{ color: "#006EDC", fontSize: "14px", marginLeft: "5px", }} />
+                          )}
+                        </span>
                       </td>
 
                       {/* Price */}

@@ -64,34 +64,6 @@ body.plasmo-google-sidebar-show * {
 }
 
 /* ========================= */
-/* Checkmark Circle Styling */
-/* ========================= */
-
-.checkmark-circle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 2px solid blue;
-  color: blue;
-  font-size: 10px;
-  line-height: 1; /* Center checkmark in circle */
-  font-weight: bold;
-  margin-left: 5px;
-  position: relative;
-}
-
-.checkmark-circle::before {
-  content: "✔"; /* Checkmark character */
-  color: blue;
-  font-size: 12px; /* Slightly larger than the circle */
-  position: absolute;
-  top: -1px; /* Adjust to center vertically */
-}
-
-/* ========================= */
 /* Spinner Animation        */
 /* ========================= */
 
