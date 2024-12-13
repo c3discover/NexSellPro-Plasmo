@@ -109,8 +109,7 @@ const ContentUI = () => {
   useEffect(() => {
     setProductDetails(getData());
   }, [refresh]);
-
-
+  
   //////////////////////////////////////////////////
   // Helper Functions:
   //////////////////////////////////////////////////
@@ -143,17 +142,17 @@ const ContentUI = () => {
 
       {/* Toggle button for sidebar open/close */}
       <button
-        className="fixed right-[-10px] top-6 p-1 transform rotate-90 bg-[#d7d7d7] p-1.5 text-xl font-semibold rounded-lg shadow-lg transition-transform duration-200 ease-in-out hover:scale-110 hover:shadow-lg border-2 border-gray-500"
+        className="fixed right-[-10px] top-6 p-1 transform rotate-90 bg-[#d7d7d7] text-xl font-semibold rounded-lg shadow-lg transition-transform duration-200 ease-in-out hover:scale-110 hover:shadow-lg border-2 border-gray-500"
         onClick={() => setIsOpen(!isOpen)}
       >
-        {isOpen ? "🔴" : "🟢"}
+        {isOpen ? "🟢" : "🔴"}
       </button>
 
 
       {/* Main content of the sidebar */}
       <div className="flex flex-col space-y-5">
         <TopHeader />
-        <Product product={productDetails} />
+        <Product />
 
         {/* Expand/Collapse all sections button placed below Product and above BuyGauge */}
         <div style={{ display: 'inline-block' }}>

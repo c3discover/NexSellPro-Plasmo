@@ -149,7 +149,7 @@ export const Product = () => {
       </div>
 
       {/* Product General Info */}
-      <div id="productGeneralInfo" className="flex flex-col lg:flex-row items-stretch items-center justify-between w-full gap-3">
+      <div id="productGeneralInfo" className="flex flex-col lg:flex-row items-center justify-between w-full gap-3">
 
         {/* Product Image Section */}
         <div id="productImage" className="w-full lg:w-1/2 flex flex-col items-center justify-center bg-white p-1 rounded-lg shadow-lg">
@@ -200,7 +200,7 @@ export const Product = () => {
           </p>
 
           <p className="text-black text-xs p-1 mt-2">
-            <span className="font-bold mt-2">Variations</span>
+            <span className="font-bold mt-2">Variations </span>
             <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">
             {Object.keys(productDetailsUsed?.variantsMap || {}).length || "-"}
             </span>
@@ -248,7 +248,7 @@ export const Product = () => {
       </div>
 
       {/* Badges */}
-      <div className="text-center p-1 rounded-lg shadow-2xl shadow-lg bg-slate-500">
+      <div className="text-center p-1 rounded-lg shadow-2xl bg-slate-500">
         {productDetailsUsed.badges.length > 0 ? (
           <div className="grid grid-cols-2 gap-2 p-1 place-items-center">
             {productDetailsUsed.badges.map((badge, index) => {

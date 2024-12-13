@@ -250,10 +250,18 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
   // Recalculate dimensions and weight based on product data changes.
   useEffect(() => {
     if (product) {
-      setShippingLength(product.shippingLength ?? 0);
-      setShippingWidth(product.shippingWidth ?? 0);
-      setShippingHeight(product.shippingHeight ?? 0);
-      setWeight(product.weight ?? 0);
+      setShippingLength(
+        typeof product.shippingLength === "string" ? parseFloat(product.shippingLength) : product.shippingLength ?? 0
+      );
+      setShippingWidth(
+        typeof product.shippingWidth === "string" ? parseFloat(product.shippingWidth) : product.shippingWidth ?? 0
+      );
+      setShippingHeight(
+        typeof product.shippingHeight === "string" ? parseFloat(product.shippingHeight) : product.shippingHeight ?? 0
+      );
+      setWeight(
+        typeof product.weight === "string" ? parseFloat(product.weight) : product.weight ?? 0
+      );
     }
   }, [product]);
 
@@ -325,10 +333,26 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
 
   // Reset all shipping dimensions to their initial values.
   const resetShippingDimensions = () => {
-    setShippingLength(product.shippingLength ?? 0);
-    setShippingWidth(product.shippingWidth ?? 0);
-    setShippingHeight(product.shippingHeight ?? 0);
-    setWeight(product.weight ?? 0);
+    setShippingLength(
+      typeof product.shippingLength === "string"
+        ? parseFloat(product.shippingLength)
+        : product.shippingLength ?? 0
+    );
+    setShippingWidth(
+      typeof product.shippingWidth === "string"
+        ? parseFloat(product.shippingWidth)
+        : product.shippingWidth ?? 0
+    );
+    setShippingHeight(
+      typeof product.shippingHeight === "string"
+        ? parseFloat(product.shippingHeight)
+        : product.shippingHeight ?? 0
+    );
+    setWeight(
+      typeof product.weight === "string"
+        ? parseFloat(product.weight)
+        : product.weight ?? 0
+    );
     setRawLength(null);
     setRawWidth(null);
     setRawHeight(null);
@@ -404,7 +428,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
 
           {/*----------------------------------------------------------------*/}
           {/*Group 1: Revenue - Key Metrics*/}
-          <div className="w-full mb-1 p-1 bg-[#FAFAF1] border border-1 rounded-lg shadow-lg shadow-black p-1">
+          <div className="w-full mb-1 p-1 bg-[#FAFAF1] border border-1 rounded-lg shadow-lg shadow-black">
 
             {/* Monthly Sales Est Row */}
             <div className="flex justify-between items-center mx-8 text-xs">

@@ -652,7 +652,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
                           circleLabel = '1y';
                           circleStyle = { backgroundColor: 'grey', color: 'white' };
                         } else {
-                          circleLabel = '  ';
+                          ;
                         }
 
                         return (
@@ -757,7 +757,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
             <p
               className={`${applyMaxWfsSellersHighlight()}`} // Apply visual styling based on the settings
             >
-              {wfsSellerCount || "-"}
+              {wfsSellerCount || "0"}
             </p>
           </div>
 
@@ -767,7 +767,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
               Walmart Sells
             </p>
             <p
-              className={`${CLASS_DEFAULT_CONTENT} ${productDetailsUsed?.sellerName === "Walmart.com"
+              className={`${productDetailsUsed?.sellerName === "Walmart.com"
                 ? CLASS_SECTION_CONTENT_RED
                 : CLASS_SECTION_CONTENT_GREEN
                 }`}
@@ -782,7 +782,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ product, areSectionsOpen }) 
               Brand Sells
             </p>
             <p
-              className={`${CLASS_DEFAULT_CONTENT} ${isBrandSelling
+              className={`${isBrandSelling
                 ? CLASS_SECTION_CONTENT_RED
                 : CLASS_SECTION_CONTENT_GREEN
                 }`}

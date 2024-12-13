@@ -2,10 +2,11 @@
 // Imports:
 ////////////////////////////////////////////////
 import headerImgBase64 from "data-base64:~../assets/headerLogo.png";
-import profileIconBase64 from "data-base64:~../assets/profileIcon.png";
 import React, { useState } from "react";
 import { SettingsModal } from "./Settings";
 import { ProfileModal } from "./Profile";
+import { LuCircleUserRound } from "react-icons/lu";
+import { IoSettingsOutline } from "react-icons/io5";
 
 ////////////////////////////////////////////////
 // Constants and Variables:
@@ -46,38 +47,28 @@ export const TopHeader: React.FC = () => {
       id="header"
       className="flex flex-col text-white shadow-xl rounded-lg"
       style={{
-        background: 'linear-gradient(145deg, #3a3f47, #2f3238)', // A dark gradient for texture
+        background: 'linear-gradient(45deg, #2E2E2E, #212121)', // A dark gradient for texture
         boxShadow: 'inset 0 0 10px rgba(0, 0, 0, 0.5)', // Adds depth like a countertop
       }}
     >
       {/* Header Bar */}
       <div className="w-full flex items-center justify-between p-1">
         {/* Left Icon with more drastic drop shadow */}
-        <div
-          className="text-2xs pl-3 m-0 hover:text-gray-400 transition duration-300 ease-in-out"
-          style={{ filter: 'drop-shadow(8px 8px 15px rgba(0, 0, 0, 1))' }} // Larger offset, darker shadow
-        >
-          <button onClick={handleSettingsToggle} className="text-white text-2xl">
-            ⚙️
+          <button onClick={handleSettingsToggle} className="text-white pl-3">
+            <IoSettingsOutline style={{ fontSize: "30px" }} />
           </button>
-        </div>
 
         {/* Center Logo with more drastic drop shadow */}
         <img
           src={headerImgBase64}
           alt="Header Logo"
-          className="w-48"
+          className="w-64"
           style={{ filter: 'drop-shadow(8px 8px 20px rgba(0, 0, 0, 1))' }} // Larger offset, darker shadow
         />
 
         {/* Right Icon with more drastic drop shadow */}
-        <button onClick={handleProfileToggle} className="text-white text-2xl pr-3">
-          <img
-            src={profileIconBase64}
-            alt="Profile Icon"
-            className="w-8 h-8 rounded-full"
-            style={{ filter: 'drop-shadow(8px 8px 15px rgba(0, 0, 0, 1))' }} // Larger offset, darker shadow
-          />
+        <button onClick={handleProfileToggle} className="text-white pr-3">
+          <LuCircleUserRound style={{ fontSize: "30px" }} />
         </button>
 
       </div>
