@@ -1,78 +1,104 @@
-/////////////////////////////////////////////////
-// Imports 
-/////////////////////////////////////////////////
-// React hooks for managing state, side effects, and mutable references.
+////////////////////////////////////////////////
+// Imports:
+////////////////////////////////////////////////
 import React, { useState, useEffect, useRef } from "react";
-
-// Utility functions for calculating fees, dimensions, and profitability.
+import { getUsedData } from "~/utils/usedData";
+import type { UsedProductData } from "~/utils/usedData";
+import getData from "~/utils/getData";
+import { contractCategoryOptions } from "../constants/options";
 import {
   calculateReferralFee,
   calculateWFSFee,
   calculateStorageFee,
   calculateCubicFeet,
+  calculateFinalShippingWeightForInbound,
+  calculateFinalShippingWeightForWFS,
+  calculateStartingProductCost,
   calculateTotalProfit,
   calculateROI,
   calculateMargin,
-  calculateFinalShippingWeightForInbound,
-  calculateFinalShippingWeightForWFS,
-  calculateAdditionalFees,
-  calculateStartingProductCost
-} from "../utils/calculations";
+  calculateAdditionalFees
+} from "~/utils/calculations";
 
-// Constants used for dropdowns or selection fields related to contract categories.
-import { contractCategoryOptions } from "../constants/options";
-
-
-
-/////////////////////////////////////////////////
-// Constants and Variables
-/////////////////////////////////////////////////
-
-// CSS Classes
-const DEFAULT_HEADER_CLASS = "text-base font-bold";
-const DEFAULT_LABEL_CLASS = "text-xs p-0.5 mr-2 min-w-[120px] text-left whitespace-nowrap";
-const DEFAULT_RIGHT_INPUT_CLASS = "text-sm p-1 pr-3 text-right w-full border rounded-r h-5";
-const DEFAULT_LEFT_INPUT_CLASS = "text-sm p-1 pl-3 text-left w-full border rounded-l h-5";
-const DEFAULT_LEFT_PREFIX_SUFFIX_CLASS = "p-1 inline-block border border-black rounded-l bg-gray-100 text-gray-700 text-xs h-5 flex items-center justify-center";
-const DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS = "p-1 inline-block border border-black rounded-r bg-gray-100 text-gray-700 text-xs h-5 flex items-center justify-center";
+////////////////////////////////////////////////
+// Constants and Variables:
+////////////////////////////////////////////////
+const LOADING_MESSAGE = "Loading pricing data...";
+const PRICE_HISTORY_DAYS = 30;
+const CHART_COLORS = {
+  primary: "#0284c7",    // Sky blue for main lines
+  secondary: "#cbd5e1",  // Slate gray for grid lines
+  text: "#1e293b"        // Slate blue for text
+};
 
 // Default Values
 const DEFAULT_CONTRACT_CATEGORY = "Everything Else";
 const DEFAULT_SEASON = "Jan-Sep";
 const DEFAULT_STORAGE_LENGTH = 1;
 const DEFAULT_INBOUND_RATE = 0.5;
-const UNKNOWN_SELLER = "Unknown Seller";
 
+// CSS Classes - Keep for consistent styling
+const STYLES = {
+  container: "items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl",
+  header: "font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl",
+  section: "flex flex-wrap",
+  input: {
+    header: "text-base font-bold",
+    label: "text-xs p-0.5 mr-2 min-w-[120px] text-left whitespace-nowrap",
+    right: "text-sm p-1 pr-3 text-right w-full border rounded-r h-5",
+    left: "text-sm p-1 pl-3 text-left w-full border rounded-l h-5",
+    leftPrefix: "p-1 inline-block border border-black rounded-l bg-gray-100 text-gray-700 text-xs h-5 flex items-center justify-center",
+    rightPrefix: "p-1 inline-block border border-black rounded-r bg-gray-100 text-gray-700 text-xs h-5 flex items-center justify-center"
+  }
+};
 
+const DEFAULT_HEADER_CLASS = STYLES.input.header;
+const DEFAULT_LABEL_CLASS = STYLES.input.label;
+const DEFAULT_RIGHT_INPUT_CLASS = STYLES.input.right;
+const DEFAULT_LEFT_INPUT_CLASS = STYLES.input.left;
+const DEFAULT_LEFT_PREFIX_SUFFIX_CLASS = STYLES.input.leftPrefix;
+const DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS = STYLES.input.rightPrefix;
 
-/////////////////////////////////////////////////
-// Props and Types
-/////////////////////////////////////////////////
-// Represents product-specific data used for calculations and UI rendering.
-interface Product {
-  shippingLength?: number;
-  shippingWidth?: number;
-  shippingHeight?: number;
-  weight?: number;
-  currentPrice?: number;
-  isWalmartFulfilled: boolean;
-  isApparel?: boolean;
-  isHazardousMaterial?: boolean;
-  retailPrice?: number;
-}
-
-// Represents props passed to the Pricing component, including product data and section visibility state.
+////////////////////////////////////////////////
+// Types and Interfaces:
+////////////////////////////////////////////////
 interface PricingProps {
-  product: Product;
   areSectionsOpen: boolean;
 }
 
+interface CalculationResult {
+  value: number;
+  error?: string;
+}
+
+////////////////////////////////////////////////
+// Component:
+////////////////////////////////////////////////
+export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
+  // Component implementation will be in the following sections
 
 
-/////////////////////////////////////////////////
-// State and Hooks
-/////////////////////////////////////////////////
-export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) => {
+  /////////////////////////////////////////////////
+  // State and Hooks
+  /////////////////////////////////////////////////
+  // UI State
+  const [isOpen, setIsOpen] = useState(areSectionsOpen);
+  const [productData, setProductData] = useState<UsedProductData | null>(null);
+  const [hasEdited, setHasEdited] = useState<{ [key: string]: boolean }>({});
+
+  // Fetch initial data
+  useEffect(() => {
+    const fetchData = async () => {
+      const data = await getUsedData();
+      if (data) {
+        setProductData(data);
+        setSalePrice(data.pricing.currentPrice || 0);
+        const initialProductCost = calculateStartingProductCost(data.pricing.currentPrice || 0);
+        setProductCost(initialProductCost);
+      }
+    };
+    fetchData();
+  }, []);
 
   // General State (Group 1)
   const [contractCategory, setContractCategory] = useState<string>("Everything Else");
@@ -82,32 +108,30 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
   const [totalProfit, setTotalProfit] = useState(0);
   const [roi, setROI] = useState(0);
   const [margin, setMargin] = useState(0);
-  const [hasEdited, setHasEdited] = useState<{ [key: string]: boolean }>({});
-  const [isOpen, setIsOpen] = useState<boolean>(areSectionsOpen);
 
   // Pricing State (Group 2)
   const [productCost, setProductCost] = useState<number>(0.0);
   const [rawProductCost, setRawProductCost] = useState<string | null>(null);
-  const [salePrice, setSalePrice] = useState<number>(product.currentPrice || 0);
+  const [salePrice, setSalePrice] = useState<number>(0);
   const [rawSalePrice, setRawSalePrice] = useState<string | null>(null);
 
-  const [isWalmartFulfilled, setIsWalmartFulfilled] = useState<boolean>(() => {
+  const [isWalmartFulfilled, setIsWalmartFulfilled] = useState(() => {
     const savedPreference = localStorage.getItem("isWalmartFulfilled");
     return savedPreference === "true" || savedPreference === null; // Default to true
   });
 
   // Shipping Dimensions State (Group 3)
-  const [shippingLength, setShippingLength] = useState<number>(typeof product.shippingLength === "string" ? parseFloat(product.shippingLength) : product.shippingLength ?? 0);
+  const [shippingLength, setShippingLength] = useState<number>(0);
   const [rawLength, setRawLength] = useState<string | null>(null);
-  const [shippingWidth, setShippingWidth] = useState<number>(typeof product.shippingWidth === "string" ? parseFloat(product.shippingWidth) : product.shippingWidth ?? 0);
+  const [shippingWidth, setShippingWidth] = useState<number>(0);
   const [rawWidth, setRawWidth] = useState<string | null>(null);
-  const [shippingHeight, setShippingHeight] = useState<number>(typeof product.shippingHeight === "string" ? parseFloat(product.shippingHeight) : product.shippingHeight ?? 0);
+  const [shippingHeight, setShippingHeight] = useState<number>(0);
   const [rawHeight, setRawHeight] = useState<string | null>(null);
-  const [weight, setWeight] = useState<number>(typeof product.weight === "string" ? parseFloat(product.weight) : product.weight ?? 0);
+  const [weight, setWeight] = useState<number>(0);
   const [rawWeight, setRawWeight] = useState<string | null>(null);
 
   // Fees State (Group 4)
-  const [referralFee, setReferralFee] = useState<number>(calculateReferralFee(product.currentPrice || 0, contractCategory));
+  const [referralFee, setReferralFee] = useState<number>(0);
   const [rawReferralFee, setRawReferralFee] = useState<string | null>(null);
   const [inboundShippingFee, setInboundShippingFee] = useState<number>(0);
   const [rawInboundShippingFee, setRawInboundShippingFee] = useState<string | null>(null);
@@ -137,16 +161,16 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     shippingHeight
   );
 
-  // Dynamically calculated product data for WFS fee calculation.
+  // Product data for WFS fee calculation
   const productForWFSFee = {
     weight: finalShippingWeightForWFS,
     length: shippingLength,
     width: shippingWidth,
     height: shippingHeight,
-    isWalmartFulfilled: isWalmartFulfilled,
-    isApparel: product?.isApparel || false,
-    isHazardousMaterial: product?.isHazardousMaterial || false,
-    retailPrice: product?.retailPrice || 0,
+    isWalmartFulfilled,
+    isApparel: productData?.flags?.isApparel || false,
+    isHazardousMaterial: productData?.flags?.isHazardousMaterial || false,
+    retailPrice: productData?.pricing?.currentPrice || 0,
   };
 
   // Mutable reference for initialization checks
@@ -154,9 +178,29 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
 
 
 
-  /////////////////////////////////////////////////////
-  // Effects
-  /////////////////////////////////////////////////////
+  ////////////////////////////////////////////////
+  // Chrome API Handlers:
+  ////////////////////////////////////////////////
+  // No Chrome API handlers needed for this component
+
+
+
+
+
+  ////////////////////////////////////////////////
+  // Event Handlers:
+  ////////////////////////////////////////////////
+  // UI Events
+  const toggleOpen = () => setIsOpen(!isOpen);
+  const handlePriceChange = (value: string, setter: (value: number) => void) => {
+    const numValue = parseFloat(value) || 0;
+    setter(numValue);
+  };
+
+  // Data Update Events
+  useEffect(() => {
+    setIsOpen(areSectionsOpen);
+  }, [areSectionsOpen]);
 
   // Initialize WFS Fee and ensure product cost is initialized.
   useEffect(() => {
@@ -249,21 +293,13 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
 
   // Recalculate dimensions and weight based on product data changes.
   useEffect(() => {
-    if (product) {
-      setShippingLength(
-        typeof product.shippingLength === "string" ? parseFloat(product.shippingLength) : product.shippingLength ?? 0
-      );
-      setShippingWidth(
-        typeof product.shippingWidth === "string" ? parseFloat(product.shippingWidth) : product.shippingWidth ?? 0
-      );
-      setShippingHeight(
-        typeof product.shippingHeight === "string" ? parseFloat(product.shippingHeight) : product.shippingHeight ?? 0
-      );
-      setWeight(
-        typeof product.weight === "string" ? parseFloat(product.weight) : product.weight ?? 0
-      );
+    if (productData?.dimensions) {
+      setShippingLength(parseFloat(productData.dimensions.shippingLength?.toString() || "0"));
+      setShippingWidth(parseFloat(productData.dimensions.shippingWidth?.toString() || "0"));
+      setShippingHeight(parseFloat(productData.dimensions.shippingHeight?.toString() || "0"));
+      setWeight(parseFloat(productData.dimensions.weight?.toString() || "0"));
     }
-  }, [product]);
+  }, [productData]);
 
   // Load user settings for season, storage length, and inbound rate.
   useEffect(() => {
@@ -300,16 +336,15 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
   /////////////////////////////////////////////////
   // Helper Functions
   /////////////////////////////////////////////////
+  // Format numbers to two decimal places
+  const formatToTwoDecimalPlaces = (value: number): string => value.toFixed(2);
 
-  // Fetch stored metrics and preferences from localStorage.
+  // Fetch stored metrics and preferences from localStorage
   const getStoredMetrics = () => {
     return JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
   };
 
-  // Format numbers to two decimal places.
-  const formatToTwoDecimalPlaces = (value: number): string => value.toFixed(2);
-
-  // Initialize WFS Fee and reset related states.
+  // Initialize WFS Fee and reset related states
   const initializeWfsFee = () => {
     const recalculatedFee = calculateWFSFee(productForWFSFee);
     setWfsFee(recalculatedFee);
@@ -317,11 +352,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     setHasEdited((prev) => ({ ...prev, wfsFee: false }));
   };
 
-  // Reset all pricing-related states.
+  // Reset functions
   const resetPricing = () => {
     const initialProductCost = calculateStartingProductCost(salePrice);
     setProductCost(initialProductCost);
-    setSalePrice(product.currentPrice || 0);
+    setSalePrice(productData?.pricing?.currentPrice || 0);
     setRawProductCost(null);
     setRawSalePrice(null);
     setHasEdited((prev) => ({
@@ -331,28 +366,17 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     }));
   };
 
-  // Reset all shipping dimensions to their initial values.
   const resetShippingDimensions = () => {
-    setShippingLength(
-      typeof product.shippingLength === "string"
-        ? parseFloat(product.shippingLength)
-        : product.shippingLength ?? 0
-    );
-    setShippingWidth(
-      typeof product.shippingWidth === "string"
-        ? parseFloat(product.shippingWidth)
-        : product.shippingWidth ?? 0
-    );
-    setShippingHeight(
-      typeof product.shippingHeight === "string"
-        ? parseFloat(product.shippingHeight)
-        : product.shippingHeight ?? 0
-    );
-    setWeight(
-      typeof product.weight === "string"
-        ? parseFloat(product.weight)
-        : product.weight ?? 0
-    );
+    const dimensions = productData?.dimensions || {
+      shippingLength: "0",
+      shippingWidth: "0",
+      shippingHeight: "0",
+      weight: "0"
+    };
+    setShippingLength(parseFloat(dimensions.shippingLength?.toString() || "0"));
+    setShippingWidth(parseFloat(dimensions.shippingWidth?.toString() || "0"));
+    setShippingHeight(parseFloat(dimensions.shippingHeight?.toString() || "0"));
+    setWeight(parseFloat(dimensions.weight?.toString() || "0"));
     setRawLength(null);
     setRawWidth(null);
     setRawHeight(null);
@@ -366,7 +390,6 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     }));
   };
 
-  // Reset all fee-related states.
   const resetFees = () => {
     if (isWalmartFulfilled) {
       setWfsFee(calculateWFSFee(productForWFSFee));
@@ -394,62 +417,57 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
     }));
   };
 
-  /////////////////////////////////////////////////////
-  // Event Handlers
-  /////////////////////////////////////////////////////
-  const toggleOpen = () => setIsOpen(!isOpen);
 
 
 
 
 
   /////////////////////////////////////////////////////
-  // JSX (Return)
+  // JSX
   /////////////////////////////////////////////////////
 
   return (
     <div
       id="Pricing"
-      className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}>
+      className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}
+    >
 
-      {/* Section Header */}
+      {/* Header Section */}
       <h1
-        className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
+        className={STYLES.header}
         onClick={toggleOpen}
       >
         {isOpen ? "🔽  Pricing" : "▶️  Pricing"}
       </h1>
 
-      {/* Section Content */}
+      {/* Main Content Section */}
       <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>
 
         {/* Pricing Groups */}
         <div id="Pricing" className="p-1 bg-[#d7d7d7] rounded-lg shadow-sm">
 
-          {/*----------------------------------------------------------------*/}
-          {/*Group 1: Revenue - Key Metrics*/}
-          <div className="w-full mb-1 p-1 bg-[#FAFAF1] border border-1 rounded-lg shadow-lg shadow-black">
-
+          {/* ===== Group 1: Revenue - Key Metrics Section ===== */}
+          <div className="w-auto mx-3 mt-2 mb-4 p-1 bg-[#FAFAF1] border border-1 rounded-lg shadow-lg shadow-black">
             {/* Monthly Sales Est Row */}
-            <div className="flex justify-between items-center mx-8 text-xs">
+            <div className="flex justify-between items-center mx-8 text-sm">
               <span className="font-semibold">Monthly Sales Est</span>
               <span className="text-sm">Coming Soon...</span>
             </div>
 
             {/* Total Profit Row */}
-            <div className="flex justify-between items-center mx-8 text-xs">
+            <div className="flex justify-between items-center mx-8 text-sm">
               <span className="font-semibold">Total Profit</span>
               <span className="text-sm">{`$${totalProfit.toFixed(2)}`}</span>
             </div>
 
             {/* Margin Row */}
-            <div className="flex justify-between items-center mx-8 text-xs">
+            <div className="flex justify-between items-center mx-8 text-sm">
               <span className="font-semibold">Margin</span>
               <span className="text-sm">{`${margin}%`}</span>
             </div>
 
             {/* ROI Row */}
-            <div className="flex justify-between items-center mx-8 text-xs">
+            <div className="flex justify-between items-center mx-8 text-sm">
               <span className="font-semibold">ROI</span>
               <span className={`text-sm  ${productCost === 0 ? "text-red-500 font-extrabold" : "text-black"}`}>
                 {productCost === 0 ? "Enter Cost" : `${roi}%`}
@@ -457,11 +475,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
             </div>
           </div>
 
+          {/* ===== Group 2: Pricing Section ===== */}
           <div className="section-wrapper">
-            {/* Group 2: Pricing */}
             <div className="w-full mb-1 p-1 bg-white rounded-lg shadow-sm">
 
-              {/* Section Header */}
+              {/* ----- Section Header ----- */}
               <div className="flex justify-between items-center mb-1 mx-2">
                 <h2 className={DEFAULT_HEADER_CLASS}>Pricing</h2>
                 <button
@@ -473,7 +491,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 </button>
               </div>
 
-              {/* Section Content */}
+              {/* ----- Section Content ----- */}
               <div className="grid grid-cols-2 gap-x-6 gap-y-1 mx-5">
 
                 {/* Product Cost Row */}
@@ -528,12 +546,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
             </div>
           </div>
 
-          {/*----------------------------------------------------------------*/}
+          {/* ===== Group 3: Shipping Dimensions Section ===== */}
           <div className="section-wrapper">
-            {/* Group 3: Shipping Dimensions */}
             <div className="w-full mb-1 p-1 bg-white rounded-lg shadow-sm">
 
-              {/* Section Header */}
+              {/* ----- Section Header ----- */}
               <div className="flex justify-between items-center mb-1 mx-2">
                 <h2 className={DEFAULT_HEADER_CLASS}>Shipping Dimensions</h2>
                 <button
@@ -545,7 +562,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 </button>
               </div>
 
-              {/* Section Content */}
+              {/* ----- Section Content ----- */}
               <div className="grid grid-cols-2 gap-x-6 gap-y-1 mx-5">
 
                 {/* Length Row */}
@@ -640,12 +657,11 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
             </div>
           </div>
 
-          {/*----------------------------------------------------------------*/}
+          {/* ===== Group 4: Fees Section ===== */}
           <div className="section-wrapper">
-            {/* Group 4: Fees */}
             <div className="w-full mb-1 p-1 bg-white rounded-lg shadow-sm">
 
-              {/* Section Header */}
+              {/* ----- Section Header ----- */}
               <div className="flex justify-between items-center mb-1 mx-2">
                 <h2 className={DEFAULT_HEADER_CLASS}>Fees</h2>
                 <button
@@ -657,7 +673,7 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
                 </button>
               </div>
 
-              {/* Section Content */}
+              {/* ----- Section Content ----- */}
               <div className="grid grid-cols-2 gap-x-6 gap-y-1 mx-5">
 
                 {/* Referral Fee Row */}
@@ -795,39 +811,35 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
             </div>
           </div>
 
-          {/*----------------------------------------------------------------*/}
-          <div className="section-wrapper">
-            {/* Group 5: Contract Category */}
-            <div className="w-full mb-1 p-1 bg-white rounded-lg shadow-sm">
+          {/* ===== Group 5: Contract Category Section ===== */}
+          <div className="w-full mb-1 p-1 bg-white rounded-lg shadow-sm">
 
-              {/* Section Header */}
-              <h2 className={DEFAULT_HEADER_CLASS}>Contract Category</h2>
+            {/* ----- Section Header ----- */}
+            <h2 className={DEFAULT_HEADER_CLASS}>Contract Category</h2>
 
-              {/* Dropdown for Contract Category */}
-              <div className="flex items-center mb-1 mx-5 text-sm">
-                <div className="w-full">
+            {/* Dropdown for Contract Category */}
+            <div className="flex items-center mb-1 mx-5 text-sm">
+              <div className="w-full">
 
-                  {/* Dropdown element */}
-                  <select
-                    value={contractCategory}
-                    onChange={(e) => setContractCategory(e.target.value)}
-                    className="text-xs p-1 w-full border border-gray-300 rounded bg-gray-100 text-gray-700">
+                {/* Dropdown element */}
+                <select
+                  value={contractCategory}
+                  onChange={(e) => setContractCategory(e.target.value)}
+                  className="text-xs p-1 w-full border border-gray-300 rounded bg-gray-100 text-gray-700">
 
-                    {/* Populate options dynamically */}
-                    {contractCategoryOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                  {/* Populate options dynamically */}
+                  {contractCategoryOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
               </div>
-
             </div>
+
           </div>
 
-          {/*----------------------------------------------------------------*/}
-          {/* Fulfillment Buttons */}
+          {/* ===== Group 6: Fulfillment Options Section ===== */}
           <div className="flex space-x-2 my-2 mx-5">
             {/* Walmart Fulfilled Button */}
             <div className="flex-1">
@@ -876,16 +888,15 @@ export const Pricing: React.FC<PricingProps> = ({ product, areSectionsOpen }) =>
             </div>
           </div>
 
-
-
         </div>
       </div >
     </div >
   );
 }
 
-/////////////////////////////////////////////////////
-// Export Statement
-/////////////////////////////////////////////////////
 
+////////////////////////////////////////////////
+// Export Statement:
+////////////////////////////////////////////////
 export default Pricing;
+

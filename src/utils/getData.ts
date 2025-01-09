@@ -165,32 +165,27 @@ function getProductDetails(product, idml, reviews) {
     product.badges?.flags?.map((badge) => badge.text) || ["No Badges Available"];
 
   // Logging the data used for transparency and debugging.
-  console.log("Product Details Used Summary:", productDetailsUsed);
 
   return productDetailsUsed;
 }
 
 // Main function to retrieve product data from the page and extract details.
-function getData() {
+export default function getData() {
   const dataDiv = getDataDiv();
   if (!dataDiv) {
-    console.error("Data div not found.");
-    return null; // Return null if data div is not found
+    return null;
   }
   try {
-    const rawData = dataDiv.innerText; // Get the raw data as a string
+    const rawData = dataDiv.innerText;
     const data = JSON.parse(rawData).props.pageProps.initialData.data;
-    console.log("All Extracted Data:", data);
+    console.log('%c[All JSON Data]', 'color: #22c55e; font-weight: bold', {
+      timestamp: new Date().toISOString(),
+      data: data
+    });
     const { product, idml, reviews } = data;
     const productDetailsUsed = getProductDetails(product, idml, reviews);
     return productDetailsUsed;
   } catch (error) {
-    console.error("Failed to parse product data in getData():", error);
     return null;
   }
 }
-
-//////////////////////////////////////////////////
-// Export Statement:
-//////////////////////////////////////////////////
-export default getData; // Ensure this is the export

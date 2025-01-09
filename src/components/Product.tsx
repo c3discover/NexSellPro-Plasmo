@@ -2,63 +2,65 @@
 // Imports:
 ////////////////////////////////////////////////
 import { useState, useEffect } from "react";
-import getData from "../utils/getData"; // Import your getData function to retrieve product details
+import { getUsedData } from "~/utils/usedData";
+import type { UsedProductData } from "~/utils/usedData";
 
 ////////////////////////////////////////////////
 // Constants and Variables:
 ////////////////////////////////////////////////
-// No constants defined at this point
+const LOADING_MESSAGE = "Loading product data...";
 
 ////////////////////////////////////////////////
-// Props and Types:
+// Types and Interfaces:
 ////////////////////////////////////////////////
+// Using UsedProductData from usedData.ts
 
-// Define the structure of ProductDetails and ProductProps to ensure type safety
-interface ProductDetails {
-  name: string;
-  imageUrl: string;
-  images?: string[];
-  videos?: string[];
-  currentPrice: string;
-  numberOfRatings: number;
-  sellerName: string;
-  badges?: string[];
-  brand: string;
-  totalSellers?: number;
-  categories?: { name: string; url: string }[];
-}
-
-interface ProductProps {
-  product: ProductDetails;
-}
+////////////////////////////////////////////////
+// Component:
+////////////////////////////////////////////////
+export const Product = () => {
 
 ////////////////////////////////////////////////
 // State and Hooks:
 ////////////////////////////////////////////////
-export const Product = () => {
-  // State to manage product details
-  const [productDetailsUsed, setProductDetailsUsed] = useState<any | null>(null);
+  const [productData, setProductData] = useState<UsedProductData | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
-  // Fetch product data on component mount
   useEffect(() => {
-    const fetchedProductDetails = getData();
-    if (fetchedProductDetails) {
-      setProductDetailsUsed(fetchedProductDetails);
-    }
+    const fetchData = async () => {
+      const data = await getUsedData();
+      if (data) {
+        setProductData(data);
+      }
+    };
+    fetchData();
   }, []);
 
+////////////////////////////////////////////////
+// Chrome API Handlers:
+////////////////////////////////////////////////
+// No Chrome API handlers needed for this component
 
-  //////////////////////////////////////////////////
-  // Helper Functions:
-  //////////////////////////////////////////////////
-  // Render shelving path as links
+////////////////////////////////////////////////
+// Event Handlers:
+////////////////////////////////////////////////
+  const handleCopy = () => {
+    if (productData) {
+      navigator.clipboard.writeText(productData.basic.name);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+////////////////////////////////////////////////
+// Helper Functions:
+////////////////////////////////////////////////
   const renderShelvingPath = () => {
-    if (!productDetailsUsed || productDetailsUsed.categories.length === 0) {
+    if (!productData?.categories?.categories || productData.categories.categories.length === 0) {
       return <span>No shelving path available</span>;
     }
 
-    return productDetailsUsed.categories.map((category: any, index: number) => (
+    return productData.categories.categories.map((category, index) => (
       <span key={index}>
         <a
           href={`https://www.walmart.com${category.url}`}
@@ -68,34 +70,20 @@ export const Product = () => {
         >
           {category.name}
         </a>
-        {/* Add '>' between links */}
-        {index < productDetailsUsed.categories.length - 1 && " > "}
+        {index < productData.categories.categories.length - 1 && " > "}
       </span>
     ));
   };
 
-  // Extract the first category from the path
-  const firstCategory = productDetailsUsed && productDetailsUsed.categories.length > 0 ? productDetailsUsed.categories[0] : null;
-
-  ////////////////////////////////////////////////
-  // Event Handlers:
-  ////////////////////////////////////////////////
-  // Handler to copy product name to clipboard
-  const handleCopy = () => {
-    if (productDetailsUsed) {
-      navigator.clipboard.writeText(productDetailsUsed.name);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-
-  //////////////////////////////////////////////////
-  // JSX (Return):
-  //////////////////////////////////////////////////
-  if (!productDetailsUsed) {
-    return <div></div>; // Fallback if data is not yet loaded
+////////////////////////////////////////////////
+// JSX:
+////////////////////////////////////////////////
+  if (!productData) {
+    return <div>{LOADING_MESSAGE}</div>;
   }
+
+  // Get first category for the main category link
+  const firstCategory = productData.categories.categories[0];
 
   return (
     <div
@@ -103,20 +91,15 @@ export const Product = () => {
       key="product"
       className="flex items-center justify-start flex-col bg-[#d7d7d7] max-w-[100%] p-2 gap-2 rounded-lg shadow-2xl"
     >
-
-
       {/* Product Name Section */}
       <div id="productName" className="flex items-center justify-between w-full">
         <p className="text-black font-bold text-xs text-center p-1 mb-2 mr-1 ml-2 rounded-lg bg-[#bfbfbf] shadow-black shadow-xl">
-          {productDetailsUsed.name}
-          </p>
+          {productData.basic.name}
+        </p>
 
         {/* Copy and Copied Icons */}
         <svg
-          onClick={() => {
-            navigator.clipboard.writeText(productDetailsUsed.name);
-            setCopied(!copied);
-          }}
+          onClick={handleCopy}
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
           fill="none"
@@ -130,11 +113,8 @@ export const Product = () => {
           <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
         </svg>
 
+        {/* Copied Check Icon */}
         <svg
-          onClick={() => {
-            navigator.clipboard.writeText(productDetailsUsed.name);
-            setCopied(!copied);
-          }}
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 24 24"
           fill="none"
@@ -154,14 +134,14 @@ export const Product = () => {
         {/* Product Image Section */}
         <div id="productImage" className="w-full lg:w-1/2 flex flex-col items-center justify-center bg-white p-1 rounded-lg shadow-lg">
           <img
-            src={productDetailsUsed.imageUrl}
-            alt={productDetailsUsed.name}
+            src={productData.media.imageUrl}
+            alt={productData.basic.name}
             className="w-2/3 hover:w-full p-2 rounded-lg" />
           <p className="font-bold text-center text-black text-sm">
-            Images: <span className="font-normal">{productDetailsUsed.images?.length || 0}</span>
+            Images: <span className="font-normal">{productData.media.images?.length || 0}</span>
           </p>
           <p className="font-bold text-center text-black text-sm p-1">
-            Videos: <span className="font-normal">{productDetailsUsed.videos?.length || 0}</span>
+            Videos: <span className="font-normal">{productData.media.videos?.length || 0}</span>
           </p>
         </div>
 
@@ -172,27 +152,27 @@ export const Product = () => {
           <p className="text-black text-xs p-1">
             <span className="font-bold">Current Price </span>
             <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">
-              ${productDetailsUsed.currentPrice ? parseFloat(productDetailsUsed.currentPrice).toFixed(2) : '0.00'}
+              ${productData.pricing.currentPrice ? productData.pricing.currentPrice.toFixed(2) : '0.00'}
             </span>
           </p>
 
           <p className="text-black text-xs p-1 mt-2">
             <span className="font-bold mt-2">Total Ratings </span>
             <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">
-              {productDetailsUsed.numberOfRatings}
+              {productData.reviews.numberOfRatings}
             </span>
           </p>
 
           <p className="text-black text-xs p-1 mt-2">
             <span className="font-bold mt-2">Total Sellers </span>
             <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">
-              {productDetailsUsed.totalSellers}
+              {productData.inventory.totalSellers}
             </span>
           </p>
 
           <p className="text-black text-xs p-1 mt-2">
             <span className="font-bold mt-2">Walmart Selling? </span>
-            {productDetailsUsed.sellerName === "Walmart.com" ? (
+            {productData.pricing.sellerName === "Walmart.com" ? (
               <span className="px-1 py-1 text-xs bg-red-100 text-red-700 font-bold border border-red-500 rounded-lg shadow-sm">YES</span>
             ) : (
               <span className="px-1 py-1 text-xs bg-green-100 text-green-700 font-bold border border-green-500 rounded-lg shadow-sm">NO</span>
@@ -202,7 +182,7 @@ export const Product = () => {
           <p className="text-black text-xs p-1 mt-2">
             <span className="font-bold mt-2">Variations </span>
             <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">
-            {Object.keys(productDetailsUsed?.variantsMap || {}).length || "-"}
+              {Object.keys(productData.variants.variantsMap || {}).length || "-"}
             </span>
           </p>
 
@@ -215,12 +195,12 @@ export const Product = () => {
         <p className="text-black font-bold text-start text-md">
           Brand:{" "}
           <a
-            href={`https://www.walmart.com/search?q=${productDetailsUsed.brand}`}
+            href={`https://www.walmart.com/search?q=${productData.basic.brand}`}
             target="_blank"
             rel="noopener noreferrer"
             className="ml-2 text-blue-500 hover:underline"
           >
-            {productDetailsUsed.brand}
+            {productData.basic.brand}
           </a>
         </p>
 
@@ -249,9 +229,9 @@ export const Product = () => {
 
       {/* Badges */}
       <div className="text-center p-1 rounded-lg shadow-2xl bg-slate-500">
-        {productDetailsUsed.badges.length > 0 ? (
+        {productData.badges.length > 0 ? (
           <div className="grid grid-cols-2 gap-2 p-1 place-items-center">
-            {productDetailsUsed.badges.map((badge, index) => {
+            {productData.badges.map((badge, index) => {
               const containsNumber = /\d+/.test(badge); // Check if the badge contains a number
 
               // Style for badge with a number (outline style)
@@ -261,7 +241,7 @@ export const Product = () => {
               const filledStyle = "bg-blue-100 text-blue-900";
 
               // If it's the last badge and there's an odd number of badges, make it span both columns (centered)
-              const isLastSingleBadge = index === productDetailsUsed.badges.length - 1 && productDetailsUsed.badges.length % 2 !== 0;
+              const isLastSingleBadge = index === productData.badges.length - 1 && productData.badges.length % 2 !== 0;
 
               return (
                 <div

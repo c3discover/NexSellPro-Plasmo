@@ -1,28 +1,28 @@
 {
-  "extends": "plasmo/templates/tsconfig.base",
-
+  "extends": "./node_modules/plasmo/templates/tsconfig.base",
   "exclude": [
     "node_modules"
   ],
-
   "include": [
     ".plasmo/index.d.ts",
     "./**/*.ts",
     "./**/*.tsx"
   ],
-
   "compilerOptions": {
     "paths": {
-      "~*": [
+      "~/*": [
         "./src/*"
       ]
     },
     "baseUrl": ".",
     "typeRoots": [
-      "./node_modules/@types",
-      "./src/types"
+      "./node_modules/@types"
     ],
-    "types": ["react", "react-dom", "chrome"]
+    "types": [],
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ]
   }
-  
 }
