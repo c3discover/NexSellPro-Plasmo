@@ -1,12 +1,12 @@
-# WalAIWiz
+# NexSellPro
 
-**WalAIWiz** is a Chrome extension that helps Walmart sellers make informed decisions about product profitability and performance. It provides detailed product analysis, including estimated profitability, sales data, and tools for understanding market competition—all within the Walmart product pages.
+**NexSellPro** is a Chrome extension that helps Walmart sellers make informed decisions about product profitability and performance. It provides detailed product analysis, including estimated profitability, sales data, and tools for understanding market competition—all within the Walmart product pages.
 
 This extension is designed to be simple to use, integrating directly with the Walmart product listings to give you the insights you need to grow your e-commerce business.
 
 ## Features
 
-WalAIWiz offers a range of features to help Walmart sellers make informed business decisions:
+NexSellPro offers a range of features to help Walmart sellers make informed business decisions:
 
 - **Profitability Calculations**: Provides estimated profit, margin, and return on investment for products.
 - **Product Analysis**: Displays key product metrics like monthly sales estimates and competition data.

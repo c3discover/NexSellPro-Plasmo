@@ -66,7 +66,7 @@ const getProductSpecification = (idml, name) => {
 ////////////////////////////////////////////////
 
 // Function to extract and centralize product details, specifications, and reviews from given data
-function getProductDetails(product, idml, reviews) {
+export function getProductDetails(product, idml, reviews) {
   const productDetailsUsed = {
     //Categories below
     badges: [] as string[],
@@ -169,23 +169,28 @@ function getProductDetails(product, idml, reviews) {
   return productDetailsUsed;
 }
 
-// Main function to retrieve product data from the page and extract details.
+// Cache for data
+let lastData: any = null;
+let lastDataTimestamp = 0;
+const DATA_COOLDOWN = 1000; // 1 second cooldown
+
 export default function getData() {
-  const dataDiv = getDataDiv();
-  if (!dataDiv) {
-    return null;
-  }
-  try {
-    const rawData = dataDiv.innerText;
-    const data = JSON.parse(rawData).props.pageProps.initialData.data;
-    console.log('%c[All JSON Data]', 'color: #22c55e; font-weight: bold', {
-      timestamp: new Date().toISOString(),
-      data: data
-    });
-    const { product, idml, reviews } = data;
-    const productDetailsUsed = getProductDetails(product, idml, reviews);
-    return productDetailsUsed;
-  } catch (error) {
-    return null;
-  }
+    try {
+        const dataDiv = document.getElementById("__NEXT_DATA__");
+        if (!dataDiv) return null;
+
+        const rawData = JSON.parse(dataDiv.innerText);
+        const { product, idml, reviews } = rawData.props.pageProps.initialData.data;
+
+        // Always log the raw data
+        console.log('%c[All JSON Data]', 'color: #22c55e; font-weight: bold', {
+            timestamp: new Date().toISOString(),
+            data: { product, idml, reviews }
+        });
+
+        return getProductDetails(product, idml, reviews);
+    } catch (error) {
+        console.error('Error in getData:', error);
+        return null;
+    }
 }

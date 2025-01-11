@@ -101,99 +101,111 @@ export interface UsedProductData {
 // Main Function:
 ////////////////////////////////////////////////
 
+// Cache for data fetching
+let dataFetchPromise: Promise<UsedProductData | null> | null = null;
+let lastFetchTimestamp = 0;
+const FETCH_COOLDOWN = 1000; // 1 second cooldown
+
 export async function getUsedData(): Promise<UsedProductData | null> {
   try {
-    // Get raw product data
-    const rawProductData = getData();
-    if (!rawProductData) return null;
+    // If there's an ongoing fetch, return its promise
+    if (dataFetchPromise) {
+      return dataFetchPromise;
+    }
 
-    // Get seller data
-    const sellerData = await getSellerData();
-    const mainSeller = sellerData[0] || null;
+    // Check cooldown
+    const now = Date.now();
+    if (now - lastFetchTimestamp < FETCH_COOLDOWN) {
+      return null;
+    }
 
-    // Organize data into our new structure
-    const usedData: UsedProductData = {
-      basic: {
-        productID: rawProductData.productID,
-        name: rawProductData.name,
-        upc: rawProductData.upc,
-        brand: rawProductData.brand,
-        brandUrl: rawProductData.brandUrl,
-        modelNumber: rawProductData.modelNumber
-      },
-      pricing: {
-        currentPrice: rawProductData.currentPrice,
-        sellerName: rawProductData.sellerName,
-        sellerDisplayName: rawProductData.sellerDisplayName,
-        sellerType: rawProductData.sellerType
-      },
-      dimensions: {
-        shippingLength: rawProductData.shippingLength,
-        shippingWidth: rawProductData.shippingWidth,
-        shippingHeight: rawProductData.shippingHeight,
-        weight: rawProductData.weight
-      },
-      media: {
-        imageUrl: rawProductData.imageUrl,
-        images: rawProductData.images,
-        videos: rawProductData.videos
-      },
-      categories: {
-        mainCategory: rawProductData.mainCategory,
-        categories: rawProductData.categories
-      },
-      inventory: {
-        stock: rawProductData.stock,
-        totalSellers: rawProductData.totalSellers,
-        fulfillmentOptions: rawProductData.fulfillmentOptions
-      },
-      reviews: {
-        overallRating: rawProductData.overallRating,
-        numberOfRatings: rawProductData.numberOfRatings,
-        numberOfReviews: rawProductData.numberOfReviews,
-        customerReviews: rawProductData.customerReviews,
-        reviewDates: rawProductData.reviewDates
-      },
-      variants: {
-        variantCriteria: rawProductData.variantCriteria,
-        variantsMap: rawProductData.variantsMap
-      },
-      badges: rawProductData.badges,
-      sellers: {
-        mainSeller,
-        otherSellers: sellerData.slice(1),
-        totalSellers: sellerData.length
-      },
-      flags: {
-        isApparel: false,
-        isHazardousMaterial: false
-      }
-    };
+    lastFetchTimestamp = now;
+    dataFetchPromise = (async () => {
+      try {
+        // Get raw product data
+        const rawProductData = getData();
+        if (!rawProductData) return null;
 
-    console.log('%c[Data Used in Extension]', 'color: #0ea5e9; font-weight: bold', {
-      timestamp: new Date().toISOString(),
-      data: {
-        ...usedData,
-        sellers: {
-          mainSeller: {
-            sellerName: mainSeller?.sellerName,
-            price: mainSeller?.price,
-            type: mainSeller?.type,
-            arrives: mainSeller?.arrives,
-            isProSeller: mainSeller?.isProSeller,
-            isWFS: mainSeller?.isWFS,
-            priceInfo: mainSeller?.priceInfo,
-            fulfillmentStatus: mainSeller?.fulfillmentStatus,
-            arrivalDate: mainSeller?.arrivalDate
+        // Get seller data
+        const sellerData = await getSellerData();
+        const mainSeller = sellerData[0] || null;
+
+        // Organize data into our new structure
+        const usedData: UsedProductData = {
+          basic: {
+            productID: rawProductData.productID,
+            name: rawProductData.name,
+            upc: rawProductData.upc,
+            brand: rawProductData.brand,
+            brandUrl: rawProductData.brandUrl,
+            modelNumber: rawProductData.modelNumber
           },
-          otherSellers: sellerData.slice(1),
-          totalSellers: sellerData.length
-        }
-      }
-    });
+          pricing: {
+            currentPrice: rawProductData.currentPrice,
+            sellerName: rawProductData.sellerName,
+            sellerDisplayName: rawProductData.sellerDisplayName,
+            sellerType: rawProductData.sellerType
+          },
+          dimensions: {
+            shippingLength: rawProductData.shippingLength,
+            shippingWidth: rawProductData.shippingWidth,
+            shippingHeight: rawProductData.shippingHeight,
+            weight: rawProductData.weight
+          },
+          media: {
+            imageUrl: rawProductData.imageUrl,
+            images: rawProductData.images,
+            videos: rawProductData.videos
+          },
+          categories: {
+            mainCategory: rawProductData.mainCategory,
+            categories: rawProductData.categories
+          },
+          inventory: {
+            stock: rawProductData.stock,
+            totalSellers: rawProductData.totalSellers,
+            fulfillmentOptions: rawProductData.fulfillmentOptions
+          },
+          reviews: {
+            overallRating: rawProductData.overallRating,
+            numberOfRatings: rawProductData.numberOfRatings,
+            numberOfReviews: rawProductData.numberOfReviews,
+            customerReviews: rawProductData.customerReviews,
+            reviewDates: rawProductData.reviewDates
+          },
+          variants: {
+            variantCriteria: rawProductData.variantCriteria,
+            variantsMap: rawProductData.variantsMap
+          },
+          badges: rawProductData.badges,
+          sellers: {
+            mainSeller,
+            otherSellers: sellerData.slice(1),
+            totalSellers: sellerData.length
+          },
+          flags: {
+            isApparel: false,
+            isHazardousMaterial: false
+          }
+        };
 
-    return usedData;
+        // Always log the used data
+        console.log('%c[Data Used in Extension]', 'color: #0ea5e9; font-weight: bold', {
+          timestamp: new Date().toISOString(),
+          data: usedData
+        });
+
+        return usedData;
+      } catch (error) {
+        return null;
+      } finally {
+        dataFetchPromise = null;
+      }
+    })();
+
+    return dataFetchPromise;
   } catch (error) {
+    console.error('Error in getUsedData:', error);
     return null;
   }
 } 

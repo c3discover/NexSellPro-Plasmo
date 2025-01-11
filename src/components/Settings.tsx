@@ -31,6 +31,7 @@ export const SettingsModal: React.FC<{
     maxSellers: string;
     maxWfsSellers: string;
     inboundShippingCost: string;
+    sfShippingCost: string;
     storageLength: string;
     season: string;
     prepCost: string;
@@ -46,6 +47,7 @@ export const SettingsModal: React.FC<{
     maxSellers: "0",
     maxWfsSellers: "0",
     inboundShippingCost: "0.00",
+    sfShippingCost: "0.00",
     storageLength: "1",
     season: "Jan-Sep",
     prepCost: "0.00",
@@ -81,6 +83,7 @@ export const SettingsModal: React.FC<{
   const [rawSeason, setRawSeason] = useState<string | null>(null);
   const [rawPrepCost, setRawPrepCost] = useState<string | null>(null);
   const [rawAdditionalCosts, setRawAdditionalCosts] = useState<string | null>(null);
+  const [rawSfShippingCost, setRawSfShippingCost] = useState<string | null>(null);
 
   /////////////////////////////////////////////////////
   // Effect Hooks for Loading and Saving Settings
@@ -93,13 +96,27 @@ export const SettingsModal: React.FC<{
 
     const savedFulfillment = localStorage.getItem("defaultFulfillment");
     if (savedFulfillment) setDefaultFulfillment(savedFulfillment);
-  }, []);
 
-  // Save desired metrics and fulfillment preference to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem("desiredMetrics", JSON.stringify(desiredMetrics));
-    localStorage.setItem("defaultFulfillment", defaultFulfillment);
-  }, [desiredMetrics, defaultFulfillment]);
+    // Load prep costs
+    const savedPrepCostType = localStorage.getItem("prepCostType");
+    if (savedPrepCostType) setPrepCostType(savedPrepCostType);
+    
+    const savedPrepCostPerLb = localStorage.getItem("prepCostPerLb");
+    if (savedPrepCostPerLb) setPrepCostPerLb(parseFloat(savedPrepCostPerLb));
+    
+    const savedPrepCostEach = localStorage.getItem("prepCostEach");
+    if (savedPrepCostEach) setPrepCostEach(parseFloat(savedPrepCostEach));
+
+    // Load additional costs
+    const savedAdditionalCostType = localStorage.getItem("additionalCostType");
+    if (savedAdditionalCostType) setAdditionalCostType(savedAdditionalCostType);
+    
+    const savedAdditionalCostPerLb = localStorage.getItem("additionalCostPerLb");
+    if (savedAdditionalCostPerLb) setAdditionalCostPerLb(parseFloat(savedAdditionalCostPerLb));
+    
+    const savedAdditionalCostEach = localStorage.getItem("additionalCostEach");
+    if (savedAdditionalCostEach) setAdditionalCostEach(parseFloat(savedAdditionalCostEach));
+  }, []);
 
   /////////////////////////////////////////////////////
   // Handler Functions
@@ -118,6 +135,7 @@ export const SettingsModal: React.FC<{
       maxSellers: "0",
       maxWfsSellers: "0",
       inboundShippingCost: "0.00",
+      sfShippingCost: "0.00",
       storageLength: "1",
       season: "Jan-Sep",
       prepCost: "0.00",
@@ -154,7 +172,7 @@ export const SettingsModal: React.FC<{
 
     setDesiredMetrics((prev: typeof desiredMetrics) => {
       let formattedValue = prev[fieldName];
-      if (["minProfit", "inboundShippingCost", "prepCost", "additionalCosts"].includes(fieldName)) {
+      if (["minProfit", "inboundShippingCost", "sfShippingCost", "prepCost", "additionalCosts"].includes(fieldName)) {
         // Format monetary values to 2 decimal places
         formattedValue = parseFloat(rawMetrics[fieldName] ?? "0").toFixed(2);
       } if (fieldName === "maxWfsSellers") {
@@ -173,15 +191,26 @@ export const SettingsModal: React.FC<{
 
   // Save all settings and close the modal
   const handleSaveSettings = () => {
+    // Save all settings to localStorage
     localStorage.setItem("desiredMetrics", JSON.stringify(desiredMetrics));
+    localStorage.setItem("defaultFulfillment", defaultFulfillment);
     localStorage.setItem("prepCostType", prepCostType);
     localStorage.setItem("prepCostPerLb", prepCostPerLb.toString());
     localStorage.setItem("prepCostEach", prepCostEach.toString());
     localStorage.setItem("additionalCostType", additionalCostType);
     localStorage.setItem("additionalCostPerLb", additionalCostPerLb.toString());
     localStorage.setItem("additionalCostEach", additionalCostEach.toString());
-    onSettingsChange(); // Notify parent component of changes
+
+    // Notify parent of changes and close modal
+    onSettingsChange();
     onClose();
+
+    // Refresh the extension
+    if (chrome.runtime && chrome.runtime.reload) {
+      chrome.runtime.reload();
+    } else {
+      window.location.reload();
+    }
   };
 
 
@@ -198,17 +227,26 @@ export const SettingsModal: React.FC<{
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
       <div className="bg-white p-6 rounded-md w-[350px] shadow-lg relative">
+        {/* Header with Clear All and Close buttons */}
+        <div className="flex justify-between items-center mb-4">
+          <button
+            onClick={handleClearAll}
+            className="bg-red-500 text-white p-1 rounded text-xs"
+          >
+            Clear All
+          </button>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 text-xl font-bold"
+          >
+            ×
+          </button>
+        </div>
 
-        {/* Clear All Button */}
-        <button
-          onClick={handleClearAll}
-          className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded text-xs"
-        >
-          Clear All
-        </button>
-
-        {/* Modal Header */}
-        <h2 className="text-lg font-bold">Settings</h2>
+        {/* Title Section */}
+        <div className="mb-4">
+          <h2 className="text-lg font-bold">Settings</h2>
+        </div>
 
         {/* Baseline Metrics Section */}
         <div className="space-y-1">
@@ -229,13 +267,26 @@ export const SettingsModal: React.FC<{
                   style={{ fontSize: "14px", height: "28px" }}
                 >$</span>
                 <input
-                  type="text"
+                  type="number"
+                  step="0.01"
+                  min="0"
                   name="minProfit"
                   value={rawMetrics.minProfit !== undefined ? rawMetrics.minProfit : desiredMetrics.minProfit}
                   onChange={handleDesiredMetricsChange}
-                  onBlur={() => handleBlur("minProfit")}
+                  onBlur={(e) => {
+                    const inputValue = parseFloat(e.target.value || "0");
+                    const formattedValue = Math.max(0, inputValue).toFixed(2);
+                    setRawMetrics((prev) => ({
+                      ...prev,
+                      minProfit: formattedValue,
+                    }));
+                    setDesiredMetrics((prev) => ({
+                      ...prev,
+                      minProfit: formattedValue,
+                    }));
+                  }}
                   className={`p-1 pr-3 text-right w-full border rounded-r ${rawMetrics.minProfit !== undefined ? "font-bold" : ""}`}
-                  style={{ fontSize: "14px", height: "28px" }} // Adjust the height and font size as needed
+                  style={{ fontSize: "14px", height: "28px" }}
                 />
               </div>
             </div>
@@ -428,12 +479,62 @@ export const SettingsModal: React.FC<{
               style={{ fontSize: "14px", height: "28px" }}
             >$</span>
             <input
-              type="text"
+              type="number"
+              step="0.01"
+              min="0"
               name="inboundShippingCost"
               value={rawMetrics.inboundShippingCost !== undefined ? rawMetrics.inboundShippingCost : desiredMetrics.inboundShippingCost}
               onChange={handleDesiredMetricsChange}
-              onBlur={() => handleBlur("inboundShippingCost")}
+              onBlur={(e) => {
+                const inputValue = parseFloat(e.target.value || "0");
+                const formattedValue = Math.max(0, inputValue).toFixed(2);
+                setRawMetrics((prev) => ({
+                  ...prev,
+                  inboundShippingCost: formattedValue,
+                }));
+                setDesiredMetrics((prev) => ({
+                  ...prev,
+                  inboundShippingCost: formattedValue,
+                }));
+              }}
               className={`p-1 pr-3 text-right w-full border ${rawMetrics.inboundShippingCost !== undefined ? "font-bold" : ""}`}
+              style={{ fontSize: "14px", height: "28px" }}
+            />
+            <span
+              className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
+              style={{ fontSize: "14px", height: "28px" }}
+            >/lb</span>
+          </div>
+
+          {/* SF Shipping Cost */}
+          <div className="flex items-center">
+            <label className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
+              SF Shipping Cost
+            </label>
+            <span
+              className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
+              style={{ fontSize: "14px", height: "28px" }}
+            >$</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              name="sfShippingCost"
+              value={rawMetrics.sfShippingCost !== undefined ? rawMetrics.sfShippingCost : desiredMetrics.sfShippingCost}
+              onChange={handleDesiredMetricsChange}
+              onBlur={(e) => {
+                const inputValue = parseFloat(e.target.value || "0");
+                const formattedValue = Math.max(0, inputValue).toFixed(2);
+                setRawMetrics((prev) => ({
+                  ...prev,
+                  sfShippingCost: formattedValue,
+                }));
+                setDesiredMetrics((prev) => ({
+                  ...prev,
+                  sfShippingCost: formattedValue,
+                }));
+              }}
+              className={`p-1 pr-3 text-right w-full border ${rawMetrics.sfShippingCost !== undefined ? "font-bold" : ""}`}
               style={{ fontSize: "14px", height: "28px" }}
             />
             <span

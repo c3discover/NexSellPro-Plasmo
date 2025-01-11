@@ -209,23 +209,23 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
           ) : (
             <>
               {/* Variant Information Section */}
-              <div className="w-full p-2 flex justify-between items-center">
+              <div className="w-full p-2 pb-4 flex justify-between items-center">
                 {/* ===== Variant Count Box ===== */}
                 <div className="w-1/2 p-1">
-                  <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+                  <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
                     Number of Variants
                   </p>
-                  <p className="text-2xs text-black text-center bg-white border-2 border-black p-1 rounded-b-lg shadow-md shadow-black">
+                  <p className="text-xs text-black text-center bg-white border-2 border-black p-1 rounded-b-lg shadow-md shadow-black">
                     {Object.keys(productData?.variants?.variantsMap || {}).length || "-"}
                   </p>
                 </div>
 
                 {/* ===== Variant Attributes Box ===== */}
                 <div className="w-1/2 p-1">
-                  <p className="bg-[#3a3f47] text-2xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
+                  <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
                     Variant Attributes
                   </p>
-                  <div className="text-2xs text-black text-center bg-white border-2 border-black p-1 rounded-b-lg shadow-md shadow-black">
+                  <div className="text-xs text-black text-center bg-white border-2 border-black p-1 rounded-b-lg shadow-md shadow-black">
                     {(productData?.variants?.variantsMap &&
                       Object.values(productData.variants.variantsMap)[0]?.variants
                       ?.map((attribute: string) => attribute.split('-')[0])
@@ -245,18 +245,18 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
               </div>
 
               {/* ===== Toggle Button Section ===== */}
-              <div className="flex items-center">
+              <div className="flex justify-end mx-2 mb-1">
                 <button
                   onClick={toggleVariantTable}
-                  className="text-xs font-semibold px-2 py-0.5 ml-2 mb-0 bg-gray-200 rounded shadow hover:bg-gray-300"
+                  className="text-xs font-semibold px-2 py-0.5 bg-gray-200 rounded shadow hover:bg-gray-300"
                   aria-label="Toggle variant table"
                 >
-                  {isVariantTableExpanded ? "🔼" : "🔽"}
+                  {isVariantTableExpanded ? "Hide Table" : "Show Table"}
                 </button>
               </div>
 
               {/* ===== Variant Table Section ===== */}
-              {Object.keys(productData?.variants?.variantsMap || {}).length > 0 && (
+              {Object.keys(productData?.variants?.variantsMap || {}).length > 0 && isVariantTableExpanded && (
                 <div className="overflow-auto w-full" style={{ padding: "0 16px", marginTop: "0px", marginBottom: "10px" }}>
                   <table className="table-auto w-full border-collapse">
                     {/* ----- Table Header ----- */}

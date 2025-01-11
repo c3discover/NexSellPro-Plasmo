@@ -281,9 +281,24 @@ export const calculateWFSFee = (product: Product): number => {
 // Main Calculations:
 ////////////////////////////////////////////////
 
-// Update calculateWFSFee to include additional costs
-export const calculateInboundShipping = (weight: number, inboundShippingCost: number): number => {
-    return weight * inboundShippingCost;
+// Update calculateInboundShipping to handle both shipping types
+export const calculateInboundShipping = (weight: number, isWalmartFulfilled: boolean): number => {
+    const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+    
+    if (isWalmartFulfilled) {
+        const inboundShippingCost = parseFloat(storedMetrics.inboundShippingCost || "0");
+        return weight * inboundShippingCost;
+    } else {
+        const sfShippingCost = parseFloat(storedMetrics.sfShippingCost || "0");
+        return weight * sfShippingCost;
+    }
+};
+
+// Function to calculate SF shipping cost
+export const calculateSfShipping = (weight: number): number => {
+    const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+    const sfShippingCost = parseFloat(storedMetrics.sfShippingCost || "0");
+    return weight * sfShippingCost;
 };
 
 // Function to calculate storage fee

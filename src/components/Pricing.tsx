@@ -17,7 +17,8 @@ import {
   calculateTotalProfit,
   calculateROI,
   calculateMargin,
-  calculateAdditionalFees
+  calculateAdditionalFees,
+  calculateInboundShipping
 } from "~/utils/calculations";
 
 ////////////////////////////////////////////////
@@ -176,6 +177,23 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
   // Mutable reference for initialization checks
   const hasInitializedProductCost = useRef(false);
 
+  // Add this near the top with other state declarations
+  const [desiredMetrics, setDesiredMetrics] = useState({
+    minProfit: 0,
+    minMargin: 0,
+    minROI: 0
+  });
+
+  // Add this with other useEffects
+  useEffect(() => {
+    const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+    setDesiredMetrics({
+      minProfit: parseFloat(storedMetrics.minProfit || "0"),
+      minMargin: parseFloat(storedMetrics.minMargin || "0"),
+      minROI: parseFloat(storedMetrics.minROI || "0")
+    });
+  }, []);
+
 
 
   ////////////////////////////////////////////////
@@ -258,7 +276,7 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
         setWfsFee(calculateWFSFee(productForWFSFee));
       }
       if (!hasEdited.inboundShippingFee) {
-        setInboundShippingFee((finalShippingWeightForInbound * inboundShippingRate) || 0);
+        setInboundShippingFee(calculateInboundShipping(finalShippingWeightForInbound, true));
       }
       if (!hasEdited.storageFee) {
         setStorageFee(parseFloat(calculateStorageFee(season, cubicFeet, storageLength)) || 0);
@@ -266,7 +284,7 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
     } else {
       if (!hasEdited.wfsFee) setWfsFee(0);
       if (!hasEdited.inboundShippingFee) {
-        setInboundShippingFee(0);
+        setInboundShippingFee(calculateInboundShipping(finalShippingWeightForInbound, false));
       }
       if (!hasEdited.storageFee) setStorageFee(0);
     }
@@ -277,7 +295,6 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
     cubicFeet,
     storageLength,
     finalShippingWeightForInbound,
-    inboundShippingRate,
     hasEdited,
   ]);
 
@@ -291,13 +308,43 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
     localStorage.setItem("isWalmartFulfilled", isWalmartFulfilled.toString());
   }, [isWalmartFulfilled]);
 
-  // Recalculate dimensions and weight based on product data changes.
+  // Load shipping dimensions from localStorage or product data
   useEffect(() => {
-    if (productData?.dimensions) {
+    const storedDimensions = JSON.parse(localStorage.getItem("shippingDimensions") || "null");
+    
+    if (storedDimensions) {
+      setShippingLength(parseFloat(storedDimensions.length) || 0);
+      setShippingWidth(parseFloat(storedDimensions.width) || 0);
+      setShippingHeight(parseFloat(storedDimensions.height) || 0);
+      setWeight(parseFloat(storedDimensions.weight) || 0);
+    } else if (productData?.dimensions) {
       setShippingLength(parseFloat(productData.dimensions.shippingLength?.toString() || "0"));
       setShippingWidth(parseFloat(productData.dimensions.shippingWidth?.toString() || "0"));
       setShippingHeight(parseFloat(productData.dimensions.shippingHeight?.toString() || "0"));
       setWeight(parseFloat(productData.dimensions.weight?.toString() || "0"));
+    }
+  }, [productData]);
+
+  // Save shipping dimensions to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem("shippingDimensions", JSON.stringify({
+      length: shippingLength,
+      width: shippingWidth,
+      height: shippingHeight,
+      weight: weight
+    }));
+  }, [shippingLength, shippingWidth, shippingHeight, weight]);
+
+  // Recalculate dimensions and weight based on product data changes.
+  useEffect(() => {
+    if (productData?.dimensions) {
+      const storedDimensions = JSON.parse(localStorage.getItem("shippingDimensions") || "null");
+      if (!storedDimensions) {
+        setShippingLength(parseFloat(productData.dimensions.shippingLength?.toString() || "0"));
+        setShippingWidth(parseFloat(productData.dimensions.shippingWidth?.toString() || "0"));
+        setShippingHeight(parseFloat(productData.dimensions.shippingHeight?.toString() || "0"));
+        setWeight(parseFloat(productData.dimensions.weight?.toString() || "0"));
+      }
     }
   }, [productData]);
 
@@ -311,8 +358,10 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
 
   // Dynamically update inbound shipping fee based on weight and rate.
   useEffect(() => {
-    setInboundShippingFee(finalShippingWeightForInbound * inboundShippingRate);
-  }, [finalShippingWeightForInbound, inboundShippingRate]);
+    if (!hasEdited.inboundShippingFee) {
+      setInboundShippingFee(calculateInboundShipping(finalShippingWeightForInbound, isWalmartFulfilled));
+    }
+  }, [finalShippingWeightForInbound, isWalmartFulfilled, hasEdited.inboundShippingFee]);
 
   // Dynamically update storage fee based on product dimensions and season.
   useEffect(() => {
@@ -339,6 +388,32 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
   // Format numbers to two decimal places
   const formatToTwoDecimalPlaces = (value: number): string => value.toFixed(2);
 
+  // Reset functions
+  const resetShippingDimensions = () => {
+    const dimensions = productData?.dimensions || {
+      shippingLength: "0",
+      shippingWidth: "0",
+      shippingHeight: "0",
+      weight: "0"
+    };
+    setShippingLength(parseFloat(dimensions.shippingLength?.toString() || "0"));
+    setShippingWidth(parseFloat(dimensions.shippingWidth?.toString() || "0"));
+    setShippingHeight(parseFloat(dimensions.shippingHeight?.toString() || "0"));
+    setWeight(parseFloat(dimensions.weight?.toString() || "0"));
+    setRawLength(null);
+    setRawWidth(null);
+    setRawHeight(null);
+    setRawWeight(null);
+    setHasEdited((prev) => ({
+      ...prev,
+      shippingLength: false,
+      shippingWidth: false,
+      shippingHeight: false,
+      weight: false,
+    }));
+    localStorage.removeItem("shippingDimensions");
+  };
+
   // Fetch stored metrics and preferences from localStorage
   const getStoredMetrics = () => {
     return JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
@@ -363,30 +438,6 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
       ...prev,
       productCost: false,
       salePrice: false,
-    }));
-  };
-
-  const resetShippingDimensions = () => {
-    const dimensions = productData?.dimensions || {
-      shippingLength: "0",
-      shippingWidth: "0",
-      shippingHeight: "0",
-      weight: "0"
-    };
-    setShippingLength(parseFloat(dimensions.shippingLength?.toString() || "0"));
-    setShippingWidth(parseFloat(dimensions.shippingWidth?.toString() || "0"));
-    setShippingHeight(parseFloat(dimensions.shippingHeight?.toString() || "0"));
-    setWeight(parseFloat(dimensions.weight?.toString() || "0"));
-    setRawLength(null);
-    setRawWidth(null);
-    setRawHeight(null);
-    setRawWeight(null);
-    setHasEdited((prev) => ({
-      ...prev,
-      shippingLength: false,
-      shippingWidth: false,
-      shippingHeight: false,
-      weight: false,
     }));
   };
 
@@ -457,21 +508,41 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
             {/* Total Profit Row */}
             <div className="flex justify-between items-center mx-8 text-sm">
               <span className="font-semibold">Total Profit</span>
-              <span className="text-sm">{`$${totalProfit.toFixed(2)}`}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">{`$${totalProfit.toFixed(2)}`}</span>
+                <div 
+                  className={`w-2 h-2 rounded-full ${totalProfit >= desiredMetrics.minProfit ? 'bg-green-500' : 'bg-red-500'}`} 
+                  title={`Minimum Profit Goal: $${desiredMetrics.minProfit.toFixed(2)}`}
+                />
+              </div>
             </div>
 
             {/* Margin Row */}
             <div className="flex justify-between items-center mx-8 text-sm">
               <span className="font-semibold">Margin</span>
-              <span className="text-sm">{`${margin}%`}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">{`${margin}%`}</span>
+                <div 
+                  className={`w-2 h-2 rounded-full ${margin >= desiredMetrics.minMargin ? 'bg-green-500' : 'bg-red-500'}`}
+                  title={`Minimum Margin Goal: ${desiredMetrics.minMargin}%`}
+                />
+              </div>
             </div>
 
             {/* ROI Row */}
             <div className="flex justify-between items-center mx-8 text-sm">
               <span className="font-semibold">ROI</span>
-              <span className={`text-sm  ${productCost === 0 ? "text-red-500 font-extrabold" : "text-black"}`}>
-                {productCost === 0 ? "Enter Cost" : `${roi}%`}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm ${productCost === 0 ? "text-red-500 font-extrabold" : "text-black"}`}>
+                  {productCost === 0 ? "Enter Cost" : `${roi}%`}
+                </span>
+                {productCost > 0 && (
+                  <div 
+                    className={`w-2 h-2 rounded-full ${roi >= desiredMetrics.minROI ? 'bg-green-500' : 'bg-red-500'}`}
+                    title={`Minimum ROI Goal: ${desiredMetrics.minROI}%`}
+                  />
+                )}
+              </div>
             </div>
           </div>
 
@@ -581,9 +652,9 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                         setRawLength(null);
                         setHasEdited((prev) => ({ ...prev, shippingLength: true }));
                       }}
-                      className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingLength ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingLength ? "text-black font-bold" : shippingLength === 0 ? "bg-red-50 border-red-300" : "text-gray-700"}`}
                     />
-                    <span className={DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS}>in</span>
+                    <span className={`${DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS} ${shippingLength === 0 ? "bg-red-50 border-red-300" : ""}`}>in</span>
                   </div>
                 </div>
 
@@ -603,9 +674,9 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                         setRawWidth(null);
                         setHasEdited((prev) => ({ ...prev, shippingWidth: true }));
                       }}
-                      className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingWidth ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingWidth ? "text-black font-bold" : shippingWidth === 0 ? "bg-red-50 border-red-300" : "text-gray-700"}`}
                     />
-                    <span className={DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS}>in</span>
+                    <span className={`${DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS} ${shippingWidth === 0 ? "bg-red-50 border-red-300" : ""}`}>in</span>
                   </div>
                 </div>
 
@@ -625,9 +696,9 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                         setRawHeight(null);
                         setHasEdited((prev) => ({ ...prev, shippingHeight: true }));
                       }}
-                      className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingHeight ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingHeight ? "text-black font-bold" : shippingHeight === 0 ? "bg-red-50 border-red-300" : "text-gray-700"}`}
                     />
-                    <span className={DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS}>in</span>
+                    <span className={`${DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS} ${shippingHeight === 0 ? "bg-red-50 border-red-300" : ""}`}>in</span>
                   </div>
                 </div>
 
@@ -647,11 +718,18 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                         setRawWeight(null);
                         setHasEdited((prev) => ({ ...prev, weight: true }));
                       }}
-                      className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.weight ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.weight ? "text-black font-bold" : weight === 0 ? "bg-red-50 border-red-300" : "text-gray-700"}`}
                     />
-                    <span className={DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS}>lbs</span>
+                    <span className={`${DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS} ${weight === 0 ? "bg-red-50 border-red-300" : ""}`}>lbs</span>
                   </div>
                 </div>
+
+                {/* Warning Message */}
+                {(shippingLength === 0 || shippingWidth === 0 || shippingHeight === 0 || weight === 0) && (
+                  <div className="col-span-2 text-center mt-1">
+                    <p className="text-red-500 text-xs italic">Please fill in all shipping dimensions for accurate calculations.</p>
+                  </div>
+                )}
 
               </div>
             </div>
@@ -721,7 +799,9 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
 
                 {/* Inbound Shipping Fee Row */}
                 <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>Inbound Shipping Fee</label>
+                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                    {isWalmartFulfilled ? "Inbound Shipping Fee" : "SF Shipping Fee"}
+                  </label>
                   <div className="flex items-center w-full">
                     <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
                     <input
@@ -899,4 +979,5 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
 // Export Statement:
 ////////////////////////////////////////////////
 export default Pricing;
+
 

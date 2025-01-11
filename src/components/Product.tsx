@@ -93,7 +93,7 @@ export const Product = () => {
     >
       {/* Product Name Section */}
       <div id="productName" className="flex items-center justify-between w-full">
-        <p className="text-black font-bold text-xs text-center p-1 mb-2 mr-1 ml-2 rounded-lg bg-[#bfbfbf] shadow-black shadow-xl">
+        <p className="text-black font-bold text-sm text-center p-1 mb-2 mr-1 ml-2 rounded-lg bg-[#bfbfbf] shadow-black shadow-xl">
           {productData.basic.name}
         </p>
 
@@ -129,63 +129,65 @@ export const Product = () => {
       </div>
 
       {/* Product General Info */}
-      <div id="productGeneralInfo" className="flex flex-col lg:flex-row items-center justify-between w-full gap-3">
+      <div id="productGeneralInfo" className="flex flex-col lg:flex-row items-stretch justify-between w-full gap-3">
 
         {/* Product Image Section */}
-        <div id="productImage" className="w-full lg:w-1/2 flex flex-col items-center justify-center bg-white p-1 rounded-lg shadow-lg">
+        <div id="productImage" className="flex-1 flex flex-col items-center justify-between bg-white p-1 rounded-lg shadow-lg">
           <img
             src={productData.media.imageUrl}
             alt={productData.basic.name}
             className="w-2/3 hover:w-full p-2 rounded-lg" />
-          <p className="font-bold text-center text-black text-sm">
-            Images: <span className="font-normal">{productData.media.images?.length || 0}</span>
-          </p>
-          <p className="font-bold text-center text-black text-sm p-1">
-            Videos: <span className="font-normal">{productData.media.videos?.length || 0}</span>
-          </p>
+          <div>
+            <p className="font-bold text-center text-black text-sm">
+              Images: <span className="font-normal">{productData.media.images?.length || 0}</span>
+            </p>
+            <p className="font-bold text-center text-black text-sm p-1">
+              Videos: <span className="font-normal">{productData.media.videos?.length || 0}</span>
+            </p>
+          </div>
         </div>
 
         {/* Product Details Section */}
-        <div id="productDetails" className="w-full lg:w-1/2 flex flex-col items-center justify-center bg-white p-1 rounded-lg shadow-lg">
-
+        <div id="productDetails" className="flex-1 flex flex-col items-center justify-center bg-white p-1 rounded-lg shadow-lg">
           {/* Quick Stats Section */}
-          <p className="text-black text-xs p-1">
-            <span className="font-bold">Current Price </span>
-            <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">
-              ${productData.pricing.currentPrice ? productData.pricing.currentPrice.toFixed(2) : '0.00'}
-            </span>
-          </p>
+          <div className="w-full px-2">
+            <p className="text-black text-sm p-1 flex justify-between items-center">
+              <span className="font-bold"> Price </span>
+              <span className="px-2 py-1 bg-gray-300 rounded-lg text-black text-sm">
+                ${productData.pricing.currentPrice ? productData.pricing.currentPrice.toFixed(2) : '0.00'}
+              </span>
+            </p>
 
-          <p className="text-black text-xs p-1 mt-2">
-            <span className="font-bold mt-2">Total Ratings </span>
-            <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">
-              {productData.reviews.numberOfRatings}
-            </span>
-          </p>
+            <p className="text-black text-sm p-1 flex justify-between items-center">
+              <span className="font-bold"> Ratings </span>
+              <span className="px-2 py-1 bg-gray-300 rounded-lg text-black text-sm">
+                {productData.reviews.numberOfRatings}
+              </span>
+            </p>
 
-          <p className="text-black text-xs p-1 mt-2">
-            <span className="font-bold mt-2">Total Sellers </span>
-            <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">
-              {productData.inventory.totalSellers}
-            </span>
-          </p>
+            <p className="text-black text-sm p-1 flex justify-between items-center">
+              <span className="font-bold"> Sellers </span>
+              <span className="px-2 py-1 bg-gray-300 rounded-lg text-black text-sm">
+                {productData.inventory.totalSellers}
+              </span>
+            </p>
 
-          <p className="text-black text-xs p-1 mt-2">
-            <span className="font-bold mt-2">Walmart Selling? </span>
-            {productData.pricing.sellerName === "Walmart.com" ? (
-              <span className="px-1 py-1 text-xs bg-red-100 text-red-700 font-bold border border-red-500 rounded-lg shadow-sm">YES</span>
-            ) : (
-              <span className="px-1 py-1 text-xs bg-green-100 text-green-700 font-bold border border-green-500 rounded-lg shadow-sm">NO</span>
-            )}
-          </p>
+            <p className="text-black text-sm p-1 flex justify-between items-center">
+              <span className="font-bold">Walmart Selling? </span>
+              {productData.pricing.sellerName === "Walmart.com" ? (
+                <span className="px-1 py-1 text-sm bg-red-100 text-red-700 font-bold border border-red-500 rounded-lg shadow-sm">YES</span>
+              ) : (
+                <span className="px-1 py-1 text-sm bg-green-100 text-green-700 font-bold border border-green-500 rounded-lg shadow-sm">NO</span>
+              )}
+            </p>
 
-          <p className="text-black text-xs p-1 mt-2">
-            <span className="font-bold mt-2">Variations </span>
-            <span className="px-2 py-1 bg-gray-200 rounded-lg text-black text-xs p-1">
-              {Object.keys(productData.variants.variantsMap || {}).length || "-"}
-            </span>
-          </p>
-
+            <p className="text-black text-sm p-1 flex justify-between items-center">
+              <span className="font-bold">Variations </span>
+              <span className="px-2 py-1 bg-gray-300 rounded-lg text-black text-sm">
+                {Object.keys(productData.variants.variantsMap || {}).length || "-"}
+              </span>
+            </p>
+          </div>
         </div>
       </div>
 
@@ -223,7 +225,7 @@ export const Product = () => {
 
         {/* Shelving Path */}
         <p className="text-black font-bold text-start text-md">
-          Shelving Path: <span className="ml-2 text-2xs font-normal align-middle">{renderShelvingPath()}</span>
+          Shelving Path: <span className="ml-2 text-sm font-normal align-middle">{renderShelvingPath()}</span>
         </p>
       </div>
 
@@ -246,7 +248,7 @@ export const Product = () => {
               return (
                 <div
                   key={index}
-                  className={`text-2xs px-2 py-1 rounded-lg shadow-md ${containsNumber ? outlineStyle : filledStyle
+                  className={`text-xs px-2 py-1 rounded-lg shadow-md ${containsNumber ? outlineStyle : filledStyle
                     } ${isLastSingleBadge ? 'col-span-2 text-center' : ''}`}
                 >
                   {badge}

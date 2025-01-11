@@ -36,7 +36,6 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
   //////////////////////////////////////////////////
   // Handle button click actions (e.g., logging or adding temporary effects)
   const handleClick = (buttonLabel: string) => {
-    console.log(`${buttonLabel} clicked`);
     // Any additional effect can be added here
   };
 
