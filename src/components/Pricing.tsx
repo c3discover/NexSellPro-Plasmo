@@ -308,45 +308,86 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
     localStorage.setItem("isWalmartFulfilled", isWalmartFulfilled.toString());
   }, [isWalmartFulfilled]);
 
-  // Load shipping dimensions from localStorage or product data
+  // Load shipping dimensions from product data first, fallback to product-specific localStorage
   useEffect(() => {
-    const storedDimensions = JSON.parse(localStorage.getItem("shippingDimensions") || "null");
-    
-    if (storedDimensions) {
-      setShippingLength(parseFloat(storedDimensions.length) || 0);
-      setShippingWidth(parseFloat(storedDimensions.width) || 0);
-      setShippingHeight(parseFloat(storedDimensions.height) || 0);
-      setWeight(parseFloat(storedDimensions.weight) || 0);
-    } else if (productData?.dimensions) {
-      setShippingLength(parseFloat(productData.dimensions.shippingLength?.toString() || "0"));
-      setShippingWidth(parseFloat(productData.dimensions.shippingWidth?.toString() || "0"));
-      setShippingHeight(parseFloat(productData.dimensions.shippingHeight?.toString() || "0"));
-      setWeight(parseFloat(productData.dimensions.weight?.toString() || "0"));
-    }
-  }, [productData]);
+    if (productData?.basic?.productID) {
+      const storageKey = `shippingDimensions_${productData.basic.productID}`;
+      const storedDimensions = JSON.parse(localStorage.getItem(storageKey) || "null");
+      
+      if (productData?.dimensions) {
+        const newLength = parseFloat(productData.dimensions.shippingLength?.toString() || "0");
+        const newWidth = parseFloat(productData.dimensions.shippingWidth?.toString() || "0");
+        const newHeight = parseFloat(productData.dimensions.shippingHeight?.toString() || "0");
+        const newWeight = parseFloat(productData.dimensions.weight?.toString() || "0");
 
-  // Save shipping dimensions to localStorage when they change
-  useEffect(() => {
-    localStorage.setItem("shippingDimensions", JSON.stringify({
-      length: shippingLength,
-      width: shippingWidth,
-      height: shippingHeight,
-      weight: weight
-    }));
-  }, [shippingLength, shippingWidth, shippingHeight, weight]);
-
-  // Recalculate dimensions and weight based on product data changes.
-  useEffect(() => {
-    if (productData?.dimensions) {
-      const storedDimensions = JSON.parse(localStorage.getItem("shippingDimensions") || "null");
-      if (!storedDimensions) {
-        setShippingLength(parseFloat(productData.dimensions.shippingLength?.toString() || "0"));
-        setShippingWidth(parseFloat(productData.dimensions.shippingWidth?.toString() || "0"));
-        setShippingHeight(parseFloat(productData.dimensions.shippingHeight?.toString() || "0"));
-        setWeight(parseFloat(productData.dimensions.weight?.toString() || "0"));
+        // If we have valid product dimensions, use them on first load
+        if (!storedDimensions && (newLength > 0 || newWidth > 0 || newHeight > 0 || newWeight > 0)) {
+          setShippingLength(newLength);
+          setShippingWidth(newWidth);
+          setShippingHeight(newHeight);
+          setWeight(newWeight);
+        } 
+        // If we have stored dimensions for this specific product, use those
+        else if (storedDimensions) {
+          setShippingLength(parseFloat(storedDimensions.length) || 0);
+          setShippingWidth(parseFloat(storedDimensions.width) || 0);
+          setShippingHeight(parseFloat(storedDimensions.height) || 0);
+          setWeight(parseFloat(storedDimensions.weight) || 0);
+        }
       }
     }
   }, [productData]);
+
+  // Save shipping dimensions to localStorage when they are manually changed
+  useEffect(() => {
+    if (productData?.basic?.productID && 
+        (hasEdited.shippingLength || hasEdited.shippingWidth || hasEdited.shippingHeight || hasEdited.weight)) {
+      const storageKey = `shippingDimensions_${productData.basic.productID}`;
+      localStorage.setItem(storageKey, JSON.stringify({
+        length: shippingLength,
+        width: shippingWidth,
+        height: shippingHeight,
+        weight: weight
+      }));
+    }
+  }, [shippingLength, shippingWidth, shippingHeight, weight, hasEdited, productData?.basic?.productID]);
+
+  // Reset function - only uses product data or zeros
+  const resetShippingDimensions = () => {
+    const dimensions = productData?.dimensions || {
+      shippingLength: "0",
+      shippingWidth: "0",
+      shippingHeight: "0",
+      weight: "0"
+    };
+
+    // Reset to product data values or zeros
+    setShippingLength(parseFloat(dimensions.shippingLength?.toString() || "0"));
+    setShippingWidth(parseFloat(dimensions.shippingWidth?.toString() || "0"));
+    setShippingHeight(parseFloat(dimensions.shippingHeight?.toString() || "0"));
+    setWeight(parseFloat(dimensions.weight?.toString() || "0"));
+
+    // Reset raw values
+    setRawLength(null);
+    setRawWidth(null);
+    setRawHeight(null);
+    setRawWeight(null);
+
+    // Reset edit flags
+    setHasEdited((prev) => ({
+      ...prev,
+      shippingLength: false,
+      shippingWidth: false,
+      shippingHeight: false,
+      weight: false,
+    }));
+
+    // Remove from localStorage if it exists
+    if (productData?.basic?.productID) {
+      const storageKey = `shippingDimensions_${productData.basic.productID}`;
+      localStorage.removeItem(storageKey);
+    }
+  };
 
   // Load user settings for season, storage length, and inbound rate.
   useEffect(() => {
@@ -387,32 +428,6 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
   /////////////////////////////////////////////////
   // Format numbers to two decimal places
   const formatToTwoDecimalPlaces = (value: number): string => value.toFixed(2);
-
-  // Reset functions
-  const resetShippingDimensions = () => {
-    const dimensions = productData?.dimensions || {
-      shippingLength: "0",
-      shippingWidth: "0",
-      shippingHeight: "0",
-      weight: "0"
-    };
-    setShippingLength(parseFloat(dimensions.shippingLength?.toString() || "0"));
-    setShippingWidth(parseFloat(dimensions.shippingWidth?.toString() || "0"));
-    setShippingHeight(parseFloat(dimensions.shippingHeight?.toString() || "0"));
-    setWeight(parseFloat(dimensions.weight?.toString() || "0"));
-    setRawLength(null);
-    setRawWidth(null);
-    setRawHeight(null);
-    setRawWeight(null);
-    setHasEdited((prev) => ({
-      ...prev,
-      shippingLength: false,
-      shippingWidth: false,
-      shippingHeight: false,
-      weight: false,
-    }));
-    localStorage.removeItem("shippingDimensions");
-  };
 
   // Fetch stored metrics and preferences from localStorage
   const getStoredMetrics = () => {
