@@ -65,6 +65,7 @@ const DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS = STYLES.input.rightPrefix;
 ////////////////////////////////////////////////
 interface PricingProps {
   areSectionsOpen: boolean;
+  product: any; // TODO: Replace 'any' with proper type when available
 }
 
 interface CalculationResult {
@@ -457,6 +458,11 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
   };
 
   const resetFees = () => {
+    // Reset localStorage additional fees
+    localStorage.setItem("additionalCostType", "per lb");
+    localStorage.setItem("additionalCostPerLb", "0");
+    localStorage.setItem("additionalCostEach", "0");
+
     if (isWalmartFulfilled) {
       setWfsFee(calculateWFSFee(productForWFSFee));
       setInboundShippingFee(finalShippingWeightForInbound * inboundShippingRate);

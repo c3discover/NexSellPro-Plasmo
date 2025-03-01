@@ -29,6 +29,7 @@ const LOCAL_STORAGE_METRICS_KEY = "desiredMetrics";
 /////////////////////////////////////////////////
 interface AnalysisProps {
   areSectionsOpen: boolean;
+  product: any; // TODO: Replace with proper type when available
 }
 
 /////////////////////////////////////////////////

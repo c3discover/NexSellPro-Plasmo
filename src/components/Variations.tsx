@@ -16,6 +16,7 @@ const LOADING_MESSAGE = "Loading variations...";
 ////////////////////////////////////////////////
 interface VariationsProps {
   areSectionsOpen: boolean;
+  variantsMap: any; // TODO: Replace with proper type when available
 }
 
 interface VariantInfo {
@@ -58,7 +59,7 @@ type VariantsMap = Record<string, VariantInfo>;
 ////////////////////////////////////////////////
 // Component:
 ////////////////////////////////////////////////
-export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen }) => {
+export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variantsMap }) => {
 
   ////////////////////////////////////////////////
   // State and Hooks:

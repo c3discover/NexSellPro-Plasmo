@@ -73,10 +73,10 @@ export function getProductDetails(product, idml, reviews) {
     categories: [] as { name: string; url: string }[],
     stock: 0,
     reviewDates: [] as string[],
-    shippingLength: null,
-    shippingWidth: null,
-    shippingHeight: null,
-    weight: null,
+    shippingLength: "0",
+    shippingWidth: "0",
+    shippingHeight: "0",
+    weight: "0",
     totalSellers: 0,
 
     //Categories from product getData
@@ -112,26 +112,40 @@ export function getProductDetails(product, idml, reviews) {
     (highlight) => highlight.name === "Dimensions"
   )?.value?.split("x");
 
+  // Extract from specifications if available
+  const specShippingInfo = idml?.specifications?.find(
+    (spec) => spec.name === "Assembled Product Dimensions (L x W x H)"
+  )?.value?.split("x");
+
+  // Try to get dimensions from either source
   if (shippingInfo && shippingInfo.length === 3) {
-    productDetailsUsed.shippingLength = shippingInfo[0]?.trim();
-    productDetailsUsed.shippingWidth = shippingInfo[1]?.trim();
-    productDetailsUsed.shippingHeight = shippingInfo[2]?.split(" ")[1]?.trim();
-  } else {
-    // Extract from specifications if available
-    const specShippingInfo = idml?.specifications?.find(
-      (spec) => spec.name === "Assembled Product Dimensions (L x W x H)"
-    )?.value?.split("x");
-    
-    if (specShippingInfo && specShippingInfo.length === 3) {
-      productDetailsUsed.shippingLength = specShippingInfo[0]?.trim();
-      productDetailsUsed.shippingWidth = specShippingInfo[1]?.trim();
-      productDetailsUsed.shippingHeight = specShippingInfo[2]?.split(" ")[1]?.trim();
-    }
+    productDetailsUsed.shippingLength = shippingInfo[0]?.trim() || "0";
+    productDetailsUsed.shippingWidth = shippingInfo[1]?.trim() || "0";
+    productDetailsUsed.shippingHeight = shippingInfo[2]?.split(" ")[1]?.trim() || "0";
+  } else if (specShippingInfo && specShippingInfo.length === 3) {
+    productDetailsUsed.shippingLength = specShippingInfo[0]?.trim() || "0";
+    productDetailsUsed.shippingWidth = specShippingInfo[1]?.trim() || "0";
+    productDetailsUsed.shippingHeight = specShippingInfo[2]?.split(" ")[1]?.trim() || "0";
   }
 
-  productDetailsUsed.weight = idml?.specifications?.find(
+  // Extract and log weight information
+  const weightSpec = idml?.specifications?.find(
     (spec) => spec.name === "Assembled Product Weight"
-  )?.value?.split(" ")[0] || null;
+  );
+  console.log('Raw Weight Spec:', weightSpec);
+  
+  // Extract weight, defaulting to "0"
+  productDetailsUsed.weight = weightSpec?.value?.split(" ")[0] || "0";
+  console.log('Extracted Weight:', productDetailsUsed.weight);
+
+  // Store the scraped values in localStorage
+  localStorage.setItem('scrapedValues', JSON.stringify({
+    length: productDetailsUsed.shippingLength,
+    width: productDetailsUsed.shippingWidth,
+    height: productDetailsUsed.shippingHeight,
+    weight: productDetailsUsed.weight,
+    timestamp: new Date().getTime()
+  }));
 
   // Extract the last category in the path as the main category.
   productDetailsUsed.categories = product.category.path.map((category) => ({

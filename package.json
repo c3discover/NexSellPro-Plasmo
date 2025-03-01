@@ -1,5 +1,5 @@
 {
-  "name": "NexSellPro",
+  "name": "nexsellpro",
   "displayName": "NexSellPro",
   "version": "0.0.1",
   "description": "NexSellPro: Chrome extension to assist Walmart sellers with profitability calculations and product analysis",
@@ -12,18 +12,17 @@
   ],
   "scripts": {
     "dev": "plasmo dev",
-    "build": "plasmo build",
+    "build": "plasmo build && npm run clean-root",
     "package": "plasmo package",
     "start": "npm run dev",
     "clean": "rm -rf .plasmo/.build node_modules dist",
-    "lint": "eslint src/**/*.tsx",
-    "test": "jest"
+    "clean-root": "del /Q *.png *.woff2 *.css"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",
     "axios": "^1.7.9",
     "dotenv": "^16.4.7",
-    "plasmo": "^0.89.4",
+    "plasmo": "^0.90.3",
     "qs": "^6.13.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -51,10 +50,16 @@
   "manifest": {
     "host_permissions": [
       "https://www.walmart.com/*"
-    ]
+    ],
+    "web_accessible_resources": [{
+      "resources": ["assets/*"],
+      "matches": ["https://www.walmart.com/*"]
+    }]
   },
-  "packageManager": "pnpm@9.14.2+sha512.6e2baf77d06b9362294152c851c4f278ede37ab1eba3a55fda317a4a17b209f4dbb973fb250a77abc463a341fcb1f17f17cfa24091c4eb319cda0d9b84278387",
-  "main": "getAccessToken.js",
-  "keywords": [],
-  "license": "ISC"
+  "packageManager": "pnpm@9.14.2",
+  "browser": {
+    "fs": false,
+    "path": false,
+    "os": false
+  }
 }

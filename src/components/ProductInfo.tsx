@@ -19,6 +19,7 @@ const externalData = [
 ////////////////////////////////////////////////
 interface ProductInfoProps {
   areSectionsOpen: boolean;
+  product: any; // TODO: Replace with proper type when available
 }
 
 ////////////////////////////////////////////////

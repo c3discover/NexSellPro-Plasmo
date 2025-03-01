@@ -1,8 +1,6 @@
 ////////////////////////////////////////////////
 // Imports:
 ////////////////////////////////////////////////
-// Importing base64 encoded image for icon
-import iconBase64 from "data-base64:~assets/icon.png";
 // Importing the text of the CSS file for styling
 import cssText from "data-text:~/style.css";
 // Importing types for Plasmo content script configuration
@@ -71,33 +69,39 @@ const ContentUI = () => {
 
   // useEffect hook to detect changes in the URL and refresh product data accordingly
   useEffect(() => {
-    try {
-      let previousUrl = window.location.href;
-
-      // MutationObserver to monitor changes to the page title, indicating a potential page change
-      const observer = new MutationObserver(() => {
-        const currentUrl = window.location.href;
-        if (currentUrl !== previousUrl && currentUrl.startsWith("https://www.walmart.com/ip/")) {
-          previousUrl = currentUrl;
-          // Reload the page and update refresh state
-          window.location.reload();
-          setRefresh((prev) => !prev);
-        }
-      });
-
-      // Targeting the <title> element to observe changes
-      const titleElement = document.querySelector("title");
-      if (titleElement) {
-        observer.observe(titleElement, {
-          childList: true,
-          subtree: true
-        });
+    const handleUrlChange = () => {
+      const currentUrl = window.location.href;
+      if (currentUrl.startsWith("https://www.walmart.com/ip/")) {
+        setRefresh((prev) => !prev);
       }
+    };
 
-      return () => observer.disconnect();
-    } catch (error) {
-      console.error("MutationObserver error: ", error);
-    }
+    // Listen for URL changes using the History API
+    window.addEventListener('popstate', handleUrlChange);
+    
+    // Also listen for pushState and replaceState calls
+    const originalPushState = history.pushState;
+    const originalReplaceState = history.replaceState;
+
+    history.pushState = function(...args) {
+      originalPushState.apply(this, args);
+      handleUrlChange();
+    };
+
+    history.replaceState = function(...args) {
+      originalReplaceState.apply(this, args);
+      handleUrlChange();
+    };
+
+    // Initial check
+    handleUrlChange();
+
+    // Cleanup listeners on unmount
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+      history.pushState = originalPushState;
+      history.replaceState = originalReplaceState;
+    };
   }, []);
 
   // useEffect hook to toggle CSS class when the sidebar is opened or closed
