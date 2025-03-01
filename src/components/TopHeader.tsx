@@ -26,8 +26,6 @@ export const TopHeader: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
 
-
-
   //////////////////////////////////////////////////
   // Helper Functions:
   //////////////////////////////////////////////////
@@ -54,9 +52,9 @@ export const TopHeader: React.FC = () => {
       {/* Header Bar */}
       <div className="w-full flex items-center justify-between p-1">
         {/* Left Icon with more drastic drop shadow */}
-          <button onClick={handleSettingsToggle} className="text-white pl-3">
-            <IoSettingsOutline style={{ fontSize: "30px" }} />
-          </button>
+        <button onClick={handleSettingsToggle} className="text-white pl-3">
+          <IoSettingsOutline style={{ fontSize: "30px" }} />
+        </button>
 
         {/* Center Logo with more drastic drop shadow */}
         <img
@@ -70,7 +68,6 @@ export const TopHeader: React.FC = () => {
         <button onClick={handleProfileToggle} className="text-white pr-3">
           <LuCircleUserRound style={{ fontSize: "30px" }} />
         </button>
-
       </div>
 
       {/* Settings Modal */}
@@ -108,7 +105,6 @@ export const TopHeader: React.FC = () => {
           />
         </div>
       )}
-
     </div>
   );
 };

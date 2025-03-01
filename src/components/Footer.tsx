@@ -10,40 +10,47 @@ import emailjs from '@emailjs/browser';
 // Constants and Variables
 ////////////////////////////////////////////////
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-// Add your EmailJS credentials from the dashboard
-const EMAILJS_SERVICE_ID = "service_ajk56wf";
-const EMAILJS_ADMIN_TEMPLATE_ID = "template_cmbmlwp";
-const EMAILJS_SUBSCRIBER_TEMPLATE_ID = "template_vt0464a";
-const EMAILJS_PUBLIC_KEY = "6B47NfPQdoQJhSsGX";
 
-////////////////////////////////////////////////
-// Props and Types
-////////////////////////////////////////////////
-interface FooterProps {
-  version: string;
-}
+// Social Media Links - Update these when accounts are created
+const SOCIAL_LINKS = {
+  facebook: "#",  // Update when Facebook account is created
+  twitter: "#",   // Update when Twitter account is created
+  linkedin: "#",  // Update when LinkedIn account is created
+  instagram: "#"  // Update when Instagram account is created
+};
+
+// EmailJS configuration from environment variables
+const EMAILJS_CONFIG = {
+  serviceId: process.env.PLASMO_PUBLIC_EMAILJS_SERVICE_ID || "",
+  adminTemplateId: process.env.PLASMO_PUBLIC_EMAILJS_ADMIN_TEMPLATE_ID || "",
+  subscriberTemplateId: process.env.PLASMO_PUBLIC_EMAILJS_SUBSCRIBER_TEMPLATE_ID || "",
+  publicKey: process.env.PLASMO_PUBLIC_EMAILJS_PUBLIC_KEY || ""
+};
 
 ////////////////////////////////////////////////
 // Component
 ////////////////////////////////////////////////
 export const Footer = () => {
   const [email, setEmail] = useState("");
-  const [subscribeStatus, setSubscribeStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [subscribeStatus, setSubscribeStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState("");
+  const [hasConsented, setHasConsented] = useState(false);
 
   // Initialize EmailJS
   useEffect(() => {
-    emailjs.init(EMAILJS_PUBLIC_KEY);
+    if (EMAILJS_CONFIG.publicKey) {
+      emailjs.init(EMAILJS_CONFIG.publicKey);
+    }
   }, []);
 
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Reset states
-    setSubscribeStatus('idle');
+    setSubscribeStatus('loading');
     setErrorMessage("");
 
-    // Validate email
+    // Validate email and consent
     if (!email) {
       setErrorMessage("Please enter an email address");
       setSubscribeStatus('error');
@@ -56,11 +63,25 @@ export const Footer = () => {
       return;
     }
 
+    if (!hasConsented) {
+      setErrorMessage("Please accept the privacy policy");
+      setSubscribeStatus('error');
+      return;
+    }
+
+    // Validate EmailJS configuration
+    if (!EMAILJS_CONFIG.serviceId || !EMAILJS_CONFIG.adminTemplateId || 
+        !EMAILJS_CONFIG.subscriberTemplateId || !EMAILJS_CONFIG.publicKey) {
+      setErrorMessage("Subscription service is not properly configured");
+      setSubscribeStatus('error');
+      return;
+    }
+
     try {
       // Send notification to admin
       const adminResponse = await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_ADMIN_TEMPLATE_ID,
+        EMAILJS_CONFIG.serviceId,
+        EMAILJS_CONFIG.adminTemplateId,
         {
           subscriber_email: email,
           subscription_date: new Date().toLocaleDateString(),
@@ -70,32 +91,30 @@ export const Footer = () => {
 
       // Send welcome email to subscriber
       const subscriberResponse = await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_SUBSCRIBER_TEMPLATE_ID,
+        EMAILJS_CONFIG.serviceId,
+        EMAILJS_CONFIG.subscriberTemplateId,
         {
           to_email: email,
           from_name: "NexSellPro",
           to_name: email.split('@')[0],
-          unsubscribe_link: "https://nexsellpro.com/unsubscribe?email=" + encodeURIComponent(email),
+          unsubscribe_link: `https://nexsellpro.com/unsubscribe?email=${encodeURIComponent(email)}`,
         }
       );
 
       if (adminResponse.status === 200 && subscriberResponse.status === 200) {
         setSubscribeStatus('success');
         setEmail("");
+        setHasConsented(false);
       } else {
         throw new Error('Subscription failed - Non-200 status received');
       }
     } catch (error: any) {
-      console.error('Detailed subscription error:', {
-        error: error,
+      console.error('Subscription error:', {
         message: error.message,
-        text: error.text,
-        name: error.name,
-        stack: error.stack
+        name: error.name
       });
       setSubscribeStatus('error');
-      setErrorMessage(error.text || "Failed to subscribe. Please try again later.");
+      setErrorMessage("Failed to subscribe. Please try again later.");
     }
   };
 
@@ -110,7 +129,7 @@ export const Footer = () => {
         NexSellPro - Empowering Walmart Sellers with Data
       </p>
       <p className="text-xs font-light">
-      Version: {version || "N/A"}
+        Version: {version || "N/A"}
       </p>
 
       {/* Links Section */}
@@ -121,31 +140,46 @@ export const Footer = () => {
         <a href="mailto:feedback@nexsellpro.com" className="text-xs underline hover:text-cyan-400">
           Send Feedback
         </a>
-        <a href="/about" className="text-xs underline hover:text-cyan-400">
-          About Us
-        </a>
-        <a href="/privacy-policy" className="text-xs underline hover:text-cyan-400">
+        <a 
+          href="https://github.com/c3discover/nexsellpro/blob/main/PRIVACY.md" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-xs underline hover:text-cyan-400"
+        >
           Privacy Policy
         </a>
-        <a href="/terms" className="text-xs underline hover:text-cyan-400">
+        <a 
+          href="https://github.com/c3discover/nexsellpro/blob/main/LICENSE" 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="text-xs underline hover:text-cyan-400"
+        >
           Terms of Service
         </a>
       </div>
 
       {/* Social Media Icons */}
       <div className="flex justify-center gap-4 mt-4">
-        <a href="https://facebook.com" target="_blank" rel="noopener noreferrer">
-          <FaFacebook className="w-6 h-6 hover:text-blue-500 transition-colors duration-200" />
-        </a>
-        <a href="https://twitter.com" target="_blank" rel="noopener noreferrer">
-          <FaTwitter className="w-6 h-6 hover:text-blue-300 transition-colors duration-200" />
-        </a>
-        <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer">
-          <FaLinkedin className="w-6 h-6 hover:text-blue-600 transition-colors duration-200" />
-        </a>
-        <a href="https://instagram.com" target="_blank" rel="noopener noreferrer">
-          <FaInstagram className="w-6 h-6 hover:text-pink-400 transition-colors duration-200" />
-        </a>
+        {SOCIAL_LINKS.facebook !== "#" && (
+          <a href={SOCIAL_LINKS.facebook} target="_blank" rel="noopener noreferrer">
+            <FaFacebook className="w-6 h-6 hover:text-blue-500 transition-colors duration-200" />
+          </a>
+        )}
+        {SOCIAL_LINKS.twitter !== "#" && (
+          <a href={SOCIAL_LINKS.twitter} target="_blank" rel="noopener noreferrer">
+            <FaTwitter className="w-6 h-6 hover:text-blue-300 transition-colors duration-200" />
+          </a>
+        )}
+        {SOCIAL_LINKS.linkedin !== "#" && (
+          <a href={SOCIAL_LINKS.linkedin} target="_blank" rel="noopener noreferrer">
+            <FaLinkedin className="w-6 h-6 hover:text-blue-600 transition-colors duration-200" />
+          </a>
+        )}
+        {SOCIAL_LINKS.instagram !== "#" && (
+          <a href={SOCIAL_LINKS.instagram} target="_blank" rel="noopener noreferrer">
+            <FaInstagram className="w-6 h-6 hover:text-pink-400 transition-colors duration-200" />
+          </a>
+        )}
       </div>
 
       {/* Newsletter Subscribe Section */}
@@ -158,18 +192,50 @@ export const Footer = () => {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
             className="p-2 rounded-lg text-black w-64 sm:w-auto"
+            disabled={subscribeStatus === 'loading'}
           />
           <button 
             type="submit"
+            disabled={subscribeStatus === 'loading'}
             className={`px-4 py-2 rounded-lg text-white transition-colors duration-200 ${
               subscribeStatus === 'success' 
                 ? 'bg-green-500 hover:bg-green-600' 
+                : subscribeStatus === 'loading'
+                ? 'bg-gray-400 cursor-not-allowed'
                 : 'bg-cyan-500 hover:bg-cyan-600'
             }`}
           >
-            {subscribeStatus === 'success' ? 'Subscribed!' : 'Subscribe'}
+            {subscribeStatus === 'success' 
+              ? 'Subscribed!' 
+              : subscribeStatus === 'loading'
+              ? 'Subscribing...'
+              : 'Subscribe'}
           </button>
         </div>
+
+        {/* Privacy Consent Checkbox */}
+        <div className="flex items-center gap-2 mt-2">
+          <input
+            type="checkbox"
+            id="privacy-consent"
+            checked={hasConsented}
+            onChange={(e) => setHasConsented(e.target.checked)}
+            className="rounded text-cyan-500 focus:ring-cyan-500"
+            disabled={subscribeStatus === 'loading'}
+          />
+          <label htmlFor="privacy-consent" className="text-xs">
+            I agree to receive emails and accept the{' '}
+            <a
+              href="https://github.com/c3discover/nexsellpro/blob/main/PRIVACY.md"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-cyan-400"
+            >
+              privacy policy
+            </a>
+          </label>
+        </div>
+
         {errorMessage && (
           <p className="text-red-400 text-xs mt-1">{errorMessage}</p>
         )}

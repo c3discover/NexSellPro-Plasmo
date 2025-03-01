@@ -1,7 +1,7 @@
 {
   "name": "nexsellpro",
   "displayName": "NexSellPro",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "NexSellPro: Chrome extension to assist Walmart sellers with profitability calculations and product analysis",
   "author": "C3 Discover LLC <admin@c3discover.com>",
   "contributors": [

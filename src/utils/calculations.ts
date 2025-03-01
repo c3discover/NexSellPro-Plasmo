@@ -212,170 +212,64 @@ export const calculateAdditionalFees = (weight: number): number => {
 };
 
 export const calculateWFSFee = (product: Product): number => {
-    const { weight: rawWeight, length: rawLength, width: rawWidth, height: rawHeight, isWalmartFulfilled, isApparel, isHazardousMaterial, retailPrice } = product;
-
-    console.log('\n=== WFS Fee Calculation Debug ===');
-    
-    // Get the stored values (manually entered)
-    const storedValues = JSON.parse(localStorage.getItem('storedValues') || '{"weight": "0", "length": "0", "width": "0", "height": "0"}');
-    // Get the scraped values
-    const scrapedValues = JSON.parse(localStorage.getItem('scrapedValues') || '{"weight": "0", "length": "0", "width": "0", "height": "0"}');
-    
-    console.log('Raw Input Values:', { rawWeight, rawLength, rawWidth, rawHeight });
-    console.log('Stored Values:', storedValues);
-    console.log('Scraped Values:', scrapedValues);
-    
-    // Helper function to get the correct value
-    const getValue = (raw: number, stored: string, scraped: string): number => {
-        if (raw > 0) return raw;
-        const storedVal = parseFloat(stored);
-        if (storedVal > 0) return storedVal;
-        const scrapedVal = parseFloat(scraped);
-        if (scrapedVal > 0) return scrapedVal;
-        return 0;
-    };
-
-    // Use raw input first if not zero, then stored values if not zero, then scraped values if not zero, then default to 0
-    const weight = getValue(rawWeight, storedValues.weight, scrapedValues.weight);
-    const length = getValue(rawLength, storedValues.length, scrapedValues.length);
-    const width = getValue(rawWidth, storedValues.width, scrapedValues.width);
-    const height = getValue(rawHeight, storedValues.height, scrapedValues.height);
-
-    console.log('Final Values:', { weight, length, width, height });
+    const { weight, length, width, height, isWalmartFulfilled, isApparel, isHazardousMaterial, retailPrice } = product;
 
     // If the item is Seller Fulfilled, WFS Fee is 0
     if (!isWalmartFulfilled) {
-        console.log('Item is Seller Fulfilled, WFS Fee = $0.00');
         return 0.00;
     }
 
-    // First determine base weight (greater of unit weight or dimensional weight)
-    const dimensionalWeight = (length * width * height) / 139;
-    console.log('Dimensional Weight:', dimensionalWeight.toFixed(2), 'lbs');
-    
-    // For items under 1 lb, use actual weight. Otherwise use greater of actual or dimensional
-    const baseWeight = weight < 1 ? weight : Math.max(weight, dimensionalWeight);
-    console.log('Base Weight (max of actual or dimensional):', baseWeight.toFixed(2), 'lbs');
-    
-    // Then add packaging weight and round up
-    const finalWeight = Math.ceil(baseWeight + 0.25);
-    console.log('Final Weight (with packaging, rounded up):', finalWeight, 'lbs');
-
     // Calculate Girth and Longest Side
-    const dimensions = [length, width, height].sort((a, b) => b - a);
-    const longestSide = dimensions[0];
-    const medianSide = dimensions[1];
-    const shortestSide = dimensions[2];
-    const girth = 2 * (medianSide + shortestSide);
+    const girth = 2 * (width + height);
+    const longestSide = Math.max(length, width, height);
+    const medianSide = [length, width, height].sort((a, b) => a - b)[1];
 
-    console.log('Size Measurements:', {
-        girth: girth.toFixed(2),
-        'longest side': longestSide.toFixed(2),
-        'median side': medianSide.toFixed(2),
-        'length + girth': (longestSide + girth).toFixed(2)
-    });
-
-    // STEP 1: Check for Big & Bulky
+    // Check for Big & Bulky
     const isBigAndBulky = (
         weight > 150 ||
-        longestSide > 108 ||
-        (longestSide + girth) > 165 ||
-        (longestSide > 72 && baseWeight > 30) ||
-        (medianSide > 30 && baseWeight > 30)
+        (longestSide > 108 && longestSide <= 120) ||
+        (longestSide + girth > 165)
     );
-
-    console.log('Big & Bulky Check:', {
-        isBigAndBulky,
-        'weight > 150': weight > 150,
-        'longestSide > 108': longestSide > 108,
-        'length + girth > 165': longestSide + girth > 165,
-        'longestSide > 72 && weight > 30': longestSide > 72 && baseWeight > 30,
-        'medianSide > 30 && weight > 30': medianSide > 30 && baseWeight > 30
-    });
 
     if (isBigAndBulky) {
-        const baseFee = 55;
-        const additionalPerPoundFee = Math.max(0, (Math.ceil(baseWeight) - 30) * 0.40);
-        const totalFee = baseFee + additionalPerPoundFee;
-        console.log('Big & Bulky Fee Calculation:', {
-            baseFee,
-            additionalPerPoundFee,
-            totalFee
-        });
-        return parseFloat(totalFee.toFixed(2));
+        const baseFee = 155;
+        const additionalPerPoundFee = weight > 90 ? (weight - 90) * 0.80 : 0;
+        return baseFee + additionalPerPoundFee + calculateAdditionalFees(weight);
     }
 
-    // STEP 2: Calculate base WFS fee
-    let baseWFSFee;
-    console.log('Weight Tier Calculation:');
-    if (finalWeight <= 1) {
-        baseWFSFee = 3.45;
-        console.log('Tier: ≤ 1 lb =', baseWFSFee);
-    } else if (finalWeight <= 2) {
-        baseWFSFee = 4.95;
-        console.log('Tier: 1-2 lbs =', baseWFSFee);
-    } else if (finalWeight <= 3) {
-        baseWFSFee = 5.45;
-        console.log('Tier: 2-3 lbs =', baseWFSFee);
-    } else if (finalWeight <= 20) {
-        baseWFSFee = 5.75 + (0.40 * (finalWeight - 3));
-        console.log('Tier: 3-20 lbs = 5.75 + 0.40 * (', finalWeight, '- 3) =', baseWFSFee);
-    } else if (finalWeight <= 30) {
-        baseWFSFee = 12.55 + (0.40 * (finalWeight - 20));
-        console.log('Tier: 20-30 lbs = 12.55 + 0.40 * (', finalWeight, '- 20) =', baseWFSFee);
-    } else if (finalWeight <= 50) {
-        baseWFSFee = 16.55 + (0.40 * (finalWeight - 30));
-        console.log('Tier: 30-50 lbs = 16.55 + 0.40 * (', finalWeight, '- 30) =', baseWFSFee);
-    } else if (finalWeight <= 150) {
-        baseWFSFee = 24.55 + (0.40 * (finalWeight - 50));
-        console.log('Tier: 50-150 lbs = 24.55 + 0.40 * (', finalWeight, '- 50) =', baseWFSFee);
-    }
-
-    // STEP 3: Calculate additional fees
+    // Initialize additional fee for non-Big & Bulky items
     let additionalFee = 0;
-    console.log('\nAdditional Fees:');
 
-    // Product-specific fees
-    if (isApparel) {
-        additionalFee += 0.50;
-        console.log('Apparel Fee: +$0.50');
-    }
-    if (isHazardousMaterial) {
-        additionalFee += 0.50;
-        console.log('Hazmat Fee: +$0.50');
-    }
-    if (retailPrice && retailPrice < 10) {
-        additionalFee += 1.00;
-        console.log('Low Price Fee: +$1.00');
-    }
+    // Apply specific additional fees
+    if (isApparel) additionalFee += 0.50;
+    if (isHazardousMaterial) additionalFee += 0.50;
+    if (retailPrice && retailPrice < 10) additionalFee += 1.00;
 
-    // Size-based fees
+    // Oversize conditions
     const isOversize = (
-        (longestSide > 48 && longestSide <= 108) ||
+        (longestSide > 48 && longestSide <= 96) ||
         (medianSide > 30) ||
-        (longestSide + girth > 105 && longestSide + girth <= 165)
+        (longestSide + girth > 105 && longestSide + girth <= 130)
     );
-    console.log('Oversize Check:', {
-        isOversize,
-        'longestSide > 48': longestSide > 48,
-        'medianSide > 30': medianSide > 30,
-        'longestSide + girth > 105': longestSide + girth > 105
-    });
 
-    if (isOversize) {
-        additionalFee += 3.00;
-        console.log('Oversize Fee: +$3.00');
-    }
+    const isAdditionalOversize = (
+        (longestSide > 96 && longestSide <= 108) ||
+        (longestSide + girth > 130 && longestSide + girth <= 165)
+    );
 
-    // Calculate final fee
-    const totalFee = parseFloat((baseWFSFee + additionalFee).toFixed(2));
-    console.log('\nFinal Fee Calculation:', {
-        baseWFSFee: baseWFSFee.toFixed(2),
-        additionalFee: additionalFee.toFixed(2),
-        totalFee: totalFee.toFixed(2)
-    });
+    if (isOversize) additionalFee += 3.00;
+    if (isAdditionalOversize) additionalFee += 20.00;
 
-    return totalFee;
+    // Calculate standard WFS fees
+    const baseWFSFee = weight <= 1 ? 3.45 :
+                      weight <= 2 ? 4.95 :
+                      weight <= 3 ? 5.45 :
+                      weight <= 20 ? 5.75 + 0.40 * (weight - 4) :
+                      weight <= 30 ? 15.55 + 0.40 * (weight - 21) :
+                      weight <= 50 ? 14.55 + 0.40 * (weight - 31) :
+                      weight >50 ? 17.55 + 0.40 * (weight - 51) : 1000;
+
+    return baseWFSFee + additionalFee + calculateAdditionalFees(weight);
 };
 
 ////////////////////////////////////////////////

@@ -26,7 +26,7 @@ export const SettingsModal: React.FC<{
     minROI: string;
     minMonthlySales: string;
     minTotalRatings: string;
-    minOverallRating: string,
+    minOverallRating: string;
     minRatings30Days: string;
     maxSellers: string;
     maxWfsSellers: string;
@@ -171,23 +171,66 @@ export const SettingsModal: React.FC<{
     });
 
     setDesiredMetrics((prev: typeof desiredMetrics) => {
+      const rawValue = rawMetrics[fieldName] ?? "0";
       let formattedValue = prev[fieldName];
+
+      // Handle monetary values
       if (["minProfit", "inboundShippingCost", "sfShippingCost", "prepCost", "additionalCosts"].includes(fieldName)) {
-        // Format monetary values to 2 decimal places
-        formattedValue = parseFloat(rawMetrics[fieldName] ?? "0").toFixed(2);
-      } if (fieldName === "maxWfsSellers") {
-        formattedValue = Math.max(0, parseInt(rawMetrics[fieldName] ?? "0", 10)).toString();
-      } else {
-        // Format other fields as integers
-        formattedValue = Math.round(parseFloat(rawMetrics[fieldName] ?? "0")).toString();
+        formattedValue = parseFloat(rawValue || "0").toFixed(2);
       }
+      // Handle percentage values
+      else if (["minMargin", "minROI"].includes(fieldName)) {
+        formattedValue = Math.max(0, parseInt(rawValue || "0", 10)).toString();
+      }
+      // Handle numeric values
+      else if (fieldName !== "season") {
+        formattedValue = Math.max(0, parseInt(rawValue || "0", 10)).toString();
+      }
+      // Season keeps its string value
+      else {
+        formattedValue = rawValue;
+      }
+
       return {
         ...prev,
-        [fieldName]: formattedValue,
+        [fieldName]: formattedValue
       };
     });
   };
 
+  // Helper function to format label
+  const formatLabel = (key: string): string => {
+    const labelMap: { [key: string]: string } = {
+      minROI: "Minimum ROI",
+      minProfit: "Minimum Profit",
+      minMargin: "Minimum Margin",
+      minMonthlySales: "Minimum Monthly Sales",
+      minTotalRatings: "Minimum Total Ratings",
+      minOverallRating: "Minimum Overall Rating",
+      minRatings30Days: "Minimum Ratings (30 days)",
+      maxSellers: "Maximum Sellers",
+      maxWfsSellers: "Maximum WFS Sellers",
+      sfShippingCost: "SF Shipping Cost",
+      inboundShippingCost: "Inbound Shipping Cost",
+      // Add other special cases here if needed
+    };
+    
+    return labelMap[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+  };
+
+  // Helper function to get input prefix/suffix
+  const getInputAffix = (key: string): { prefix?: string; suffix?: string; rightText?: string } => {
+    if (['minProfit', 'inboundShippingCost', 'sfShippingCost', 'prepCost', 'additionalCosts'].includes(key)) {
+      return { 
+        prefix: '$',
+        ...(key === 'inboundShippingCost' || key === 'sfShippingCost' ? { rightText: 'per pound' } : {})
+      };
+    }
+    if (['minMargin', 'minROI'].includes(key)) {
+      return { suffix: '%' };
+    }
+    return {};
+  };
 
   // Save all settings and close the modal
   const handleSaveSettings = () => {
@@ -213,7 +256,6 @@ export const SettingsModal: React.FC<{
     }
   };
 
-
   /////////////////////////////////////////////////////
   // Conditional Rendering
   /////////////////////////////////////////////////////
@@ -225,475 +267,268 @@ export const SettingsModal: React.FC<{
   /////////////////////////////////////////////////////
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75">
-      <div className="bg-white p-6 rounded-md w-[350px] shadow-lg relative">
-        {/* Header with Clear All and Close buttons */}
-        <div className="flex justify-between items-center mb-4">
+    <div className="w-full bg-white p-3 rounded-lg shadow-lg">
+      {/* Header Section */}
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-bold text-gray-800">Settings</h2>
+        <div className="flex items-center gap-2">
           <button
             onClick={handleClearAll}
-            className="bg-red-500 text-white p-1 rounded text-xs"
+            className="px-2 py-0.5 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors"
           >
             Clear All
           </button>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-xl font-bold"
+            className="text-gray-500 hover:text-gray-700 text-lg font-medium"
           >
-            ×
+            ✕
           </button>
         </div>
+      </div>
 
-        {/* Title Section */}
-        <div className="mb-4">
-          <h2 className="text-lg font-bold">Settings</h2>
-        </div>
+      {/* Baseline Metrics Explanation */}
+      <div className="bg-cyan-50 border border-cyan-200 p-2 rounded-lg mb-3">
+        <h3 className="font-medium text-cyan-800 text-xs mb-0.5">Baseline Metrics</h3>
+        <p className="text-xs text-cyan-700">
+          Set your requirements for product analysis. Products meeting these criteria will be highlighted as potential opportunities.
+        </p>
+      </div>
 
-        {/* Baseline Metrics Section */}
-        <div className="space-y-1">
-          <h3 className="text-base font-semibold">Baseline Metrics</h3>
-          <p className="italic text-gray-600 mb-2 ml-2">Enter the desired values below</p>
-
-          {/* Baseline Metrics Inputs */}
-          <div className="flex flex-col flex-1 space-y-2">
-
-            {/* Minimum Profit */}
-            <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
-                Minimum Profit
-              </label>
-              <div className="flex items-center w-full">
-                <span
-                  className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
-                  style={{ fontSize: "14px", height: "28px" }}
-                >$</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  name="minProfit"
-                  value={rawMetrics.minProfit !== undefined ? rawMetrics.minProfit : desiredMetrics.minProfit}
-                  onChange={handleDesiredMetricsChange}
-                  onBlur={(e) => {
-                    const inputValue = parseFloat(e.target.value || "0");
-                    const formattedValue = Math.max(0, inputValue).toFixed(2);
-                    setRawMetrics((prev) => ({
-                      ...prev,
-                      minProfit: formattedValue,
-                    }));
-                    setDesiredMetrics((prev) => ({
-                      ...prev,
-                      minProfit: formattedValue,
-                    }));
-                  }}
-                  className={`p-1 pr-3 text-right w-full border rounded-r ${rawMetrics.minProfit !== undefined ? "font-bold" : ""}`}
-                  style={{ fontSize: "14px", height: "28px" }}
-                />
-              </div>
-            </div>
-
-            {/* Minimum Margin */}
-            <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
-                Minimum Margin
-              </label>
-              <div className="flex items-center w-full">
-                <input
-                  type="text"
-                  name="minMargin"
-                  value={rawMetrics.minMargin !== undefined ? rawMetrics.minMargin : desiredMetrics.minMargin}
-                  onChange={handleDesiredMetricsChange}
-                  onBlur={() => handleBlur("minMargin")}
-                  className={`p-1 pr-3 text-right w-full border rounded-l ${rawMetrics.minMargin !== undefined ? "font-bold" : ""}`}
-                  style={{ fontSize: "14px", height: "28px" }} // Adjust height and font size
-                />
-                <span
-                  className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
-                  style={{ fontSize: "14px", height: "28px" }}
-                >%</span>
-              </div>
-            </div>
-
-            {/* Minimum ROI */}
-            <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
-                Minimum ROI
-              </label>
-              <div className="flex items-center w-full">
-                <input
-                  type="text"
-                  name="minROI"
-                  value={rawMetrics.minROI !== undefined ? rawMetrics.minROI : desiredMetrics.minROI}
-                  onChange={handleDesiredMetricsChange}
-                  onBlur={() => handleBlur("minROI")}
-                  className={`p-1 pr-3 text-right w-full border rounded-l ${rawMetrics.minROI !== undefined ? "font-bold" : ""}`}
-                  style={{ fontSize: "14px", height: "28px" }}
-                />
-                <span
-                  className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
-                  style={{ fontSize: "14px", height: "28px" }}
-                >%</span>
-              </div>
-            </div>
-
-            {/* Minimum Monthly Sales */}
-            <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[160px]">
-                Minimum Monthly Sales
-              </label>
-              <input
-                type="text"
-                name="minMonthlySales"
-                value={desiredMetrics.minMonthlySales}
-                onChange={handleDesiredMetricsChange}
-                className="p-1 pr-3 text-right w-full border rounded"
-                placeholder="Coming Soon..."
-                style={{ fontSize: "14px", height: "28px" }}
-              />
-            </div>
-
-            {/* Minimum Total Ratings */}
-            <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[160px]">
-                Minimum Total # of Ratings
-              </label>
-              <input
-                type="text"
-                name="minTotalRatings"
-                value={rawMetrics.minTotalRatings !== undefined ? rawMetrics.minTotalRatings : desiredMetrics.minTotalRatings}
-                onChange={handleDesiredMetricsChange}
-                onBlur={() => handleBlur("minTotalRatings")}
-                className={`p-1 pr-3 text-right w-full border rounded ${rawMetrics.minTotalRatings !== undefined ? "font-bold" : ""}`}
-                style={{ fontSize: "14px", height: "28px" }}
-              />
-            </div>
-            {/* Minimum Overall Rating */}
-            <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[160px]">
-                Minimum Overall Rating
-              </label>
-              <input
-                type="number"
-                name="minOverallRating"
-                step="0.1"
-                min="0.0"
-                max="5.0"
-                value={rawMetrics.minOverallRating !== undefined ? rawMetrics.minOverallRating : desiredMetrics.minOverallRating || "0.0"}
-                onChange={handleDesiredMetricsChange}
-                onBlur={(e) => {
-                  const inputValue = parseFloat(e.target.value || "0.0");
-                  const clampedValue = Math.min(Math.max(inputValue, 0.0), 5.0);
-                  const formattedValue = clampedValue.toFixed(1);
-
-                  setRawMetrics((prev) => ({
-                    ...prev,
-                    [e.target.name]: formattedValue,
-                  }));
-
-                  setDesiredMetrics((prev) => ({
-                    ...prev,
-                    [e.target.name]: formattedValue,
-                  }));
-                }}
-                className={`p-1 pr-3 text-right w-full border rounded ${rawMetrics.minOverallRating !== undefined ? "font-bold" : ""}`}
-                style={{ fontSize: "14px", height: "28px" }}
-              />
-            </div>
-
-            {/* Minimum Ratings in Last 30 Days */}
-            <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[160px]">
-                Minimum Ratings (30 Days)
-              </label>
-              <input
-                type="text"
-                name="minRatings30Days"
-                value={rawMetrics.minRatings30Days !== undefined ? rawMetrics.minRatings30Days : desiredMetrics.minRatings30Days}
-                onChange={handleDesiredMetricsChange}
-                onBlur={() => handleBlur("minRatings30Days")}
-                className={`p-1 pr-3 text-right w-full border rounded ${rawMetrics.minRatings30Days !== undefined ? "font-bold" : ""}`}
-                style={{ fontSize: "14px", height: "28px" }}
-              />
-            </div>
-
-            {/* Maximum Number of Sellers */}
-            <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[160px]">
-                Maximum Sellers
-              </label>
-              <input
-                type="text"
-                name="maxSellers"
-                value={rawMetrics.maxSellers !== undefined ? rawMetrics.maxSellers : desiredMetrics.maxSellers}
-                onChange={handleDesiredMetricsChange}
-                onBlur={() => handleBlur("maxSellers")}
-                className={`p-1 pr-3 text-right w-full border rounded ${rawMetrics.maxSellers !== undefined ? "font-bold" : ""}`}
-                style={{ fontSize: "14px", height: "28px" }}
-              />
-            </div>
-
-            {/* Maximum WFS Sellers */}
-            <div className="flex items-center">
-              <label className="p-1 mr-2 min-w-[160px]">
-                Maximum WFS Sellers
-              </label>
-              <input
-                type="number"
-                name="maxWfsSellers"
-                step="1"
-                min="0"
-                value={rawMetrics.maxWfsSellers !== undefined ? rawMetrics.maxWfsSellers : desiredMetrics.maxWfsSellers || "0"}
-                onChange={handleDesiredMetricsChange}
-                onBlur={(e) => {
-                  const inputValue = parseInt(e.target.value || "0", 10);
-                  const clampedValue = Math.max(inputValue, 0); // Ensure no negative values
-
-                  setRawMetrics((prev) => ({
-                    ...prev,
-                    [e.target.name]: clampedValue,
-                  }));
-
-                  setDesiredMetrics((prev) => ({
-                    ...prev,
-                    [e.target.name]: clampedValue,
-                  }));
-                }}
-                className={`p-1 pr-3 text-right w-full border rounded ${rawMetrics.maxWfsSellers !== undefined ? "font-bold" : ""}`}
-                style={{ fontSize: "14px", height: "28px" }}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Fee Settings Section */}
-        <div className="space-y-1 mt-4">
-          <h3 className="text-base font-semibold">Fee Settings</h3>
-          <p className="italic text-gray-600 mb-2 ml-2">Enter your estimated values below</p>
-
-          {/* Inbound Shipping Cost */}
-          <div className="flex items-center">
-            <label className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
-              Inbound Shipping Cost
-            </label>
-            <span
-              className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
-              style={{ fontSize: "14px", height: "28px" }}
-            >$</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              name="inboundShippingCost"
-              value={rawMetrics.inboundShippingCost !== undefined ? rawMetrics.inboundShippingCost : desiredMetrics.inboundShippingCost}
-              onChange={handleDesiredMetricsChange}
-              onBlur={(e) => {
-                const inputValue = parseFloat(e.target.value || "0");
-                const formattedValue = Math.max(0, inputValue).toFixed(2);
-                setRawMetrics((prev) => ({
-                  ...prev,
-                  inboundShippingCost: formattedValue,
-                }));
-                setDesiredMetrics((prev) => ({
-                  ...prev,
-                  inboundShippingCost: formattedValue,
-                }));
-              }}
-              className={`p-1 pr-3 text-right w-full border ${rawMetrics.inboundShippingCost !== undefined ? "font-bold" : ""}`}
-              style={{ fontSize: "14px", height: "28px" }}
-            />
-            <span
-              className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
-              style={{ fontSize: "14px", height: "28px" }}
-            >/lb</span>
-          </div>
-
-          {/* SF Shipping Cost */}
-          <div className="flex items-center">
-            <label className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
-              SF Shipping Cost
-            </label>
-            <span
-              className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
-              style={{ fontSize: "14px", height: "28px" }}
-            >$</span>
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              name="sfShippingCost"
-              value={rawMetrics.sfShippingCost !== undefined ? rawMetrics.sfShippingCost : desiredMetrics.sfShippingCost}
-              onChange={handleDesiredMetricsChange}
-              onBlur={(e) => {
-                const inputValue = parseFloat(e.target.value || "0");
-                const formattedValue = Math.max(0, inputValue).toFixed(2);
-                setRawMetrics((prev) => ({
-                  ...prev,
-                  sfShippingCost: formattedValue,
-                }));
-                setDesiredMetrics((prev) => ({
-                  ...prev,
-                  sfShippingCost: formattedValue,
-                }));
-              }}
-              className={`p-1 pr-3 text-right w-full border ${rawMetrics.sfShippingCost !== undefined ? "font-bold" : ""}`}
-              style={{ fontSize: "14px", height: "28px" }}
-            />
-            <span
-              className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
-              style={{ fontSize: "14px", height: "28px" }}
-            >/lb</span>
-          </div>
-
-          {/* Storage Length */}
-          <div className="flex items-center">
-            <label className="p-1 mr-2 min-w-[160px]">
-              Storage Length
-            </label>
-            <input
-              type="number"
-              name="storageLength"
-              value={rawMetrics.storageLength !== undefined ? rawMetrics.storageLength : desiredMetrics.storageLength}
-              onChange={handleDesiredMetricsChange}
-              onBlur={() => handleBlur("storageLength")}
-              className={`p-1 text-right w-full border rounded-l ${rawMetrics.storageLength !== undefined ? "font-bold" : ""}`}
-              style={{ fontSize: "14px", height: "28px" }}
-            />
-            <span
-              className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
-              style={{ fontSize: "14px", height: "28px" }}
-            >months</span>
-          </div>
-
-          {/* Season */}
-          <div className="flex items-center mb-2">
-            <label className="p-1 mr-2 min-w-[160px]">
-              Season
-            </label>
-            <div className="flex items-center w-full">
-              <select
-                name="season"
-                value={desiredMetrics.season}
-                onChange={(e) => {
-                  setDesiredMetrics({ ...desiredMetrics, season: e.target.value });
-                }}
-                className="p-1 text-right w-full border rounded"
-                style={{ fontSize: "14px", height: "28px", lineHeight: "14px", paddingRight: "2rem" }}
-              >
-                <option value="Jan-Sep">Jan-Sep</option>
-                <option value="Oct-Dec">Oct-Dec</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Prep Cost */}
-          <div className="flex items-center mb-2">
-            <label className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
-              Prep Cost
-            </label>
-            <span
-              className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
-              style={{ fontSize: "14px", height: "28px" }}
-            >$</span>
-            <div className="flex items-center w-full">
-              <input
-                type="text"
-                name="prepCost"
-                value={rawMetrics.prepCost !== undefined ? rawMetrics.prepCost : (prepCostType === "per lb" ? prepCostPerLb.toFixed(2) : prepCostEach.toFixed(2))}
-                onChange={(e) => {
-                  handleDesiredMetricsChange(e);
-                  const value = e.target.value;
-                  setRawMetrics((prev) => ({ ...prev, prepCost: value }));
-                }}
-                onBlur={() => {
-                  handleBlur("prepCost");
-                  // Set correct precision and convert back to number
-                  prepCostType === "per lb"
-                    ? setPrepCostPerLb(parseFloat(parseFloat(rawMetrics.prepCost || "0").toFixed(2)))
-                    : setPrepCostEach(parseFloat(parseFloat(rawMetrics.prepCost || "0").toFixed(2)));
-                }}
-                className={`p-1 pr-3 text-right w-full border ${rawMetrics.prepCost !== undefined ? "font-bold" : ""}`}
-                style={{ fontSize: "14px", height: "28px" }}
-              />
-              <select
-                value={prepCostType}
-                onChange={(e) => setPrepCostType(e.target.value)}
-                className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
-                style={{ fontSize: "14px", height: "28px", paddingRight: "1rem" }}
-              >
-                <option value="per lb">/lb</option>
-                <option value="per unit">each</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Additional Costs */}
-          <div className="flex items-center mb-2">
-            <label className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
-              Additional Costs
-            </label>
-            <span
-              className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
-              style={{ fontSize: "14px", height: "28px" }}
-            >$</span>
-            <div className="flex items-center w-full">
-              <input
-                type="text"
-                name="additionalCosts"
-                value={rawMetrics.additionalCosts !== undefined ? rawMetrics.additionalCosts : (additionalCostType === "per lb" ? additionalCostPerLb.toFixed(2) : additionalCostEach.toFixed(2))}
-                onChange={(e) => {
-                  handleDesiredMetricsChange(e);
-                  const value = e.target.value;
-                  setRawMetrics((prev) => ({ ...prev, additionalCosts: value }));
-                }}
-                onBlur={() => {
-                  handleBlur("additionalCosts");
-                  // Set correct precision and convert back to number
-                  additionalCostType === "per lb"
-                    ? setAdditionalCostPerLb(parseFloat(parseFloat(rawMetrics.additionalCosts || "0").toFixed(2)))
-                    : setAdditionalCostEach(parseFloat(parseFloat(rawMetrics.additionalCosts || "0").toFixed(2)));
-                }}
-                className={`text-sm p-1 pr-3 text-right w-full border ${rawMetrics.additionalCosts !== undefined ? "font-bold" : ""}`}
-                style={{ fontSize: "14px", height: "30px" }}
-              />
-              <select
-                value={additionalCostType}
-                onChange={(e) => setAdditionalCostType(e.target.value)}
-                className="p-1 inline-block border rounded-l bg-gray-100 text-gray-700"
-                style={{ fontSize: "14px", height: "28px", paddingRight: "1rem" }}
-
-              >
-                <option value="per lb">/lb</option>
-                <option value="per unit">each</option>
-              </select>
-            </div>
-          </div>
-
-
-          {/* Fulfillment Method */}
-          <div className="flex items-center">
-            <label htmlFor="fulfillment-select" className="p-1 mr-2 min-w-[160px] whitespace-nowrap">
-              Default Fulfillment
-            </label>
+      {/* Settings Form - More Condensed */}
+      <div className="space-y-3">
+        {/* Fulfillment Section */}
+        <div className="bg-gray-50 p-2 rounded-lg">
+          <h3 className="text-xs font-medium text-gray-800 mb-1">Default Fulfillment</h3>
+          <div className="relative">
             <select
-              id="fulfillment-select"
               value={defaultFulfillment}
               onChange={handleFulfillmentChange}
-              className="p-2 text-xs border rounded w-full"
+              className="w-full p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 appearance-none bg-white pr-8"
             >
               <option value="Walmart Fulfilled">Walmart Fulfilled</option>
               <option value="Seller Fulfilled">Seller Fulfilled</option>
             </select>
+            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+              <svg className="h-3 w-3 fill-current text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+              </svg>
+            </div>
           </div>
         </div>
 
-        {/* Save Settings Button */}
+        {/* Metrics Section - Grid Layout */}
+        <div className="bg-gray-50 p-2 rounded-lg">
+          <h3 className="text-xs font-medium text-gray-800 mb-1">Requirements</h3>
+          <div className="grid grid-cols-2 gap-1.5">
+            {/* Regular metrics (excluding special cases) */}
+            {Object.entries(desiredMetrics)
+              .filter(([key]) => !['inboundShippingCost', 'sfShippingCost', 'storageLength', 'season', 'prepCost', 'additionalCosts'].includes(key))
+              .map(([key, value]) => {
+                const { prefix, suffix } = getInputAffix(key);
+                return (
+                  <div key={key} className="flex flex-col">
+                    <label className="text-[11px] text-gray-600 mb-0.5">
+                      {formatLabel(key)}
+                    </label>
+                    <div className="relative">
+                      {prefix && (
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
+                          {prefix}
+                        </span>
+                      )}
+                      <input
+                        type="text"
+                        name={key}
+                        value={rawMetrics[key] ?? value}
+                        onChange={handleDesiredMetricsChange}
+                        onBlur={() => handleBlur(key)}
+                        className={`p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
+                          prefix ? 'pl-5' : ''
+                        } ${suffix ? 'pr-5' : ''}`}
+                      />
+                      {suffix && (
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
+                          {suffix}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+            })}
+
+            {/* SF Shipping Cost */}
+            <div className="flex flex-col">
+              <label className="text-[11px] text-gray-600 mb-0.5">
+                SF Shipping Cost
+              </label>
+              <div className="relative">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                <input
+                  type="text"
+                  name="sfShippingCost"
+                  value={rawMetrics['sfShippingCost'] ?? desiredMetrics.sfShippingCost}
+                  onChange={handleDesiredMetricsChange}
+                  onBlur={() => handleBlur('sfShippingCost')}
+                  className="p-1 pl-5 pr-14 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">
+                  per pound
+                </span>
+              </div>
+            </div>
+
+            {/* Storage Length and Season Row */}
+            {['storageLength', 'season'].map((key) => {
+              const value = desiredMetrics[key as keyof typeof desiredMetrics];
+              if (key === 'season') {
+                return (
+                  <div key={key} className="flex flex-col">
+                    <label className="text-[11px] text-gray-600 mb-0.5">Season</label>
+                    <div className="relative">
+                      <select
+                        name={key}
+                        value={value}
+                        onChange={handleDesiredMetricsChange}
+                        className="w-full p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 appearance-none bg-white pr-8"
+                      >
+                        <option value="Jan-Sep">Jan-Sep</option>
+                        <option value="Oct-Dec">Oct-Dec</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                        <svg className="h-3 w-3 fill-current text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div key={key} className="flex flex-col">
+                  <label className="text-[11px] text-gray-600 mb-0.5">
+                    {formatLabel(key)}
+                  </label>
+                  <input
+                    type="text"
+                    name={key}
+                    value={rawMetrics[key] ?? value}
+                    onChange={handleDesiredMetricsChange}
+                    onBlur={() => handleBlur(key)}
+                    className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
+                  />
+                </div>
+              );
+            })}
+
+            {/* Inbound Shipping Cost */}
+            <div className="flex flex-col col-span-2">
+              <label className="text-[11px] text-gray-600 mb-0.5">
+                Inbound Shipping Cost
+              </label>
+              <div className="relative">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                <input
+                  type="text"
+                  name="inboundShippingCost"
+                  value={rawMetrics['inboundShippingCost'] ?? desiredMetrics.inboundShippingCost}
+                  onChange={handleDesiredMetricsChange}
+                  onBlur={() => handleBlur('inboundShippingCost')}
+                  className="p-1 pl-5 pr-14 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">
+                  per pound
+                </span>
+              </div>
+            </div>
+
+            {/* Prep Cost Row */}
+            <div className="flex flex-col col-span-2">
+              <label className="text-[11px] text-gray-600 mb-0.5">{formatLabel('prepCost')}</label>
+              <div className="flex gap-1.5">
+                <div className="relative flex-1">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                  <input
+                    type="text"
+                    name="prepCost"
+                    value={rawMetrics['prepCost'] ?? desiredMetrics.prepCost}
+                    onChange={handleDesiredMetricsChange}
+                    onBlur={() => handleBlur('prepCost')}
+                    className="p-1 pl-5 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
+                  />
+                </div>
+                <div className="relative">
+                  <select
+                    value={prepCostType}
+                    onChange={(e) => setPrepCostType(e.target.value)}
+                    className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 appearance-none bg-white pr-8"
+                  >
+                    <option value="per lb">Per Pound</option>
+                    <option value="each">Each</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                    <svg className="h-3 w-3 fill-current text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Additional Costs Row */}
+            <div className="flex flex-col col-span-2">
+              <label className="text-[11px] text-gray-600 mb-0.5">{formatLabel('additionalCosts')}</label>
+              <div className="flex gap-1.5">
+                <div className="relative flex-1">
+                  <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                  <input
+                    type="text"
+                    name="additionalCosts"
+                    value={rawMetrics['additionalCosts'] ?? desiredMetrics.additionalCosts}
+                    onChange={handleDesiredMetricsChange}
+                    onBlur={() => handleBlur('additionalCosts')}
+                    className="p-1 pl-5 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
+                  />
+                </div>
+                <div className="relative">
+                  <select
+                    value={additionalCostType}
+                    onChange={(e) => setAdditionalCostType(e.target.value)}
+                    className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 appearance-none bg-white pr-8"
+                  >
+                    <option value="per lb">Per Pound</option>
+                    <option value="each">Each</option>
+                  </select>
+                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
+                    <svg className="h-3 w-3 fill-current text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="mt-3 space-y-1.5">
         <button
           onClick={handleSaveSettings}
-          className="mt-4 w-full bg-cyan-500 text-white p-2 rounded-lg hover:bg-cyan-600"
+          className="w-full py-1.5 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded-lg hover:from-cyan-600 hover:to-cyan-700 transition-all duration-200 shadow-sm font-medium text-xs"
         >
-          Save Settings
+          Save Changes
+        </button>
+        <button
+          onClick={onClose}
+          className="w-full px-4 py-1 text-gray-600 hover:text-gray-800 transition duration-300 text-xs"
+        >
+          Cancel
         </button>
       </div>
     </div>
   );
 }
+
+export default SettingsModal;
 
