@@ -182,6 +182,10 @@ export const SettingsModal: React.FC<{
       else if (["minMargin", "minROI"].includes(fieldName)) {
         formattedValue = Math.max(0, parseInt(rawValue || "0", 10)).toString();
       }
+      // Handle minOverallRating with one decimal place
+      else if (fieldName === "minOverallRating") {
+        formattedValue = Math.max(0, parseFloat(rawValue || "0")).toFixed(1);
+      }
       // Handle numeric values
       else if (fieldName !== "season") {
         formattedValue = Math.max(0, parseInt(rawValue || "0", 10)).toString();
@@ -211,7 +215,7 @@ export const SettingsModal: React.FC<{
       maxSellers: "Maximum Sellers",
       maxWfsSellers: "Maximum WFS Sellers",
       sfShippingCost: "SF Shipping Cost",
-      inboundShippingCost: "Inbound Shipping Cost",
+      inboundShippingCost: "WFS Inbound Shipping Cost",
       // Add other special cases here if needed
     };
     
@@ -285,7 +289,7 @@ export const SettingsModal: React.FC<{
             ✕
           </button>
         </div>
-      </div>
+        </div>
 
       {/* Baseline Metrics Explanation */}
       <div className="bg-cyan-50 border border-cyan-200 p-2 rounded-lg mb-3">
@@ -293,7 +297,7 @@ export const SettingsModal: React.FC<{
         <p className="text-xs text-cyan-700">
           Set your requirements for product analysis. Products meeting these criteria will be highlighted as potential opportunities.
         </p>
-      </div>
+        </div>
 
       {/* Settings Form - More Condensed */}
       <div className="space-y-3">
@@ -304,16 +308,11 @@ export const SettingsModal: React.FC<{
             <select
               value={defaultFulfillment}
               onChange={handleFulfillmentChange}
-              className="w-full p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 appearance-none bg-white pr-8"
+              className="w-full p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white pr-8"
             >
               <option value="Walmart Fulfilled">Walmart Fulfilled</option>
               <option value="Seller Fulfilled">Seller Fulfilled</option>
             </select>
-            <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-              <svg className="h-3 w-3 fill-current text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-              </svg>
-            </div>
           </div>
         </div>
 
@@ -330,18 +329,18 @@ export const SettingsModal: React.FC<{
                   <div key={key} className="flex flex-col">
                     <label className="text-[11px] text-gray-600 mb-0.5">
                       {formatLabel(key)}
-                    </label>
+              </label>
                     <div className="relative">
                       {prefix && (
                         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
                           {prefix}
                         </span>
                       )}
-                      <input
+                <input
                         type="text"
                         name={key}
                         value={rawMetrics[key] ?? value}
-                        onChange={handleDesiredMetricsChange}
+                  onChange={handleDesiredMetricsChange}
                         onBlur={() => handleBlur(key)}
                         className={`p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
                           prefix ? 'pl-5' : ''
@@ -352,13 +351,34 @@ export const SettingsModal: React.FC<{
                           {suffix}
                         </span>
                       )}
-                    </div>
-                  </div>
+              </div>
+            </div>
                 );
             })}
 
+            {/* WFS Inbound Shipping Cost */}
+            <div className="flex flex-col col-span-2">
+              <label className="text-[11px] text-gray-600 mb-0.5">
+                WFS Inbound Shipping Cost
+              </label>
+              <div className="relative">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                <input
+                  type="text"
+                  name="inboundShippingCost"
+                  value={rawMetrics['inboundShippingCost'] ?? desiredMetrics.inboundShippingCost}
+                  onChange={handleDesiredMetricsChange}
+                  onBlur={() => handleBlur('inboundShippingCost')}
+                  className="p-1 pl-5 pr-14 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
+                />
+                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">
+                  per pound
+                </span>
+              </div>
+            </div>
+
             {/* SF Shipping Cost */}
-            <div className="flex flex-col">
+            <div className="flex flex-col col-span-2">
               <label className="text-[11px] text-gray-600 mb-0.5">
                 SF Shipping Cost
               </label>
@@ -389,26 +409,21 @@ export const SettingsModal: React.FC<{
                       <select
                         name={key}
                         value={value}
-                        onChange={handleDesiredMetricsChange}
-                        className="w-full p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 appearance-none bg-white pr-8"
-                      >
-                        <option value="Jan-Sep">Jan-Sep</option>
-                        <option value="Oct-Dec">Oct-Dec</option>
-                      </select>
-                      <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                        <svg className="h-3 w-3 fill-current text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
+                onChange={handleDesiredMetricsChange}
+                        className="w-full p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white pr-8"
+              >
+                <option value="Jan-Sep">Jan-Sep</option>
+                <option value="Oct-Dec">Oct-Dec</option>
+              </select>
+            </div>
+          </div>
                 );
               }
               return (
                 <div key={key} className="flex flex-col">
                   <label className="text-[11px] text-gray-600 mb-0.5">
                     {formatLabel(key)}
-                  </label>
+            </label>
                   <input
                     type="text"
                     name={key}
@@ -421,36 +436,15 @@ export const SettingsModal: React.FC<{
               );
             })}
 
-            {/* Inbound Shipping Cost */}
-            <div className="flex flex-col col-span-2">
-              <label className="text-[11px] text-gray-600 mb-0.5">
-                Inbound Shipping Cost
-              </label>
-              <div className="relative">
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
-                <input
-                  type="text"
-                  name="inboundShippingCost"
-                  value={rawMetrics['inboundShippingCost'] ?? desiredMetrics.inboundShippingCost}
-                  onChange={handleDesiredMetricsChange}
-                  onBlur={() => handleBlur('inboundShippingCost')}
-                  className="p-1 pl-5 pr-14 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
-                />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">
-                  per pound
-                </span>
-              </div>
-            </div>
-
             {/* Prep Cost Row */}
             <div className="flex flex-col col-span-2">
               <label className="text-[11px] text-gray-600 mb-0.5">{formatLabel('prepCost')}</label>
               <div className="flex gap-1.5">
                 <div className="relative flex-1">
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
-                  <input
-                    type="text"
-                    name="prepCost"
+              <input
+                type="text"
+                name="prepCost"
                     value={rawMetrics['prepCost'] ?? desiredMetrics.prepCost}
                     onChange={handleDesiredMetricsChange}
                     onBlur={() => handleBlur('prepCost')}
@@ -458,22 +452,17 @@ export const SettingsModal: React.FC<{
                   />
                 </div>
                 <div className="relative">
-                  <select
-                    value={prepCostType}
-                    onChange={(e) => setPrepCostType(e.target.value)}
-                    className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 appearance-none bg-white pr-8"
-                  >
+              <select
+                value={prepCostType}
+                onChange={(e) => setPrepCostType(e.target.value)}
+                className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white pr-8"
+              >
                     <option value="per lb">Per Pound</option>
                     <option value="each">Each</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                    <svg className="h-3 w-3 fill-current text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-                    </svg>
-                  </div>
+              </select>
                 </div>
-              </div>
             </div>
+          </div>
 
             {/* Additional Costs Row */}
             <div className="flex flex-col col-span-2">
@@ -481,9 +470,9 @@ export const SettingsModal: React.FC<{
               <div className="flex gap-1.5">
                 <div className="relative flex-1">
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
-                  <input
-                    type="text"
-                    name="additionalCosts"
+              <input
+                type="text"
+                name="additionalCosts"
                     value={rawMetrics['additionalCosts'] ?? desiredMetrics.additionalCosts}
                     onChange={handleDesiredMetricsChange}
                     onBlur={() => handleBlur('additionalCosts')}
@@ -491,25 +480,20 @@ export const SettingsModal: React.FC<{
                   />
                 </div>
                 <div className="relative">
-                  <select
-                    value={additionalCostType}
-                    onChange={(e) => setAdditionalCostType(e.target.value)}
-                    className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 appearance-none bg-white pr-8"
-                  >
+              <select
+                value={additionalCostType}
+                onChange={(e) => setAdditionalCostType(e.target.value)}
+                className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white pr-8"
+              >
                     <option value="per lb">Per Pound</option>
                     <option value="each">Each</option>
-                  </select>
-                  <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
-                    <svg className="h-3 w-3 fill-current text-gray-500" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                      <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-                    </svg>
-                  </div>
+              </select>
                 </div>
               </div>
             </div>
           </div>
+          </div>
         </div>
-      </div>
 
       {/* Action Buttons */}
       <div className="mt-3 space-y-1.5">
