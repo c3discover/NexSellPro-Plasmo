@@ -187,24 +187,91 @@ export function getProductDetails(product, idml, reviews) {
 let lastData: any = null;
 let lastDataTimestamp = 0;
 const DATA_COOLDOWN = 1000; // 1 second cooldown
+const MAX_RETRIES = 5;
+const RETRY_DELAY = 300; // ms
 
 export default function getData() {
+    // Return cached data if it's recent enough
+    const now = Date.now();
+    if (lastData && now - lastDataTimestamp < DATA_COOLDOWN) {
+        return lastData;
+    }
+
+    // Try to get data with retries
+    return getDataWithRetry(0);
+}
+
+function getDataWithRetry(retryCount: number): any {
     try {
         const dataDiv = document.getElementById("__NEXT_DATA__");
-        if (!dataDiv) return null;
+        if (!dataDiv) {
+            if (retryCount < MAX_RETRIES) {
+                console.log(`Data div not found, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
+                setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+                return null;
+            } else {
+                console.error("Data div not found after maximum retries.");
+                return null;
+            }
+        }
 
-        const rawData = JSON.parse(dataDiv.innerText);
-        const { product, idml, reviews } = rawData.props.pageProps.initialData.data;
+        try {
+            const rawData = JSON.parse(dataDiv.innerText);
+            if (!rawData?.props?.pageProps?.initialData?.data) {
+                if (retryCount < MAX_RETRIES) {
+                    console.log(`Incomplete data structure, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
+                    setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+                    return null;
+                } else {
+                    console.error("Incomplete data structure after maximum retries.");
+                    return null;
+                }
+            }
 
-        // Always log the raw data
-        console.log('%c[All JSON Data]', 'color: #22c55e; font-weight: bold', {
-            timestamp: new Date().toISOString(),
-            data: { product, idml, reviews }
-        });
+            const { product, idml, reviews } = rawData.props.pageProps.initialData.data;
+            
+            // Check if we have valid product data
+            if (!product) {
+                if (retryCount < MAX_RETRIES) {
+                    console.log(`No product data found, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
+                    setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+                    return null;
+                } else {
+                    console.error("No product data found after maximum retries.");
+                    return null;
+                }
+            }
 
-        return getProductDetails(product, idml, reviews);
+            // Always log the raw data
+            console.log('%c[All JSON Data]', 'color: #22c55e; font-weight: bold', {
+                timestamp: new Date().toISOString(),
+                data: { product, idml, reviews }
+            });
+
+            // Cache the processed data
+            lastData = getProductDetails(product, idml, reviews);
+            lastDataTimestamp = Date.now();
+            return lastData;
+        } catch (parseError) {
+            console.error('Error parsing data:', parseError);
+            if (retryCount < MAX_RETRIES) {
+                console.log(`Error parsing data, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
+                setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+                return null;
+            } else {
+                console.error("Failed to parse data after maximum retries.");
+                return null;
+            }
+        }
     } catch (error) {
         console.error('Error in getData:', error);
-        return null;
+        if (retryCount < MAX_RETRIES) {
+            console.log(`Error in getData, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
+            setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+            return null;
+        } else {
+            console.error("Failed to get data after maximum retries.");
+            return null;
+        }
     }
 }

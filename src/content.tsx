@@ -93,6 +93,28 @@ const ContentUI = () => {
       handleUrlChange();
     };
 
+    // Create a MutationObserver to watch for DOM changes that indicate navigation
+    const observer = new MutationObserver((mutations) => {
+      // Check if URL has changed to a product page
+      if (window.location.href.startsWith("https://www.walmart.com/ip/")) {
+        // Check for product page elements
+        const hasProductTitle = document.querySelector('[data-testid="product-title"]') !== null;
+        const hasProductPrice = document.querySelector('[data-testid="price-information"]') !== null;
+        
+        if (hasProductTitle || hasProductPrice) {
+          // Force a refresh of the component
+          window.location.reload();
+        }
+      }
+    });
+
+    // Start observing the document with the configured parameters
+    observer.observe(document, {
+      childList: true,
+      subtree: true,
+      attributes: false
+    });
+
     // Initial check
     handleUrlChange();
 
@@ -101,6 +123,7 @@ const ContentUI = () => {
       window.removeEventListener('popstate', handleUrlChange);
       history.pushState = originalPushState;
       history.replaceState = originalReplaceState;
+      observer.disconnect();
     };
   }, []);
 

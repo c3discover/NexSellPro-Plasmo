@@ -320,83 +320,191 @@ export const SettingsModal: React.FC<{
         <div className="bg-gray-50 p-2 rounded-lg">
           <h3 className="text-xs font-medium text-gray-800 mb-1">Requirements</h3>
           <div className="grid grid-cols-2 gap-1.5">
-            {/* Regular metrics (excluding special cases) */}
-            {Object.entries(desiredMetrics)
-              .filter(([key]) => !['inboundShippingCost', 'sfShippingCost', 'storageLength', 'season', 'prepCost', 'additionalCosts'].includes(key))
-              .map(([key, value]) => {
-                const { prefix, suffix } = getInputAffix(key);
-                return (
-                  <div key={key} className="flex flex-col">
-                    <label className="text-[11px] text-gray-600 mb-0.5">
-                      {formatLabel(key)}
-              </label>
-                    <div className="relative">
-                      {prefix && (
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
-                          {prefix}
-                        </span>
-                      )}
-                <input
-                        type="text"
-                        name={key}
-                        value={rawMetrics[key] ?? value}
-                  onChange={handleDesiredMetricsChange}
-                        onBlur={() => handleBlur(key)}
-                        className={`p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
-                          prefix ? 'pl-5' : ''
-                        } ${suffix ? 'pr-5' : ''}`}
-                      />
-                      {suffix && (
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
-                          {suffix}
-                        </span>
-                      )}
-              </div>
-            </div>
-                );
+            {/* First Row: Profit and Monthly Sales */}
+            {['minProfit', 'minMonthlySales'].map((key) => {
+              const value = desiredMetrics[key as keyof typeof desiredMetrics];
+              const { prefix, suffix } = getInputAffix(key);
+              return (
+                <div key={key} className="flex flex-col">
+                  <label className="text-[11px] text-gray-600 mb-0.5">
+                    {formatLabel(key)}
+                  </label>
+                  <div className="relative">
+                    {prefix && (
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
+                        {prefix}
+                      </span>
+                    )}
+                    <input
+                      type="text"
+                      name={key}
+                      value={rawMetrics[key] ?? value}
+                      onChange={handleDesiredMetricsChange}
+                      onBlur={() => handleBlur(key)}
+                      className={`p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
+                        prefix ? 'pl-5' : ''
+                      } ${suffix ? 'pr-5' : ''}`}
+                    />
+                    {suffix && (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
+                        {suffix}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
             })}
 
-            {/* WFS Inbound Shipping Cost */}
-            <div className="flex flex-col col-span-2">
+            {/* Second Row: Margin and ROI */}
+            {['minMargin', 'minROI'].map((key) => {
+              const value = desiredMetrics[key as keyof typeof desiredMetrics];
+              const { prefix, suffix } = getInputAffix(key);
+              return (
+                <div key={key} className="flex flex-col">
+                  <label className="text-[11px] text-gray-600 mb-0.5">
+                    {formatLabel(key)}
+                  </label>
+                  <div className="relative">
+                    {prefix && (
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
+                        {prefix}
+                      </span>
+                    )}
+                    <input
+                      type="text"
+                      name={key}
+                      value={rawMetrics[key] ?? value}
+                      onChange={handleDesiredMetricsChange}
+                      onBlur={() => handleBlur(key)}
+                      className={`p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
+                        prefix ? 'pl-5' : ''
+                      } ${suffix ? 'pr-5' : ''}`}
+                    />
+                    {suffix && (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
+                        {suffix}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Third Row: Total Ratings and Ratings 30 Days */}
+            {['minTotalRatings', 'minRatings30Days'].map((key) => {
+              const value = desiredMetrics[key as keyof typeof desiredMetrics];
+              const { prefix, suffix } = getInputAffix(key);
+              return (
+                <div key={key} className="flex flex-col">
+                  <label className="text-[11px] text-gray-600 mb-0.5">
+                    {formatLabel(key)}
+                  </label>
+                  <div className="relative">
+                    {prefix && (
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
+                        {prefix}
+                      </span>
+                    )}
+                    <input
+                      type="text"
+                      name={key}
+                      value={rawMetrics[key] ?? value}
+                      onChange={handleDesiredMetricsChange}
+                      onBlur={() => handleBlur(key)}
+                      className={`p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
+                        prefix ? 'pl-5' : ''
+                      } ${suffix ? 'pr-5' : ''}`}
+                    />
+                    {suffix && (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
+                        {suffix}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Fourth Row: Overall Rating (single column) */}
+            <div className="flex flex-col">
               <label className="text-[11px] text-gray-600 mb-0.5">
-                WFS Inbound Shipping Cost
+                {formatLabel('minOverallRating')}
               </label>
               <div className="relative">
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
                 <input
                   type="text"
-                  name="inboundShippingCost"
-                  value={rawMetrics['inboundShippingCost'] ?? desiredMetrics.inboundShippingCost}
+                  name="minOverallRating"
+                  value={rawMetrics['minOverallRating'] ?? desiredMetrics.minOverallRating}
                   onChange={handleDesiredMetricsChange}
-                  onBlur={() => handleBlur('inboundShippingCost')}
-                  className="p-1 pl-5 pr-14 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
+                  onBlur={() => handleBlur('minOverallRating')}
+                  className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
                 />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">
-                  per pound
-                </span>
               </div>
             </div>
 
-            {/* SF Shipping Cost */}
-            <div className="flex flex-col col-span-2">
-              <label className="text-[11px] text-gray-600 mb-0.5">
-                SF Shipping Cost
-              </label>
-              <div className="relative">
-                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
-                <input
-                  type="text"
-                  name="sfShippingCost"
-                  value={rawMetrics['sfShippingCost'] ?? desiredMetrics.sfShippingCost}
-                  onChange={handleDesiredMetricsChange}
-                  onBlur={() => handleBlur('sfShippingCost')}
-                  className="p-1 pl-5 pr-14 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
-                />
-                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">
-                  per pound
-                </span>
-              </div>
-            </div>
+            {/* Empty div for spacing */}
+            <div></div>
+
+            {/* Fifth Row: Sellers and WFS Sellers */}
+            {['maxSellers', 'maxWfsSellers'].map((key) => {
+              const value = desiredMetrics[key as keyof typeof desiredMetrics];
+              const { prefix, suffix } = getInputAffix(key);
+              return (
+                <div key={key} className="flex flex-col">
+                  <label className="text-[11px] text-gray-600 mb-0.5">
+                    {formatLabel(key)}
+                  </label>
+                  <div className="relative">
+                    {prefix && (
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
+                        {prefix}
+                      </span>
+                    )}
+                    <input
+                      type="text"
+                      name={key}
+                      value={rawMetrics[key] ?? value}
+                      onChange={handleDesiredMetricsChange}
+                      onBlur={() => handleBlur(key)}
+                      className={`p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
+                        prefix ? 'pl-5' : ''
+                      } ${suffix ? 'pr-5' : ''}`}
+                    />
+                    {suffix && (
+                      <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
+                        {suffix}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Sixth Row: Shipping Costs */}
+            {['inboundShippingCost', 'sfShippingCost'].map((key) => {
+              const value = desiredMetrics[key as keyof typeof desiredMetrics];
+              return (
+                <div key={key} className="flex flex-col">
+                  <label className="text-[11px] text-gray-600 mb-0.5">
+                    {formatLabel(key)}
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
+                    <input
+                      type="text"
+                      name={key}
+                      value={rawMetrics[key] ?? value}
+                      onChange={handleDesiredMetricsChange}
+                      onBlur={() => handleBlur(key)}
+                      className="p-1 pl-5 pr-14 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
+                    />
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">
+                      per pound
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
 
             {/* Storage Length and Season Row */}
             {['storageLength', 'season'].map((key) => {
@@ -409,21 +517,21 @@ export const SettingsModal: React.FC<{
                       <select
                         name={key}
                         value={value}
-                onChange={handleDesiredMetricsChange}
+                        onChange={handleDesiredMetricsChange}
                         className="w-full p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white pr-8"
-              >
-                <option value="Jan-Sep">Jan-Sep</option>
-                <option value="Oct-Dec">Oct-Dec</option>
-              </select>
-            </div>
-          </div>
+                      >
+                        <option value="Jan-Sep">Jan-Sep</option>
+                        <option value="Oct-Dec">Oct-Dec</option>
+                      </select>
+                    </div>
+                  </div>
                 );
               }
               return (
                 <div key={key} className="flex flex-col">
                   <label className="text-[11px] text-gray-600 mb-0.5">
                     {formatLabel(key)}
-            </label>
+                  </label>
                   <input
                     type="text"
                     name={key}
@@ -442,9 +550,9 @@ export const SettingsModal: React.FC<{
               <div className="flex gap-1.5">
                 <div className="relative flex-1">
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
-              <input
-                type="text"
-                name="prepCost"
+                  <input
+                    type="text"
+                    name="prepCost"
                     value={rawMetrics['prepCost'] ?? desiredMetrics.prepCost}
                     onChange={handleDesiredMetricsChange}
                     onBlur={() => handleBlur('prepCost')}
@@ -452,17 +560,17 @@ export const SettingsModal: React.FC<{
                   />
                 </div>
                 <div className="relative">
-              <select
-                value={prepCostType}
-                onChange={(e) => setPrepCostType(e.target.value)}
-                className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white pr-8"
-              >
+                  <select
+                    value={prepCostType}
+                    onChange={(e) => setPrepCostType(e.target.value)}
+                    className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white pr-8"
+                  >
                     <option value="per lb">Per Pound</option>
                     <option value="each">Each</option>
-              </select>
+                  </select>
                 </div>
+              </div>
             </div>
-          </div>
 
             {/* Additional Costs Row */}
             <div className="flex flex-col col-span-2">
@@ -470,9 +578,9 @@ export const SettingsModal: React.FC<{
               <div className="flex gap-1.5">
                 <div className="relative flex-1">
                   <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
-              <input
-                type="text"
-                name="additionalCosts"
+                  <input
+                    type="text"
+                    name="additionalCosts"
                     value={rawMetrics['additionalCosts'] ?? desiredMetrics.additionalCosts}
                     onChange={handleDesiredMetricsChange}
                     onBlur={() => handleBlur('additionalCosts')}
@@ -480,20 +588,20 @@ export const SettingsModal: React.FC<{
                   />
                 </div>
                 <div className="relative">
-              <select
-                value={additionalCostType}
-                onChange={(e) => setAdditionalCostType(e.target.value)}
-                className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white pr-8"
-              >
+                  <select
+                    value={additionalCostType}
+                    onChange={(e) => setAdditionalCostType(e.target.value)}
+                    className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white pr-8"
+                  >
                     <option value="per lb">Per Pound</option>
                     <option value="each">Each</option>
-              </select>
+                  </select>
                 </div>
               </div>
             </div>
           </div>
-          </div>
         </div>
+      </div>
 
       {/* Action Buttons */}
       <div className="mt-3 space-y-1.5">
