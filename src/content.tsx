@@ -49,124 +49,98 @@ export const getShadowHostId = () => "plasmo-google-sidebar";
 // State and Hooks:
 ////////////////////////////////////////////////
 const ContentUI = () => {
-  if (!window.location.href.startsWith("https://www.walmart.com/ip/")) {
-    return null;
-  }
-
   // State variables
-
-  // State to track if the sidebar is open or closed
   const [isOpen, setIsOpen] = useState(true);
-  // State to trigger refresh on the page when the URL changes
-  const [refresh, setRefresh] = useState(false);
-  // State to store product details fetched from the page
   const [productDetails, setProductDetails] = useState(null);
-  // State to track whether all sections in the UI are expanded or collapsed
-  const [areSectionsOpen, setAreSectionsOpen] = useState(true); // Track if all sections are expanded or collapsed
-  // Expand/Collapse handler to toggle the open/close state of all sections
-  const toggleSections = () => { setAreSectionsOpen(!areSectionsOpen); }; // Toggle the open/close state of sections
+  const [areSectionsOpen, setAreSectionsOpen] = useState(true);
+  const [currentUrl, setCurrentUrl] = useState(window.location.href);
 
-
-  // useEffect hook to detect changes in the URL and refresh product data accordingly
+  // URL monitoring
   useEffect(() => {
-    const handleUrlChange = () => {
-      const currentUrl = window.location.href;
-      if (currentUrl.startsWith("https://www.walmart.com/ip/")) {
-        setRefresh((prev) => !prev);
-      }
-    };
+    let lastUrl = window.location.href;
 
-    // Listen for URL changes using the History API
-    window.addEventListener('popstate', handleUrlChange);
-    
-    // Also listen for pushState and replaceState calls
-    const originalPushState = history.pushState;
-    const originalReplaceState = history.replaceState;
-
-    history.pushState = function(...args) {
-      originalPushState.apply(this, args);
-      handleUrlChange();
-    };
-
-    history.replaceState = function(...args) {
-      originalReplaceState.apply(this, args);
-      handleUrlChange();
-    };
-
-    // Create a MutationObserver to watch for DOM changes that indicate navigation
-    const observer = new MutationObserver((mutations) => {
-      // Check if URL has changed to a product page
-      if (window.location.href.startsWith("https://www.walmart.com/ip/")) {
-        // Check for product page elements
-        const hasProductTitle = document.querySelector('[data-testid="product-title"]') !== null;
-        const hasProductPrice = document.querySelector('[data-testid="price-information"]') !== null;
-        
-        if (hasProductTitle || hasProductPrice) {
-          // Force a refresh of the component
-          window.location.reload();
+    // Function to check URL changes
+    const checkForUrlChange = () => {
+      const newUrl = window.location.href;
+      
+      // Always update currentUrl to trigger the effect
+      setCurrentUrl(newUrl);
+      
+      // If URL actually changed, handle cleanup
+      if (newUrl !== lastUrl) {
+        lastUrl = newUrl;
+        if (!newUrl.includes("/ip/")) {
+          setProductDetails(null);
+          document.body.classList.remove("plasmo-google-sidebar-show");
         }
       }
-    });
+    };
 
-    // Start observing the document with the configured parameters
-    observer.observe(document, {
-      childList: true,
-      subtree: true,
-      attributes: false
-    });
+    // Check immediately
+    checkForUrlChange();
 
-    // Initial check
-    handleUrlChange();
+    // Set up interval to check URL
+    const interval = setInterval(checkForUrlChange, 100);
 
-    // Cleanup listeners on unmount
+    // Listen for URL changes from background script as backup
+    const handleMessage = (message: any) => {
+      if (message.type === 'URL_CHANGED') {
+        checkForUrlChange();
+      }
+    };
+
+    chrome.runtime.onMessage.addListener(handleMessage);
+
+    // Cleanup
     return () => {
-      window.removeEventListener('popstate', handleUrlChange);
-      history.pushState = originalPushState;
-      history.replaceState = originalReplaceState;
-      observer.disconnect();
+      clearInterval(interval);
+      chrome.runtime.onMessage.removeListener(handleMessage);
+      document.body.classList.remove("plasmo-google-sidebar-show");
     };
   }, []);
 
-  // useEffect hook to toggle CSS class when the sidebar is opened or closed
+  // React to URL changes
   useEffect(() => {
-    document.body.classList.toggle("plasmo-google-sidebar-show", isOpen);
-  }, [isOpen]);
+    const isProductPage = currentUrl.includes("/ip/");
+    
+    if (isProductPage) {
+      const data = getData();
+      if (data) {
+        setProductDetails(data);
+      } else {
+        setProductDetails(null);
+      }
+    } else {
+      setProductDetails(null);
+    }
+  }, [currentUrl]);
 
-  // useEffect hook to fetch product details whenever the refresh state changes
+  // Toggle sidebar visibility in the DOM
   useEffect(() => {
-    setProductDetails(getData());
-  }, [refresh]);
-  
-  //////////////////////////////////////////////////
-  // Helper Functions:
-  //////////////////////////////////////////////////
-  // No helper functions at the moment. This section can be used for reusable utility functions.
+    const isProductPage = currentUrl.includes("/ip/");
+    document.body.classList.toggle("plasmo-google-sidebar-show", isOpen && isProductPage && productDetails !== null);
+    
+    return () => {
+      document.body.classList.remove("plasmo-google-sidebar-show");
+    };
+  }, [isOpen, currentUrl, productDetails]);
 
-  //////////////////////////////////////////////////
-  // Event Handlers:
-  //////////////////////////////////////////////////
-  // No separate event handlers defined here, but toggleSections function could be moved here if preferred.
-
-  //////////////////////////////////////////////////
-  // JSX (Return):
-  //////////////////////////////////////////////////
-
-  // Display loading indicator while product details are being fetched
-  if (!productDetails) {
-    return (
-      <div className="flex justify-center items-center h-full">
-        <div className="spinner"></div>
-      </div>
-    );
+  // Don't render anything if not on a product page
+  if (!currentUrl.includes("/ip/") || !productDetails) {
+    return null;
   }
+
+  // Expand/Collapse handler
+  const toggleSections = () => {
+    setAreSectionsOpen(!areSectionsOpen);
+  };
 
   return (
     <div
       id="sidebar"
-      style={{ backgroundColor: "#FBFBFB" }}  // Explicitly set background color here
+      style={{ backgroundColor: "#FBFBFB" }}
       className={`absolute w-[400px] h-screen transition-all duration-500 ease-in-out mb-3 text-sm flex flex-col p-2 ${isOpen ? "open" : "closed"}`}
     >
-
       {/* Toggle button for sidebar open/close */}
       <button
         className="fixed right-[-10px] top-6 p-1 transform rotate-90 bg-[#d7d7d7] text-xl font-semibold rounded-lg shadow-lg transition-transform duration-200 ease-in-out hover:scale-110 hover:shadow-lg border-2 border-gray-500"
@@ -175,13 +149,12 @@ const ContentUI = () => {
         {isOpen ? "🟢" : "🔴"}
       </button>
 
-
       {/* Main content of the sidebar */}
       <div className="flex flex-col space-y-5">
         <TopHeader />
         <Product />
 
-        {/* Expand/Collapse all sections button placed below Product and above BuyGauge */}
+        {/* Expand/Collapse all sections button */}
         <div style={{ display: 'inline-block' }}>
           <button
             className={`pl-1 py-1 pr-4 bg-[#3a3f47] font-semibold text-white text-start !text-sm rounded-xl drop-shadow-xl`}

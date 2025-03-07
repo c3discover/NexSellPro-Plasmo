@@ -21,8 +21,13 @@
     "name": "NexSellPro",
     "description": "NexSellPro: Chrome extension to assist Walmart sellers with profitability calculations and product analysis",
     "permissions": [
-        "storage"
+        "storage",
+        "tabs",
+        "webNavigation"
     ],
+    "background": {
+        "service_worker": "background.js"
+    },
     "content_security_policy": {
         "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://api.emailjs.com https://www.walmart.com;"
     },
@@ -36,7 +41,8 @@
             ],
             "css": [
                 "content.9ec4b067.css"
-            ]
+            ],
+            "run_at": "document_end"
         }
     ],
     "host_permissions": [

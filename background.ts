@@ -14,6 +14,25 @@ chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
   sendResponse({ status: "received" });
 });
 
+// Listen for tab updates
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (changeInfo.url && tab.url?.startsWith('https://www.walmart.com/')) {
+    chrome.tabs.sendMessage(tabId, {
+      type: 'URL_CHANGED',
+      url: changeInfo.url
+    });
+  }
+});
+
+// Listen for navigation events
+chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
+  if (details.url.startsWith('https://www.walmart.com/')) {
+    chrome.tabs.sendMessage(details.tabId, {
+      type: 'URL_CHANGED',
+      url: details.url
+    });
+  }
+});
 
 chrome.webRequest.onCompleted.addListener(
   (details) => {
