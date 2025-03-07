@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { SubscriptionModal } from './SubscriptionModal';
+import { SubscriptionModal } from '../../components/1Header/SubscriptionModal';
 
 export const PremiumButton: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);

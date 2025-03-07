@@ -2,8 +2,8 @@
 // Imports:
 ////////////////////////////////////////////////
 import React, { useState, useEffect } from "react";
-import importIcon from "data-base64:~../assets/importIcon.png";
-import SuccessGif from "data-base64:~../assets/greenTick.gif";
+import importIcon from "data-base64:../../../assets/importIcon.png";
+import SuccessGif from "data-base64:../../../assets/greenTick.gif";
 
 
 ////////////////////////////////////////////////
@@ -71,7 +71,7 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
         className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
         onClick={toggleOpen}
       >
-        {isOpen ? "🔽  Listing & Export" : "▶️  Listing & Export"}
+        {isOpen ? "🔽  Listing & Export (Coming Soon)" : "▶️  Listing & Export (Coming Soon)"}
       </h1>
 
       <div className={`flex flex-col items-center gap-3 p-4 ${isOpen ? "block" : "hidden"}`}>

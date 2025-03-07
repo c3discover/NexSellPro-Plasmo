@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { FiCheckCircle } from "react-icons/fi";
-import { getUsedData } from '../utils/usedData';
-import type { UsedProductData } from '../utils/usedData';
+import { getUsedData } from '../../utils/usedData';
+import type { UsedProductData } from '../../utils/usedData';
 
 export const SellerTable: React.FC = () => {
     const [productData, setProductData] = React.useState<UsedProductData | null>(null);

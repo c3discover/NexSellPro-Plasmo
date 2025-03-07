@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { SubscriptionModal } from "./SubscriptionModal";
+import { SubscriptionModal } from '../../components/1Header/SubscriptionModal';
 import { LuCircleUserRound } from "react-icons/lu";
 import { IoStarOutline } from "react-icons/io5";
 

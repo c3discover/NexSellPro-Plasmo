@@ -2,8 +2,8 @@
 // Imports:
 ////////////////////////////////////////////////
 import { useState, useEffect } from "react";
-import { getUsedData } from "~/utils/usedData";
-import type { UsedProductData } from "~/utils/usedData";
+import { getUsedData } from "../../utils/usedData";
+import type { UsedProductData } from "../../utils/usedData";
 
 ////////////////////////////////////////////////
 // Constants and Variables:

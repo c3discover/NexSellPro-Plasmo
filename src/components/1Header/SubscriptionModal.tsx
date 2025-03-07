@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { SUBSCRIPTION_TIERS } from '../utils/subscription';
-import type { SubscriptionTier } from '../utils/subscription';
-import subscriptionService from '../utils/subscription';
+import { SUBSCRIPTION_TIERS } from '../../utils/subscription';
+import type { SubscriptionTier } from '../../utils/subscription';
+import subscriptionService from '../../utils/subscription';
 
 interface SubscriptionModalProps {
   isOpen: boolean;

@@ -49,7 +49,7 @@ export const contractCategoryOptions: string[] = [
   "Video Game Consoles",
   "Video Games",
   "Watches",
-  "Everything Else"
+  "Everything Else (Most Items)"
 ];
 
 // Available seasons for storage fees.

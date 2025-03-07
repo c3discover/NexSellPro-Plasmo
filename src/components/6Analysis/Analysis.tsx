@@ -3,10 +3,10 @@
 /////////////////////////////////////////////////
 import React, { useState, useEffect } from "react";
 // Import the centralized data extraction function
-import { getUsedData } from '../utils/usedData';
-import type { UsedProductData } from '../utils/usedData';
+import { getUsedData } from '../../utils/usedData';
+import type { UsedProductData } from '../../utils/usedData';
 import { FiCheckCircle } from "react-icons/fi";
-import { SellerTable } from './SellerTable';
+import { SellerTable } from '../../components/6Analysis/SellerTable';
 
 /////////////////////////////////////////////////
 // Constants and Variables:
@@ -29,7 +29,7 @@ const LOCAL_STORAGE_METRICS_KEY = "desiredMetrics";
 /////////////////////////////////////////////////
 interface AnalysisProps {
   areSectionsOpen: boolean;
-  product: any; // TODO: Replace with proper type when available
+  product?: any; // Adding product prop as optional since it might be null initially
 }
 
 /////////////////////////////////////////////////

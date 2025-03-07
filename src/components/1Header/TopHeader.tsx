@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////
 // Imports:
 ////////////////////////////////////////////////
-import headerImgBase64 from "data-base64:~../assets/headerLogo.png";
+import headerImgBase64 from "data-base64:../../../assets/headerLogo.png";
 import React, { useState } from "react";
-import { SettingsModal } from "./Settings";
-import { ProfileModal } from "./Profile";
-import { FeedbackForm } from "./FeedbackForm";
+import { SettingsModal } from "../../components/1Header/Settings";
+import { ProfileModal } from "../../components/1Header/Profile";
+import { FeedbackForm } from "../../components/xBetaTesting/FeedbackForm";
 import { LuCircleUserRound } from "react-icons/lu";
 import { IoSettingsOutline } from "react-icons/io5";
 import { MdFeedback } from "react-icons/md";

@@ -194,12 +194,23 @@ export const calculateReferralFee = (salePrice: number, contractCategory: string
             break;
 
         default:
-            referralRate = 0.15; // Default fee for "Everything Else" or unlisted categories
+            referralRate = 0.15; // Default fee for "Everything Else (Most Items)" or unlisted categories
             break;
     }
 
     // Calculate and round to two decimal places
     return parseFloat((salePrice * referralRate).toFixed(2));
+};
+
+// Function to calculate prep fee based on cost type
+export const calculatePrepFee = (weight: number): number => {
+    const prepCostType = localStorage.getItem("prepCostType") || "per lb";
+    const prepCostPerLb = parseFloat(localStorage.getItem("prepCostPerLb") || "0");
+    const prepCostEach = parseFloat(localStorage.getItem("prepCostEach") || "0");
+
+    // Calculate fee based on type and ensure it's a number with 2 decimal places
+    const fee = prepCostType === "per lb" ? prepCostPerLb * weight : prepCostEach;
+    return parseFloat(fee.toFixed(2));
 };
 
 // Function to calculate additional fees based on cost type
@@ -208,14 +219,20 @@ export const calculateAdditionalFees = (weight: number): number => {
     const additionalCostPerLb = parseFloat(localStorage.getItem("additionalCostPerLb") || "0");
     const additionalCostEach = parseFloat(localStorage.getItem("additionalCostEach") || "0");
 
-    return additionalCostType === "per lb" ? additionalCostPerLb * weight : additionalCostEach;
+    // Calculate fee based on type and ensure it's a number with 2 decimal places
+    const fee = additionalCostType === "per lb" ? additionalCostPerLb * weight : additionalCostEach;
+    return parseFloat(fee.toFixed(2));
 };
 
 export const calculateWFSFee = (product: Product): number => {
     const { weight, length, width, height, isWalmartFulfilled, isApparel, isHazardousMaterial, retailPrice } = product;
 
+    console.log('WFS Fee Calculation Debug:');
+    console.log('Input:', { weight, length, width, height, isWalmartFulfilled });
+
     // If the item is Seller Fulfilled, WFS Fee is 0
     if (!isWalmartFulfilled) {
+        console.log('Seller Fulfilled - returning 0');
         return 0.00;
     }
 
@@ -224,26 +241,41 @@ export const calculateWFSFee = (product: Product): number => {
     const longestSide = Math.max(length, width, height);
     const medianSide = [length, width, height].sort((a, b) => a - b)[1];
 
-    // Check for Big & Bulky
+    console.log('Dimensions:', {
+        girth,
+        longestSide,
+        'longestSide + girth': longestSide + girth
+    });
+
+    // Check for Big & Bulky - use actual weight, not dimensional weight
     const isBigAndBulky = (
         weight > 150 ||
         (longestSide > 108 && longestSide <= 120) ||
         (longestSide + girth > 165)
     );
 
+    console.log('Big & Bulky Check:', {
+        isBigAndBulky,
+        'weight > 150': weight > 150,
+        'longestSide > 108': longestSide > 108,
+        'longestSide + girth > 165': longestSide + girth > 165
+    });
+
     if (isBigAndBulky) {
         const baseFee = 155;
         const additionalPerPoundFee = weight > 90 ? (weight - 90) * 0.80 : 0;
-        return baseFee + additionalPerPoundFee + calculateAdditionalFees(weight);
+        const totalFee = baseFee + additionalPerPoundFee;
+        console.log('Big & Bulky Fee:', { baseFee, additionalPerPoundFee, totalFee });
+        return parseFloat(totalFee.toFixed(2));
     }
 
-    // Initialize additional fee for non-Big & Bulky items
-    let additionalFee = 0;
+    // Initialize WFS-specific additional fees
+    let wfsAdditionalFee = 0;
 
-    // Apply specific additional fees
-    if (isApparel) additionalFee += 0.50;
-    if (isHazardousMaterial) additionalFee += 0.50;
-    if (retailPrice && retailPrice < 10) additionalFee += 1.00;
+    // Apply WFS-specific additional fees
+    if (isApparel) wfsAdditionalFee += 0.50;
+    if (isHazardousMaterial) wfsAdditionalFee += 0.50;
+    if (retailPrice && retailPrice < 10) wfsAdditionalFee += 1.00;
 
     // Oversize conditions
     const isOversize = (
@@ -257,8 +289,8 @@ export const calculateWFSFee = (product: Product): number => {
         (longestSide + girth > 130 && longestSide + girth <= 165)
     );
 
-    if (isOversize) additionalFee += 3.00;
-    if (isAdditionalOversize) additionalFee += 20.00;
+    if (isOversize) wfsAdditionalFee += 3.00;
+    if (isAdditionalOversize) wfsAdditionalFee += 20.00;
 
     // Calculate standard WFS fees
     const baseWFSFee = weight <= 1 ? 3.45 :
@@ -267,9 +299,11 @@ export const calculateWFSFee = (product: Product): number => {
                       weight <= 20 ? 5.75 + 0.40 * (weight - 4) :
                       weight <= 30 ? 15.55 + 0.40 * (weight - 21) :
                       weight <= 50 ? 14.55 + 0.40 * (weight - 31) :
-                      weight >50 ? 17.55 + 0.40 * (weight - 51) : 1000;
+                      weight > 50 ? 17.55 + 0.40 * (weight - 51) : 1000;
 
-    return baseWFSFee + additionalFee + calculateAdditionalFees(weight);
+    const totalFee = baseWFSFee + wfsAdditionalFee;
+    console.log('Standard Fee:', { baseWFSFee, wfsAdditionalFee, totalFee });
+    return parseFloat(totalFee.toFixed(2));
 };
 
 ////////////////////////////////////////////////
@@ -327,11 +361,21 @@ export const calculateTotalProfit = (
     referralFee: number,
     wfsFee: number,
     inboundShipping: number,
-    storageFee: number,
+    storageFee: string | number,
     prepFee: number,
     additionalFees: number
 ): number => {
-    return salePrice - (productCost + referralFee + wfsFee + inboundShipping + storageFee + prepFee + additionalFees);
+    // Calculate total costs (ensure storageFee is treated as a number)
+    const totalCosts = productCost + 
+                      referralFee + 
+                      wfsFee + 
+                      inboundShipping + 
+                      parseFloat(storageFee.toString()) + 
+                      prepFee + 
+                      additionalFees;
+
+    // Calculate profit (rounded to 2 decimal places)
+    return parseFloat((salePrice - totalCosts).toFixed(2));
 };
 
 // Function to calculate ROI
@@ -353,22 +397,34 @@ export const calculateStartingProductCost = (
 
 // Function to calculate dimensional weight based on dimensions
 export const calculateDimensionalWeight = (length: number, width: number, height: number): number => {
-    return (length * width * height) / 139;
+    return (length * width * height) / 166;
 };
 
 // Function to calculate final shipping weight for WFS following Walmart's guidelines
-export const calculateFinalShippingWeightForWFS  = (weight: number, length: number, width: number, height: number): number => {
-    // Calculate dimensional weight
-    const dimensionalWeight = calculateDimensionalWeight(length, width, height);
+export const calculateFinalShippingWeightForWFS = (weight: number, length: number, width: number, height: number): number => {
+    // Check if item is Big & Bulky first
+    const girth = 2 * (width + height);
+    const longestSide = Math.max(length, width, height);
+    const isBigAndBulky = (
+        weight > 150 ||
+        (longestSide > 108 && longestSide <= 120) ||
+        (longestSide + girth > 165)
+    );
 
-    // Determine base weight
+    // For Big & Bulky items, use actual weight
+    if (isBigAndBulky) {
+        return Math.ceil(weight + 0.25); // Just add packaging weight and round up
+    }
+
+    // For non-Big & Bulky items, use dimensional weight calculation
+    const dimensionalWeight = calculateDimensionalWeight(length, width, height);
     let baseShippingWeight;
     if (weight < 1) {
-        baseShippingWeight = weight;        // For items less than 1 lb, use the unit weight as-is
+        baseShippingWeight = weight; // For items less than 1 lb, use the unit weight as-is
     } else {
-        baseShippingWeight = Math.max(weight, dimensionalWeight);        // For items 1 lb or greater, use the greater of unit or dimensional weight
+        baseShippingWeight = Math.max(weight, dimensionalWeight); // For items 1 lb or greater, use the greater of unit or dimensional weight
     }
-    return Math.ceil(baseShippingWeight + 0.25);    // Add 0.25 lb for packaging and round up to the nearest whole pound
+    return Math.ceil(baseShippingWeight + 0.25); // Add 0.25 lb for packaging and round up
 };
 
 // Calculate final shipping weight for inbound shipping fee (greater of weight and dimensional weight)

@@ -12,15 +12,15 @@ import { useEffect, useState } from "react";
 import "./style.css";
 
 // Importing extension components used in the UI
-import { Analysis } from "~components/Analysis";
-import { BuyGauge } from "~components/BuyGauge";
-import { Footer } from "~components/Footer";
-import { ListingExport } from "~components/ListingExport";
-import { Pricing } from "~components/Pricing";
-import { Product } from "~components/Product";
-import { ProductInfo } from "~components/ProductInfo";
-import { TopHeader } from "~components/TopHeader";
-import { Variations } from "~components/Variations";
+import { Analysis } from "~components/6Analysis/Analysis";
+import { BuyGauge } from "~components/3BuyGauge/BuyGauge";
+import { Footer } from "~components/9Footer/Footer";
+import { ListingExport } from "~components/8ListingExport/ListingExport";
+import { Pricing } from "~components/4Pricing/Pricing";
+import { Product } from "~components/2ProductOverview/Product";
+import { ProductInfo } from "~components/5ProductInfo/ProductInfo";
+import { TopHeader } from "~components/1Header/TopHeader";
+import { Variations } from "~components/7Variations/Variations";
 import getData from "~utils/getData";
 
 ////////////////////////////////////////////////

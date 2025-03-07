@@ -2,10 +2,10 @@
 // Imports:
 ////////////////////////////////////////////////
 import React, { useState, useEffect, useRef } from "react";
-import { getUsedData } from "~/utils/usedData";
-import type { UsedProductData } from "~/utils/usedData";
-import getData from "~/utils/getData";
-import { contractCategoryOptions } from "../constants/options";
+import { getUsedData } from "../../utils/usedData";
+import type { UsedProductData } from "../../utils/usedData";
+import getData from "../../utils/getData";
+import { contractCategoryOptions } from "../../constants/options";
 import {
   calculateReferralFee,
   calculateWFSFee,
@@ -18,8 +18,9 @@ import {
   calculateROI,
   calculateMargin,
   calculateAdditionalFees,
-  calculateInboundShipping
-} from "~/utils/calculations";
+  calculateInboundShipping,
+  calculatePrepFee
+} from "../../utils/calculations";
 
 ////////////////////////////////////////////////
 // Constants and Variables:
@@ -33,7 +34,7 @@ const CHART_COLORS = {
 };
 
 // Default Values
-const DEFAULT_CONTRACT_CATEGORY = "Everything Else";
+const DEFAULT_CONTRACT_CATEGORY = "Everything Else (Most Items)";
 const DEFAULT_SEASON = "Jan-Sep";
 const DEFAULT_STORAGE_LENGTH = 1;
 const DEFAULT_INBOUND_RATE = 0.5;
@@ -65,6 +66,7 @@ const DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS = STYLES.input.rightPrefix;
 ////////////////////////////////////////////////
 interface PricingProps {
   areSectionsOpen: boolean;
+  product?: any; // Adding product prop as optional since it might be null initially
 }
 
 interface CalculationResult {
@@ -102,7 +104,7 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
   }, []);
 
   // General State (Group 1)
-  const [contractCategory, setContractCategory] = useState<string>("Everything Else");
+  const [contractCategory, setContractCategory] = useState<string>("Everything Else (Most Items)");
   const [season, setSeason] = useState<string>("Jan-Sep");
   const [storageLength, setStorageLength] = useState<number>(1);
   const [inboundShippingRate, setInboundShippingRate] = useState<number>(0.0);
@@ -281,12 +283,24 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
       if (!hasEdited.storageFee) {
         setStorageFee(parseFloat(calculateStorageFee(season, cubicFeet, storageLength)) || 0);
       }
+      if (!hasEdited.prepFee) {
+        setPrepFee(calculatePrepFee(weight));
+      }
+      if (!hasEdited.additionalFees) {
+        setAdditionalFees(calculateAdditionalFees(weight));
+      }
     } else {
       if (!hasEdited.wfsFee) setWfsFee(0);
       if (!hasEdited.inboundShippingFee) {
         setInboundShippingFee(calculateInboundShipping(finalShippingWeightForInbound, false));
       }
       if (!hasEdited.storageFee) setStorageFee(0);
+      if (!hasEdited.prepFee) {
+        setPrepFee(calculatePrepFee(weight));
+      }
+      if (!hasEdited.additionalFees) {
+        setAdditionalFees(calculateAdditionalFees(weight));
+      }
     }
   }, [
     isWalmartFulfilled,
@@ -295,6 +309,7 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
     cubicFeet,
     storageLength,
     finalShippingWeightForInbound,
+    weight,
     hasEdited,
   ]);
 
@@ -521,10 +536,28 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
             </div>
 
             {/* Total Profit Row */}
-            <div className="flex justify-between items-center mx-8 text-sm">
+            <div className="flex justify-between items-center mx-8 text-sm group relative">
               <span className="font-semibold">Total Profit</span>
               <div className="flex items-center gap-2">
-                <span className="text-sm">{`$${totalProfit.toFixed(2)}`}</span>
+                <span 
+                  className="text-sm cursor-help relative"
+                  data-tooltip-id="profit-tooltip"
+                >
+                  <div className="absolute top-1/2 -translate-y-1/2 right-0 mr-2 w-[300px] hidden group-hover:block bg-cyan-900 text-white p-6 rounded text-xs whitespace-pre font-mono shadow-lg">
+{`Calculation Breakdown:
+
+Sale Price                   $${salePrice.toFixed(2)}
+Product Cost                  -$${productCost.toFixed(2)}
+Referral Fee                  -$${referralFee.toFixed(2)}
+WFS Fee                       -$${wfsFee.toFixed(2)}
+Inbound Shipping              -$${inboundShippingFee.toFixed(2)}
+Storage Fee                   -$${storageFee.toFixed(2)}
+Prep Fee                      -$${prepFee.toFixed(2)}
+Additional Fees               -$${additionalFees.toFixed(2)}
+─────────────────────────────────────
+Total Profit                  $${totalProfit.toFixed(2)}`}</div>
+                  {`$${totalProfit.toFixed(2)}`}
+                </span>
                 <div 
                   className={`w-2 h-2 rounded-full ${totalProfit >= desiredMetrics.minProfit ? 'bg-green-500' : 'bg-red-500'}`} 
                   title={`Minimum Profit Goal: $${desiredMetrics.minProfit.toFixed(2)}`}
@@ -533,10 +566,21 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
             </div>
 
             {/* Margin Row */}
-            <div className="flex justify-between items-center mx-8 text-sm">
+            <div className="flex justify-between items-center mx-8 text-sm group relative">
               <span className="font-semibold">Margin</span>
               <div className="flex items-center gap-2">
-                <span className="text-sm">{`${margin}%`}</span>
+                <span 
+                  className="text-sm cursor-help relative"
+                  data-tooltip-id="margin-tooltip"
+                >
+                  <div className="absolute top-1/2 -translate-y-1/2 right-0 mr-2 w-[300px] hidden group-hover:block bg-cyan-900 text-white p-6 rounded text-xs whitespace-pre font-mono shadow-lg">
+{`Calculation:
+
+Margin = (Total Profit / Sale Price) × 100
+
+($${totalProfit.toFixed(2)} / $${salePrice.toFixed(2)}) × 100 = ${margin}%`}</div>
+                  {`${margin}%`}
+                </span>
                 <div 
                   className={`w-2 h-2 rounded-full ${margin >= desiredMetrics.minMargin ? 'bg-green-500' : 'bg-red-500'}`}
                   title={`Minimum Margin Goal: ${desiredMetrics.minMargin}%`}
@@ -545,10 +589,20 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
             </div>
 
             {/* ROI Row */}
-            <div className="flex justify-between items-center mx-8 text-sm">
+            <div className="flex justify-between items-center mx-8 text-sm group relative">
               <span className="font-semibold">ROI</span>
               <div className="flex items-center gap-2">
-                <span className={`text-sm ${productCost === 0 ? "text-red-500 font-extrabold" : "text-black"}`}>
+                <span 
+                  className={`text-sm cursor-help relative ${productCost === 0 ? "text-red-500 font-extrabold" : "text-black"}`}
+                  data-tooltip-id="roi-tooltip"
+                >
+                  <div className="absolute top-1/2 -translate-y-1/2 right-0 mr-2 w-[300px] hidden group-hover:block bg-cyan-900 text-white p-6 rounded text-xs whitespace-pre font-mono shadow-lg">
+{productCost === 0 ? "Please enter a product cost" : 
+`Calculation:
+
+ROI = (Total Profit / Product Cost) × 100
+
+($${totalProfit.toFixed(2)} / $${productCost.toFixed(2)}) × 100 = ${roi}%`}</div>
                   {productCost === 0 ? "Enter Cost" : `${roi}%`}
                 </span>
                 {productCost > 0 && (
@@ -563,14 +617,12 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
 
           {/* ===== Group 2: Pricing Section ===== */}
           <div className="section-wrapper">
-            <div className="w-full mb-1 p-1 bg-white rounded-lg shadow-sm">
-
               {/* ----- Section Header ----- */}
-              <div className="flex justify-between items-center mb-1 mx-2">
+              <div className="flex justify-between items-center mb-1 mx-1 pb-1 border-b border-gray-200">
                 <h2 className={DEFAULT_HEADER_CLASS}>Pricing</h2>
                 <button
                   onClick={resetPricing}
-                  className="reset-button"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                   aria-label="Reset Pricing"
                 >
                   ↻
@@ -578,15 +630,14 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
               </div>
 
               {/* ----- Section Content ----- */}
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1 mx-5">
-
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 mx-3">
                 {/* Product Cost Row */}
                 <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                  <label className="text-xs text-gray-600 mb-0.5">
                     Product Cost
                   </label>
                   <div className="flex items-center w-full">
-                    <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
+                    <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-l text-gray-600 text-xs">$</span>
                     <input
                       type="text"
                       value={rawProductCost !== null ? rawProductCost : productCost.toFixed(2)}
@@ -601,18 +652,18 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                           setRawProductCost(null);
                         }
                       }}
-                      className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.productCost ? "text-black font-bold" : "text-gray-700"}`}
+                      className="py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
                     />
                   </div>
                 </div>
 
                 {/* Sale Price Row */}
                 <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                  <label className="text-xs text-gray-600 mb-0.5">
                     Sale Price
                   </label>
                   <div className="flex items-center w-full">
-                    <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
+                    <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-l text-gray-600 text-xs">$</span>
                     <input
                       type="text"
                       value={rawSalePrice !== null ? rawSalePrice : salePrice.toFixed(2)}
@@ -623,25 +674,21 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                         setRawSalePrice(null);
                         setHasEdited((prev) => ({ ...prev, salePrice: true }));
                       }}
-                      className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.salePrice ? "text-black font-bold" : "text-gray-700"}`}
+                      className="py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
                     />
                   </div>
                 </div>
-
               </div>
-            </div>
           </div>
 
           {/* ===== Group 3: Shipping Dimensions Section ===== */}
           <div className="section-wrapper">
-            <div className="w-full mb-1 p-1 bg-white rounded-lg shadow-sm">
-
               {/* ----- Section Header ----- */}
-              <div className="flex justify-between items-center mb-1 mx-2">
+              <div className="flex justify-between items-center mb-1 mx-1 pb-1 border-b border-gray-200">
                 <h2 className={DEFAULT_HEADER_CLASS}>Shipping Dimensions</h2>
                 <button
                   onClick={resetShippingDimensions}
-                  className="reset-button"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                   aria-label="Reset Shipping Dimensions"
                 >
                   ↻
@@ -649,11 +696,10 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
               </div>
 
               {/* ----- Section Content ----- */}
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1 mx-5">
-
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 mx-3">
                 {/* Length Row */}
                 <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                  <label className="text-xs text-gray-600 mb-0.5">
                     Length
                   </label>
                   <div className="flex items-center w-full">
@@ -667,15 +713,15 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                         setRawLength(null);
                         setHasEdited((prev) => ({ ...prev, shippingLength: true }));
                       }}
-                      className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingLength ? "text-black font-bold" : shippingLength === 0 ? "bg-red-50 border-red-300" : "text-gray-700"}`}
+                      className="py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
                     />
-                    <span className={`${DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS} ${shippingLength === 0 ? "bg-red-50 border-red-300" : ""}`}>in</span>
+                    <span className="px-2 py-1 bg-gray-50 border-y border-r border-gray-200 rounded-r text-gray-600 text-xs">in</span>
                   </div>
                 </div>
 
                 {/* Width Row */}
                 <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                  <label className="text-xs text-gray-600 mb-0.5">
                     Width
                   </label>
                   <div className="flex items-center w-full">
@@ -689,15 +735,15 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                         setRawWidth(null);
                         setHasEdited((prev) => ({ ...prev, shippingWidth: true }));
                       }}
-                      className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingWidth ? "text-black font-bold" : shippingWidth === 0 ? "bg-red-50 border-red-300" : "text-gray-700"}`}
+                      className="py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
                     />
-                    <span className={`${DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS} ${shippingWidth === 0 ? "bg-red-50 border-red-300" : ""}`}>in</span>
+                    <span className="px-2 py-1 bg-gray-50 border-y border-r border-gray-200 rounded-r text-gray-600 text-xs">in</span>
                   </div>
                 </div>
 
                 {/* Height Row */}
                 <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                  <label className="text-xs text-gray-600 mb-0.5">
                     Height
                   </label>
                   <div className="flex items-center w-full">
@@ -711,15 +757,15 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                         setRawHeight(null);
                         setHasEdited((prev) => ({ ...prev, shippingHeight: true }));
                       }}
-                      className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.shippingHeight ? "text-black font-bold" : shippingHeight === 0 ? "bg-red-50 border-red-300" : "text-gray-700"}`}
+                      className="py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
                     />
-                    <span className={`${DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS} ${shippingHeight === 0 ? "bg-red-50 border-red-300" : ""}`}>in</span>
+                    <span className="px-2 py-1 bg-gray-50 border-y border-r border-gray-200 rounded-r text-gray-600 text-xs">in</span>
                   </div>
                 </div>
 
                 {/* Weight Row */}
                 <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                  <label className="text-xs text-gray-600 mb-0.5">
                     Weight
                   </label>
                   <div className="flex items-center w-full">
@@ -733,33 +779,22 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                         setRawWeight(null);
                         setHasEdited((prev) => ({ ...prev, weight: true }));
                       }}
-                      className={`${DEFAULT_LEFT_INPUT_CLASS} ${hasEdited.weight ? "text-black font-bold" : weight === 0 ? "bg-red-50 border-red-300" : "text-gray-700"}`}
+                      className="py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
                     />
-                    <span className={`${DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS} ${weight === 0 ? "bg-red-50 border-red-300" : ""}`}>lbs</span>
+                    <span className="px-2 py-1 bg-gray-50 border-y border-r border-gray-200 rounded-r text-gray-600 text-xs">lbs</span>
                   </div>
                 </div>
-
-                {/* Warning Message */}
-                {(shippingLength === 0 || shippingWidth === 0 || shippingHeight === 0 || weight === 0) && (
-                  <div className="col-span-2 text-center mt-1">
-                    <p className="text-red-500 text-xs italic">Please fill in all shipping dimensions for accurate calculations.</p>
-                  </div>
-                )}
-
               </div>
-            </div>
           </div>
 
           {/* ===== Group 4: Fees Section ===== */}
           <div className="section-wrapper">
-            <div className="w-full mb-1 p-1 bg-white rounded-lg shadow-sm">
-
               {/* ----- Section Header ----- */}
-              <div className="flex justify-between items-center mb-1 mx-2">
+              <div className="flex justify-between items-center mb-1 mx-1 pb-1 border-b border-gray-200">
                 <h2 className={DEFAULT_HEADER_CLASS}>Fees</h2>
                 <button
                   onClick={resetFees}
-                  className="reset-button"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                   aria-label="Reset Fees"
                 >
                   ↻
@@ -767,15 +802,14 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
               </div>
 
               {/* ----- Section Content ----- */}
-              <div className="grid grid-cols-2 gap-x-6 gap-y-1 mx-5">
-
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 mx-3">
                 {/* Referral Fee Row */}
                 <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
+                  <label className="text-xs text-gray-600 mb-0.5">
                     Referral Fee
                   </label>
                   <div className="flex items-center w-full">
-                    <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
+                    <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-l text-gray-600 text-xs">$</span>
                     <input
                       type="text"
                       value={rawReferralFee !== null ? rawReferralFee : referralFee.toFixed(2)}
@@ -786,16 +820,18 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                         setRawReferralFee(null);
                         setHasEdited((prev) => ({ ...prev, referralFee: true }));
                       }}
-                      className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.referralFee ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 ${hasEdited.referralFee ? "text-black font-bold" : "text-gray-700"}`}
                     />
                   </div>
                 </div>
 
                 {/* WFS Fee Row */}
                 <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>WFS Fee</label>
+                  <label className="text-xs text-gray-600 mb-0.5">
+                    WFS Fee
+                  </label>
                   <div className="flex items-center w-full">
-                    <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
+                    <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-l text-gray-600 text-xs">$</span>
                     <input
                       type="text"
                       value={rawWfsFee !== null ? rawWfsFee : wfsFee.toFixed(2)}
@@ -807,18 +843,18 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                           setRawWfsFee(null);
                         }
                       }}
-                      className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.wfsFee ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 ${hasEdited.wfsFee ? "text-black font-bold" : "text-gray-700"}`}
                     />
                   </div>
                 </div>
 
                 {/* Inbound Shipping Fee Row */}
                 <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>
-                    {isWalmartFulfilled ? "Inbound Shipping Fee" : "SF Shipping Fee"}
+                  <label className="text-xs text-gray-600 mb-0.5">
+                    {isWalmartFulfilled ? "WFS Inbound Shipping" : "SF Shipping"}
                   </label>
                   <div className="flex items-center w-full">
-                    <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
+                    <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-l text-gray-600 text-xs">$</span>
                     <input
                       type="text"
                       value={rawInboundShippingFee !== null ? rawInboundShippingFee : inboundShippingFee.toFixed(2)}
@@ -831,16 +867,18 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                           setHasEdited((prev) => ({ ...prev, inboundShippingFee: true }));
                         }
                       }}
-                      className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.inboundShippingFee ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 ${hasEdited.inboundShippingFee ? "text-black font-bold" : "text-gray-700"}`}
                     />
                   </div>
                 </div>
 
                 {/* Storage Fee Row */}
                 <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>Storage Fee</label>
+                  <label className="text-xs text-gray-600 mb-0.5">
+                    Storage Fee
+                  </label>
                   <div className="flex items-center w-full">
-                    <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
+                    <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-l text-gray-600 text-xs">$</span>
                     <input
                       type="text"
                       value={rawStorageFee !== null ? rawStorageFee : storageFee.toFixed(2)}
@@ -853,16 +891,18 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                           setHasEdited((prev) => ({ ...prev, storageFee: true }));
                         }
                       }}
-                      className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.storageFee ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 ${hasEdited.storageFee ? "text-black font-bold" : "text-gray-700"}`}
                     />
                   </div>
                 </div>
 
                 {/* Prep Fee Row */}
                 <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>Prep Fee</label>
+                  <label className="text-xs text-gray-600 mb-0.5">
+                    Prep Fee
+                  </label>
                   <div className="flex items-center w-full">
-                    <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
+                    <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-l text-gray-600 text-xs">$</span>
                     <input
                       type="text"
                       value={rawPrepFee !== null ? rawPrepFee : prepFee.toFixed(2)}
@@ -875,16 +915,18 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                           setHasEdited((prev) => ({ ...prev, prepFee: true }));
                         }
                       }}
-                      className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.prepFee ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 ${hasEdited.prepFee ? "text-black font-bold" : "text-gray-700"}`}
                     />
                   </div>
                 </div>
 
                 {/* Additional Fees Row */}
                 <div className="flex flex-col items-start">
-                  <label className={`${DEFAULT_LABEL_CLASS}`}>Additional Fees</label>
+                  <label className="text-xs text-gray-600 mb-0.5">
+                    Additional Fees
+                  </label>
                   <div className="flex items-center w-full">
-                    <span className={DEFAULT_LEFT_PREFIX_SUFFIX_CLASS}>$</span>
+                    <span className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-l text-gray-600 text-xs">$</span>
                     <input
                       type="text"
                       value={rawAdditionalFees !== null ? rawAdditionalFees : additionalFees.toFixed(2)}
@@ -897,41 +939,37 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
                           setHasEdited((prev) => ({ ...prev, additionalFees: true }));
                         }
                       }}
-                      className={`${DEFAULT_RIGHT_INPUT_CLASS} ${hasEdited.additionalFees ? "text-black font-bold" : "text-gray-700"}`}
+                      className={`py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 ${hasEdited.additionalFees ? "text-black font-bold" : "text-gray-700"}`}
                     />
                   </div>
                 </div>
-
               </div>
-            </div>
           </div>
 
           {/* ===== Group 5: Contract Category Section ===== */}
-          <div className="w-full mb-1 p-1 bg-white rounded-lg shadow-sm">
-
-            {/* ----- Section Header ----- */}
-            <h2 className={DEFAULT_HEADER_CLASS}>Contract Category</h2>
-
-            {/* Dropdown for Contract Category */}
-            <div className="flex items-center mb-1 mx-5 text-sm">
-              <div className="w-full">
-
-                {/* Dropdown element */}
-                <select
-                  value={contractCategory}
-                  onChange={(e) => setContractCategory(e.target.value)}
-                  className="text-xs p-1 w-full border border-gray-300 rounded bg-gray-100 text-gray-700">
-
-                  {/* Populate options dynamically */}
-                  {contractCategoryOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
+          <div className="section-wrapper">
+              {/* ----- Section Header ----- */}
+              <div className="flex justify-between items-center mb-1 mx-1 pb-1 border-b border-gray-200">
+                <h2 className={DEFAULT_HEADER_CLASS}>Contract Category</h2>
               </div>
-            </div>
 
+              {/* ----- Section Content ----- */}
+              <div className="mx-3">
+                <div className="flex flex-col items-start">
+
+                  <select
+                    value={contractCategory}
+                    onChange={(e) => setContractCategory(e.target.value)}
+                    className="w-full py-1 px-2 border border-gray-200 rounded text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
+                  >
+                    {contractCategoryOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
           </div>
 
           {/* ===== Group 6: Fulfillment Options Section ===== */}
@@ -994,5 +1032,6 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
 // Export Statement:
 ////////////////////////////////////////////////
 export default Pricing;
+
 
 

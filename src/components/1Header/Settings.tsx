@@ -155,6 +155,35 @@ export const SettingsModal: React.FC<{
       ...prev,
       [fieldName]: input,
     }));
+
+    // Handle prep cost and additional cost changes
+    if (fieldName === "prepCost") {
+      const value = parseFloat(input) || 0;
+      if (prepCostType === "per lb") {
+        setPrepCostPerLb(value);
+        localStorage.setItem("prepCostPerLb", value.toString());
+      } else {
+        setPrepCostEach(value);
+        localStorage.setItem("prepCostEach", value.toString());
+      }
+      setDesiredMetrics(prev => ({
+        ...prev,
+        prepCost: value.toFixed(2)
+      }));
+    } else if (fieldName === "additionalCosts") {
+      const value = parseFloat(input) || 0;
+      if (additionalCostType === "per lb") {
+        setAdditionalCostPerLb(value);
+        localStorage.setItem("additionalCostPerLb", value.toString());
+      } else {
+        setAdditionalCostEach(value);
+        localStorage.setItem("additionalCostEach", value.toString());
+      }
+      setDesiredMetrics(prev => ({
+        ...prev,
+        additionalCosts: value.toFixed(2)
+      }));
+    }
   };
 
   // Handle changes in default fulfillment preference
@@ -202,6 +231,34 @@ export const SettingsModal: React.FC<{
     });
   };
 
+  // Handle changes in prep cost type
+  const handlePrepCostTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newType = e.target.value;
+    setPrepCostType(newType);
+    localStorage.setItem("prepCostType", newType);
+    
+    // Update the displayed value based on the selected type
+    const currentValue = newType === "per lb" ? prepCostPerLb : prepCostEach;
+    setDesiredMetrics(prev => ({
+      ...prev,
+      prepCost: currentValue.toFixed(2)
+    }));
+  };
+
+  // Handle changes in additional cost type
+  const handleAdditionalCostTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newType = e.target.value;
+    setAdditionalCostType(newType);
+    localStorage.setItem("additionalCostType", newType);
+    
+    // Update the displayed value based on the selected type
+    const currentValue = newType === "per lb" ? additionalCostPerLb : additionalCostEach;
+    setDesiredMetrics(prev => ({
+      ...prev,
+      additionalCosts: currentValue.toFixed(2)
+    }));
+  };
+
   // Helper function to format label
   const formatLabel = (key: string): string => {
     const labelMap: { [key: string]: string } = {
@@ -238,15 +295,28 @@ export const SettingsModal: React.FC<{
 
   // Save all settings and close the modal
   const handleSaveSettings = () => {
+    // First save the current prep and additional costs based on their types
+    if (prepCostType === "per lb") {
+      localStorage.setItem("prepCostPerLb", prepCostPerLb.toString());
+      localStorage.setItem("prepCostEach", "0");
+    } else {
+      localStorage.setItem("prepCostEach", prepCostEach.toString());
+      localStorage.setItem("prepCostPerLb", "0");
+    }
+
+    if (additionalCostType === "per lb") {
+      localStorage.setItem("additionalCostPerLb", additionalCostPerLb.toString());
+      localStorage.setItem("additionalCostEach", "0");
+    } else {
+      localStorage.setItem("additionalCostEach", additionalCostEach.toString());
+      localStorage.setItem("additionalCostPerLb", "0");
+    }
+
     // Save all settings to localStorage
     localStorage.setItem("desiredMetrics", JSON.stringify(desiredMetrics));
     localStorage.setItem("defaultFulfillment", defaultFulfillment);
     localStorage.setItem("prepCostType", prepCostType);
-    localStorage.setItem("prepCostPerLb", prepCostPerLb.toString());
-    localStorage.setItem("prepCostEach", prepCostEach.toString());
     localStorage.setItem("additionalCostType", additionalCostType);
-    localStorage.setItem("additionalCostPerLb", additionalCostPerLb.toString());
-    localStorage.setItem("additionalCostEach", additionalCostEach.toString());
 
     // Notify parent of changes and close modal
     onSettingsChange();
@@ -562,7 +632,7 @@ export const SettingsModal: React.FC<{
                 <div className="relative">
                   <select
                     value={prepCostType}
-                    onChange={(e) => setPrepCostType(e.target.value)}
+                    onChange={handlePrepCostTypeChange}
                     className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white pr-8"
                   >
                     <option value="per lb">Per Pound</option>
@@ -590,7 +660,7 @@ export const SettingsModal: React.FC<{
                 <div className="relative">
                   <select
                     value={additionalCostType}
-                    onChange={(e) => setAdditionalCostType(e.target.value)}
+                    onChange={handleAdditionalCostTypeChange}
                     className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white pr-8"
                   >
                     <option value="per lb">Per Pound</option>

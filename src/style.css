@@ -120,8 +120,8 @@ input[type="number"]::-webkit-outer-spin-button {
 
 .section-wrapper {
   padding: 0.5rem 1rem; /* Reduce padding */
-  border: 1px solid #ddd; /* Keep the subtle border */
-  border-radius: 6px; /* Slightly smaller rounded corners */
+  border: 2px solid #ddd; /* Keep the subtle border */
+  border-radius: 10px; /* Slightly smaller rounded corners */
   margin-bottom: 0.75rem; /* Reduce vertical spacing between sections */
   background-color: white; /* Clean white background */
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05); /* Slightly lighter shadow */

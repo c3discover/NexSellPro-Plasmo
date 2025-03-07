@@ -2,9 +2,9 @@
 // Imports:
 ////////////////////////////////////////////////
 import React, { useState, useEffect } from "react";
-import { getUsedData } from "~/utils/usedData";
-import type { UsedProductData } from "~/utils/usedData";
-import getData from "~/utils/getData";
+import { getUsedData } from "../../utils/usedData";
+import type { UsedProductData } from "../../utils/usedData";
+import getData from "../../utils/getData";
 
 ////////////////////////////////////////////////
 // Constants and Variables:

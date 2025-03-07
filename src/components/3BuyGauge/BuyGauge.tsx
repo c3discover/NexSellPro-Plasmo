@@ -2,7 +2,7 @@
 // Imports:
 ////////////////////////////////////////////////
 import React, { useState, useEffect } from "react";
-import GaugeImgBase64 from "data-base64:~../assets/Gauge.jpg"
+import GaugeImgBase64 from "data-base64:../../../assets/Gauge.jpg"
 
 ////////////////////////////////////////////////
 // Constants and Variables:
@@ -52,15 +52,14 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({ areSectionsOpen }) => {
       <h1
         className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
         onClick={toggleOpen}
-      >
-        {isOpen ? "🔽  Buy Gauge" : "▶️  Buy Gauge"}
+      > 
+        {isOpen ? "🔽  Buy Gauge (Coming Soon)" : "▶️  Buy Gauge (Coming Soon)"}
       </h1>
 
       <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>
         <div id="BuyGauge" className="flex items-center justify-center p-4 w-full">
           <div className="m-4 p-1 pl-8 pr-8 flex flex-col items-center justify-center">
             <img src={GaugeImgBase64} alt="Gadgeo" width={180} />
-            <p>coming soon</p>
           </div>
         </div>
       </div>
