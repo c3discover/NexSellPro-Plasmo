@@ -89,12 +89,24 @@ const ContentUI = () => {
       }
     };
 
-    chrome.runtime.onMessage.addListener(handleMessage);
+    try {
+      chrome.runtime.onMessage.addListener(handleMessage);
+    } catch (error) {
+      console.log('Extension context invalidated, reloading...');
+      // Attempt to gracefully handle the error
+      if (chrome.runtime && chrome.runtime.reload) {
+        chrome.runtime.reload();
+      }
+    }
 
     // Cleanup
     return () => {
       clearInterval(interval);
-      chrome.runtime.onMessage.removeListener(handleMessage);
+      try {
+        chrome.runtime.onMessage.removeListener(handleMessage);
+      } catch (error) {
+        console.log('Error removing message listener:', error);
+      }
       document.body.classList.remove("plasmo-google-sidebar-show");
     };
   }, []);

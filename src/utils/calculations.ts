@@ -6,7 +6,13 @@
 ////////////////////////////////////////////////
 // Constants and Variables:
 ////////////////////////////////////////////////
-// No constants or variables defined here.
+const DEBUG = false;
+
+// Helper function for debug logging
+const debugLog = (message: string, data?: any) => {
+    if (!DEBUG) return;
+    console.log(`[Debug] ${message}`, data);
+};
 
 ////////////////////////////////////////////////
 // Props and Types:
@@ -227,12 +233,11 @@ export const calculateAdditionalFees = (weight: number): number => {
 export const calculateWFSFee = (product: Product): number => {
     const { weight, length, width, height, isWalmartFulfilled, isApparel, isHazardousMaterial, retailPrice } = product;
 
-    console.log('WFS Fee Calculation Debug:');
-    console.log('Input:', { weight, length, width, height, isWalmartFulfilled });
+    debugLog('WFS Fee Calculation:', { weight, length, width, height, isWalmartFulfilled });
 
     // If the item is Seller Fulfilled, WFS Fee is 0
     if (!isWalmartFulfilled) {
-        console.log('Seller Fulfilled - returning 0');
+        debugLog('Seller Fulfilled - returning 0');
         return 0.00;
     }
 
@@ -241,7 +246,7 @@ export const calculateWFSFee = (product: Product): number => {
     const longestSide = Math.max(length, width, height);
     const medianSide = [length, width, height].sort((a, b) => a - b)[1];
 
-    console.log('Dimensions:', {
+    debugLog('Dimensions:', {
         girth,
         longestSide,
         'longestSide + girth': longestSide + girth
@@ -254,7 +259,7 @@ export const calculateWFSFee = (product: Product): number => {
         (longestSide + girth > 165)
     );
 
-    console.log('Big & Bulky Check:', {
+    debugLog('Big & Bulky Check:', {
         isBigAndBulky,
         'weight > 150': weight > 150,
         'longestSide > 108': longestSide > 108,
@@ -265,7 +270,7 @@ export const calculateWFSFee = (product: Product): number => {
         const baseFee = 155;
         const additionalPerPoundFee = weight > 90 ? (weight - 90) * 0.80 : 0;
         const totalFee = baseFee + additionalPerPoundFee;
-        console.log('Big & Bulky Fee:', { baseFee, additionalPerPoundFee, totalFee });
+        debugLog('Big & Bulky Fee:', { baseFee, additionalPerPoundFee, totalFee });
         return parseFloat(totalFee.toFixed(2));
     }
 
@@ -302,7 +307,7 @@ export const calculateWFSFee = (product: Product): number => {
                       weight > 50 ? 17.55 + 0.40 * (weight - 51) : 1000;
 
     const totalFee = baseWFSFee + wfsAdditionalFee;
-    console.log('Standard Fee:', { baseWFSFee, wfsAdditionalFee, totalFee });
+    debugLog('Standard Fee:', { baseWFSFee, wfsAdditionalFee, totalFee });
     return parseFloat(totalFee.toFixed(2));
 };
 
