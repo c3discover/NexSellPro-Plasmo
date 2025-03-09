@@ -8,7 +8,7 @@ import type { UsedProductData } from "../../utils/usedData";
 ////////////////////////////////////////////////
 // Constants and Variables:
 ////////////////////////////////////////////////
-const LOADING_MESSAGE = "Loading product data...";
+
 
 ////////////////////////////////////////////////
 // Types and Interfaces:
@@ -79,7 +79,11 @@ export const Product = () => {
 // JSX:
 ////////////////////////////////////////////////
   if (!productData) {
-    return <div>{LOADING_MESSAGE}</div>;
+    return (
+      <div className="p-4 w-full text-center">
+        <div className="mx-auto w-8 h-8 rounded-full border-b-2 border-gray-900 animate-spin"></div>
+      </div>
+    );
   }
 
   // Get first category for the main category link

@@ -85,37 +85,74 @@ export const SettingsModal: React.FC<{
   const [rawAdditionalCosts, setRawAdditionalCosts] = useState<string | null>(null);
   const [rawSfShippingCost, setRawSfShippingCost] = useState<string | null>(null);
 
+  // Add new state for tracking edited fields
+  const [editedFields, setEditedFields] = useState<Set<string>>(new Set());
+
   /////////////////////////////////////////////////////
   // Effect Hooks for Loading and Saving Settings
   /////////////////////////////////////////////////////
 
   // Load values from localStorage when the component mounts
   useEffect(() => {
-    const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
-    if (storedMetrics) setDesiredMetrics(storedMetrics);
+    try {
+      // Load metrics
+      const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+      if (Object.keys(storedMetrics).length > 0) {
+        setDesiredMetrics(prev => ({
+          ...prev,
+          ...storedMetrics
+        }));
+        // Mark stored fields as edited
+        setEditedFields(new Set(Object.keys(storedMetrics)));
+      }
 
-    const savedFulfillment = localStorage.getItem("defaultFulfillment");
-    if (savedFulfillment) setDefaultFulfillment(savedFulfillment);
+      // Load fulfillment preference
+      const savedFulfillment = localStorage.getItem("defaultFulfillment");
+      if (savedFulfillment) {
+        setDefaultFulfillment(savedFulfillment);
+        setEditedFields(prev => new Set([...prev, 'defaultFulfillment']));
+      }
 
-    // Load prep costs
-    const savedPrepCostType = localStorage.getItem("prepCostType");
-    if (savedPrepCostType) setPrepCostType(savedPrepCostType);
-    
-    const savedPrepCostPerLb = localStorage.getItem("prepCostPerLb");
-    if (savedPrepCostPerLb) setPrepCostPerLb(parseFloat(savedPrepCostPerLb));
-    
-    const savedPrepCostEach = localStorage.getItem("prepCostEach");
-    if (savedPrepCostEach) setPrepCostEach(parseFloat(savedPrepCostEach));
+      // Load prep costs
+      const savedPrepCostType = localStorage.getItem("prepCostType");
+      if (savedPrepCostType) {
+        setPrepCostType(savedPrepCostType);
+        setEditedFields(prev => new Set([...prev, 'prepCostType']));
+      }
+      
+      const savedPrepCostPerLb = localStorage.getItem("prepCostPerLb");
+      if (savedPrepCostPerLb) {
+        setPrepCostPerLb(parseFloat(savedPrepCostPerLb));
+        setEditedFields(prev => new Set([...prev, 'prepCostPerLb']));
+      }
+      
+      const savedPrepCostEach = localStorage.getItem("prepCostEach");
+      if (savedPrepCostEach) {
+        setPrepCostEach(parseFloat(savedPrepCostEach));
+        setEditedFields(prev => new Set([...prev, 'prepCostEach']));
+      }
 
-    // Load additional costs
-    const savedAdditionalCostType = localStorage.getItem("additionalCostType");
-    if (savedAdditionalCostType) setAdditionalCostType(savedAdditionalCostType);
-    
-    const savedAdditionalCostPerLb = localStorage.getItem("additionalCostPerLb");
-    if (savedAdditionalCostPerLb) setAdditionalCostPerLb(parseFloat(savedAdditionalCostPerLb));
-    
-    const savedAdditionalCostEach = localStorage.getItem("additionalCostEach");
-    if (savedAdditionalCostEach) setAdditionalCostEach(parseFloat(savedAdditionalCostEach));
+      // Load additional costs
+      const savedAdditionalCostType = localStorage.getItem("additionalCostType");
+      if (savedAdditionalCostType) {
+        setAdditionalCostType(savedAdditionalCostType);
+        setEditedFields(prev => new Set([...prev, 'additionalCostType']));
+      }
+      
+      const savedAdditionalCostPerLb = localStorage.getItem("additionalCostPerLb");
+      if (savedAdditionalCostPerLb) {
+        setAdditionalCostPerLb(parseFloat(savedAdditionalCostPerLb));
+        setEditedFields(prev => new Set([...prev, 'additionalCostPerLb']));
+      }
+      
+      const savedAdditionalCostEach = localStorage.getItem("additionalCostEach");
+      if (savedAdditionalCostEach) {
+        setAdditionalCostEach(parseFloat(savedAdditionalCostEach));
+        setEditedFields(prev => new Set([...prev, 'additionalCostEach']));
+      }
+    } catch (error) {
+      console.error("Error loading settings:", error);
+    }
   }, []);
 
   /////////////////////////////////////////////////////
@@ -124,7 +161,7 @@ export const SettingsModal: React.FC<{
 
   // Reset metrics to default values
   const handleClearAll = () => {
-    setDesiredMetrics({
+    const defaultMetrics = {
       minProfit: "0.00",
       minMargin: "0",
       minROI: "0",
@@ -140,9 +177,24 @@ export const SettingsModal: React.FC<{
       season: "Jan-Sep",
       prepCost: "0.00",
       additionalCosts: "0.00"
-    });
+    };
+
+    setDesiredMetrics(defaultMetrics);
     setDefaultFulfillment("Walmart Fulfilled");
-    onSettingsChange(); // Notify parent component of changes
+    setEditedFields(new Set());
+    setRawMetrics({});
+
+    // Clear localStorage
+    localStorage.removeItem("desiredMetrics");
+    localStorage.removeItem("defaultFulfillment");
+    localStorage.removeItem("prepCostType");
+    localStorage.removeItem("prepCostPerLb");
+    localStorage.removeItem("prepCostEach");
+    localStorage.removeItem("additionalCostType");
+    localStorage.removeItem("additionalCostPerLb");
+    localStorage.removeItem("additionalCostEach");
+
+    onSettingsChange();
   };
 
   // Handle changes in user-defined metrics with proper formatting
@@ -151,10 +203,13 @@ export const SettingsModal: React.FC<{
     const input = e.target.value;
 
     // Update rawMetrics to keep the bold text while editing
-    setRawMetrics((prev: Record<string, string | null>) => ({
+    setRawMetrics((prev) => ({
       ...prev,
       [fieldName]: input,
     }));
+
+    // Mark field as edited
+    setEditedFields(prev => new Set([...prev, fieldName]));
 
     // Handle prep cost and additional cost changes
     if (fieldName === "prepCost") {
@@ -184,6 +239,13 @@ export const SettingsModal: React.FC<{
         additionalCosts: value.toFixed(2)
       }));
     }
+
+    // Update localStorage immediately for the changed field
+    const currentMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+    localStorage.setItem("desiredMetrics", JSON.stringify({
+      ...currentMetrics,
+      [fieldName]: input
+    }));
   };
 
   // Handle changes in default fulfillment preference
@@ -193,42 +255,40 @@ export const SettingsModal: React.FC<{
 
   // Handle changes when user stops editing
   const handleBlur = (fieldName: string) => {
-    setRawMetrics((prev: Record<string, string | null>) => {
+    const rawValue = rawMetrics[fieldName];
+    if (rawValue === undefined) return; // Don't process if no raw value exists
+
+    setRawMetrics((prev) => {
       const updated = { ...prev };
-      delete updated[fieldName]; // Remove the field from rawMetrics
+      delete updated[fieldName];
       return updated;
     });
 
-    setDesiredMetrics((prev: typeof desiredMetrics) => {
-      const rawValue = rawMetrics[fieldName] ?? "0";
-      let formattedValue = prev[fieldName];
+    let formattedValue = rawValue;
 
-      // Handle monetary values
-      if (["minProfit", "inboundShippingCost", "sfShippingCost", "prepCost", "additionalCosts"].includes(fieldName)) {
-        formattedValue = parseFloat(rawValue || "0").toFixed(2);
-      }
-      // Handle percentage values
-      else if (["minMargin", "minROI"].includes(fieldName)) {
-        formattedValue = Math.max(0, parseInt(rawValue || "0", 10)).toString();
-      }
-      // Handle minOverallRating with one decimal place
-      else if (fieldName === "minOverallRating") {
-        formattedValue = Math.max(0, parseFloat(rawValue || "0")).toFixed(1);
-      }
-      // Handle numeric values
-      else if (fieldName !== "season") {
-        formattedValue = Math.max(0, parseInt(rawValue || "0", 10)).toString();
-      }
-      // Season keeps its string value
-      else {
-        formattedValue = rawValue;
-      }
+    // Format the value based on field type
+    if (["minProfit", "inboundShippingCost", "sfShippingCost", "prepCost", "additionalCosts"].includes(fieldName)) {
+      formattedValue = parseFloat(rawValue || "0").toFixed(2);
+    } else if (["minMargin", "minROI"].includes(fieldName)) {
+      formattedValue = Math.max(0, parseInt(rawValue || "0", 10)).toString();
+    } else if (fieldName === "minOverallRating") {
+      formattedValue = Math.max(0, parseFloat(rawValue || "0")).toFixed(1);
+    } else if (fieldName !== "season") {
+      formattedValue = Math.max(0, parseInt(rawValue || "0", 10)).toString();
+    }
 
-      return {
-        ...prev,
-        [fieldName]: formattedValue
-      };
-    });
+    // Update the metrics state
+    setDesiredMetrics((prev) => ({
+      ...prev,
+      [fieldName]: formattedValue
+    }));
+
+    // Update localStorage
+    const currentMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+    localStorage.setItem("desiredMetrics", JSON.stringify({
+      ...currentMetrics,
+      [fieldName]: formattedValue
+    }));
   };
 
   // Handle changes in prep cost type
@@ -330,6 +390,11 @@ export const SettingsModal: React.FC<{
     }
   };
 
+  // Update input className to include bold when edited
+  const getInputClassName = (fieldName: string, baseClassName: string) => {
+    return `${baseClassName} ${editedFields.has(fieldName) ? "font-bold" : ""}`;
+  };
+
   /////////////////////////////////////////////////////
   // Conditional Rendering
   /////////////////////////////////////////////////////
@@ -411,9 +476,9 @@ export const SettingsModal: React.FC<{
                       value={rawMetrics[key] ?? value}
                       onChange={handleDesiredMetricsChange}
                       onBlur={() => handleBlur(key)}
-                      className={`p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
+                      className={getInputClassName(key, `p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
                         prefix ? 'pl-5' : ''
-                      } ${suffix ? 'pr-5' : ''}`}
+                      } ${suffix ? 'pr-5' : ''}`)}
                     />
                     {suffix && (
                       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
@@ -446,9 +511,9 @@ export const SettingsModal: React.FC<{
                       value={rawMetrics[key] ?? value}
                       onChange={handleDesiredMetricsChange}
                       onBlur={() => handleBlur(key)}
-                      className={`p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
+                      className={getInputClassName(key, `p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
                         prefix ? 'pl-5' : ''
-                      } ${suffix ? 'pr-5' : ''}`}
+                      } ${suffix ? 'pr-5' : ''}`)}
                     />
                     {suffix && (
                       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
@@ -481,9 +546,9 @@ export const SettingsModal: React.FC<{
                       value={rawMetrics[key] ?? value}
                       onChange={handleDesiredMetricsChange}
                       onBlur={() => handleBlur(key)}
-                      className={`p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
+                      className={getInputClassName(key, `p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
                         prefix ? 'pl-5' : ''
-                      } ${suffix ? 'pr-5' : ''}`}
+                      } ${suffix ? 'pr-5' : ''}`)}
                     />
                     {suffix && (
                       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
@@ -507,7 +572,7 @@ export const SettingsModal: React.FC<{
                   value={rawMetrics['minOverallRating'] ?? desiredMetrics.minOverallRating}
                   onChange={handleDesiredMetricsChange}
                   onBlur={() => handleBlur('minOverallRating')}
-                  className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
+                  className={getInputClassName('minOverallRating', 'p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full')}
                 />
               </div>
             </div>
@@ -536,9 +601,9 @@ export const SettingsModal: React.FC<{
                       value={rawMetrics[key] ?? value}
                       onChange={handleDesiredMetricsChange}
                       onBlur={() => handleBlur(key)}
-                      className={`p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
+                      className={getInputClassName(key, `p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${
                         prefix ? 'pl-5' : ''
-                      } ${suffix ? 'pr-5' : ''}`}
+                      } ${suffix ? 'pr-5' : ''}`)}
                     />
                     {suffix && (
                       <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">
@@ -566,7 +631,7 @@ export const SettingsModal: React.FC<{
                       value={rawMetrics[key] ?? value}
                       onChange={handleDesiredMetricsChange}
                       onBlur={() => handleBlur(key)}
-                      className="p-1 pl-5 pr-14 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
+                      className={getInputClassName(key, 'p-1 pl-5 pr-14 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full')}
                     />
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 text-[10px]">
                       per pound
@@ -608,7 +673,7 @@ export const SettingsModal: React.FC<{
                     value={rawMetrics[key] ?? value}
                     onChange={handleDesiredMetricsChange}
                     onBlur={() => handleBlur(key)}
-                    className="p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
+                    className={getInputClassName(key, 'p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full')}
                   />
                 </div>
               );
@@ -626,7 +691,7 @@ export const SettingsModal: React.FC<{
                     value={rawMetrics['prepCost'] ?? desiredMetrics.prepCost}
                     onChange={handleDesiredMetricsChange}
                     onBlur={() => handleBlur('prepCost')}
-                    className="p-1 pl-5 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
+                    className={getInputClassName('prepCost', 'p-1 pl-5 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full')}
                   />
                 </div>
                 <div className="relative">
@@ -654,7 +719,7 @@ export const SettingsModal: React.FC<{
                     value={rawMetrics['additionalCosts'] ?? desiredMetrics.additionalCosts}
                     onChange={handleDesiredMetricsChange}
                     onBlur={() => handleBlur('additionalCosts')}
-                    className="p-1 pl-5 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full"
+                    className={getInputClassName('additionalCosts', 'p-1 pl-5 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full')}
                   />
                 </div>
                 <div className="relative">

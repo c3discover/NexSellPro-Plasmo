@@ -7,6 +7,7 @@ import { getUsedData } from '../../utils/usedData';
 import type { UsedProductData } from '../../utils/usedData';
 import { FiCheckCircle } from "react-icons/fi";
 import { SellerTable } from '../../components/6Analysis/SellerTable';
+import { getDaysAgo, isBrandMatch } from '../../utils/analysisHelpers';
 
 /////////////////////////////////////////////////
 // Constants and Variables:
@@ -55,12 +56,12 @@ export const Analysis: React.FC<AnalysisProps> = ({ areSectionsOpen }) => {
   ).length ?? 0;
 
   // Check if the brand is one of the sellers
-  const isBrandSelling = productData?.sellers.otherSellers.some((seller) =>
-    productData?.basic.brand && seller.sellerName &&
-    productData.basic.brand.toLowerCase().split(' ').some(brandPart =>
-      seller.sellerName.toLowerCase().includes(brandPart)
-    )
-  ) ?? false;
+  const isBrandSelling = React.useMemo(() => {
+    if (!productData?.basic?.brand) return false;
+    return productData.sellers.otherSellers.some((seller) =>
+      isBrandMatch(productData.basic.brand, seller.sellerName)
+    );
+  }, [productData?.basic?.brand, productData?.sellers.otherSellers]);
 
   // Sync isOpen state with the passed prop value
   useEffect(() => {
@@ -102,18 +103,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ areSectionsOpen }) => {
   /////////////////////////////////////////////////////
   // Helper Functions:
   /////////////////////////////////////////////////////
-  /**
-   * Function to get the number of days ago from a given date.
-   * @param {string} dateString - Date in string format.
-   * @returns {number} Number of days since the given date.
-   */
-  const getDaysAgo = (dateString: string): number => {
-    const today = new Date();
-    const reviewDate = new Date(dateString);
-    const differenceInTime = today.getTime() - reviewDate.getTime();
-    return Math.floor(differenceInTime / (1000 * 3600 * 24));
-  };
-
   /**
    * Apply formatting to the total ratings element based on the settings and product ratings.
    * @returns {string} The CSS classes to apply for styling the total ratings element.
@@ -256,7 +245,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ areSectionsOpen }) => {
             <p className={CLASS_SECTION_HEADER}>
               Total Reviews
             </p>
-            <p className={CLASS_DEFAULT_CONTENT}>
+            <p className={`${applyTotalRatingsHighlight()}`}>
               {productData?.reviews.numberOfReviews || "-"}
             </p>
           </div>

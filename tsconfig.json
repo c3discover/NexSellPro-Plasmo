@@ -7,7 +7,12 @@
         "./src/*"
       ]
     },
-    "baseUrl": "."
+    "baseUrl": ".",
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "allowJs": true,
+    "verbatimModuleSyntax": false
   },
   "include": [
     ".plasmo/index.d.ts",

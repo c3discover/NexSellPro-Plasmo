@@ -196,7 +196,137 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
     });
   }, []);
 
+  // Add new state for tracking edited fields
+  const [editedFields, setEditedFields] = useState<Set<string>>(new Set());
 
+  // Load saved values from localStorage on mount
+  useEffect(() => {
+    try {
+      if (productData?.basic?.productID) {
+        const storageKey = `pricing_${productData.basic.productID}`;
+        const savedPricing = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        
+        if (Object.keys(savedPricing).length > 0) {
+          // Load all saved values
+          if (savedPricing.productCost) setProductCost(parseFloat(savedPricing.productCost));
+          if (savedPricing.salePrice) setSalePrice(parseFloat(savedPricing.salePrice));
+          if (savedPricing.referralFee) setReferralFee(parseFloat(savedPricing.referralFee));
+          if (savedPricing.wfsFee) setWfsFee(parseFloat(savedPricing.wfsFee));
+          if (savedPricing.inboundShippingFee) setInboundShippingFee(parseFloat(savedPricing.inboundShippingFee));
+          if (savedPricing.storageFee) setStorageFee(parseFloat(savedPricing.storageFee));
+          if (savedPricing.prepFee) setPrepFee(parseFloat(savedPricing.prepFee));
+          if (savedPricing.additionalFees) setAdditionalFees(parseFloat(savedPricing.additionalFees));
+          
+          // Mark fields as edited
+          setEditedFields(new Set(Object.keys(savedPricing)));
+        }
+      }
+    } catch (error) {
+      console.error("Error loading pricing data:", error);
+    }
+  }, [productData?.basic?.productID]);
+
+  // Save values to localStorage when they change
+  useEffect(() => {
+    if (productData?.basic?.productID && editedFields.size > 0) {
+      const storageKey = `pricing_${productData.basic.productID}`;
+      const pricingData = {
+        productCost: productCost.toFixed(2),
+        salePrice: salePrice.toFixed(2),
+        referralFee: referralFee.toFixed(2),
+        wfsFee: wfsFee.toFixed(2),
+        inboundShippingFee: inboundShippingFee.toFixed(2),
+        storageFee: storageFee.toFixed(2),
+        prepFee: prepFee.toFixed(2),
+        additionalFees: additionalFees.toFixed(2)
+      };
+      localStorage.setItem(storageKey, JSON.stringify(pricingData));
+    }
+  }, [
+    productData?.basic?.productID,
+    productCost,
+    salePrice,
+    referralFee,
+    wfsFee,
+    inboundShippingFee,
+    storageFee,
+    prepFee,
+    additionalFees,
+    editedFields
+  ]);
+
+  // Helper function to get input className
+  const getInputClassName = (fieldName: string, baseClassName: string) => {
+    return `${baseClassName} ${editedFields.has(fieldName) ? "font-bold" : ""}`;
+  };
+
+  // Reset functions
+  const resetPricing = () => {
+    const initialProductCost = calculateStartingProductCost(salePrice);
+    setProductCost(initialProductCost);
+    setSalePrice(productData?.pricing?.currentPrice || 0);
+    setRawProductCost(null);
+    setRawSalePrice(null);
+    
+    // Remove from localStorage and clear edited state
+    if (productData?.basic?.productID) {
+      const storageKey = `pricing_${productData.basic.productID}`;
+      localStorage.removeItem(storageKey);
+    }
+    setEditedFields(new Set());
+  };
+
+  const resetFees = () => {
+    if (isWalmartFulfilled) {
+      setWfsFee(calculateWFSFee(productForWFSFee));
+      setInboundShippingFee(finalShippingWeightForInbound * inboundShippingRate);
+      setStorageFee(parseFloat(calculateStorageFee(season, cubicFeet, storageLength)) || 0);
+    } else {
+      setWfsFee(0);
+      setInboundShippingFee(0);
+      setStorageFee(0);
+    }
+    setPrepFee(0);
+    setAdditionalFees(0);
+    setRawWfsFee(null);
+    setRawInboundShippingFee(null);
+    setRawStorageFee(null);
+    setRawPrepFee(null);
+    setRawAdditionalFees(null);
+
+    // Remove from localStorage and clear edited state for fees
+    if (productData?.basic?.productID) {
+      const storageKey = `pricing_${productData.basic.productID}`;
+      const savedPricing = JSON.parse(localStorage.getItem(storageKey) || "{}");
+      delete savedPricing.wfsFee;
+      delete savedPricing.inboundShippingFee;
+      delete savedPricing.storageFee;
+      delete savedPricing.prepFee;
+      delete savedPricing.additionalFees;
+      localStorage.setItem(storageKey, JSON.stringify(savedPricing));
+    }
+    
+    setEditedFields(prev => {
+      const newEdited = new Set(prev);
+      ['wfsFee', 'inboundShippingFee', 'storageFee', 'prepFee', 'additionalFees'].forEach(field => {
+        newEdited.delete(field);
+      });
+      return newEdited;
+    });
+  };
+
+  // Update input handlers to mark fields as edited
+  const handleInputChange = (value: string, setter: (value: string | null) => void, field: string) => {
+    setter(value);
+    setEditedFields(prev => new Set([...prev, field]));
+  };
+
+  const handleInputBlur = (rawValue: string | null, setter: (value: number) => void, field: string) => {
+    if (rawValue !== null) {
+      const formattedValue = parseFloat(rawValue).toFixed(2);
+      setter(parseFloat(formattedValue));
+    }
+  };
 
   ////////////////////////////////////////////////
   // Chrome API Handlers:
@@ -457,47 +587,6 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
     setHasEdited((prev) => ({ ...prev, wfsFee: false }));
   };
 
-  // Reset functions
-  const resetPricing = () => {
-    const initialProductCost = calculateStartingProductCost(salePrice);
-    setProductCost(initialProductCost);
-    setSalePrice(productData?.pricing?.currentPrice || 0);
-    setRawProductCost(null);
-    setRawSalePrice(null);
-    setHasEdited((prev) => ({
-      ...prev,
-      productCost: false,
-      salePrice: false,
-    }));
-  };
-
-  const resetFees = () => {
-    if (isWalmartFulfilled) {
-      setWfsFee(calculateWFSFee(productForWFSFee));
-      setInboundShippingFee(finalShippingWeightForInbound * inboundShippingRate);
-      setStorageFee(parseFloat(calculateStorageFee(season, cubicFeet, storageLength)) || 0);
-    } else {
-      setWfsFee(0);
-      setInboundShippingFee(0);
-      setStorageFee(0);
-    }
-    setPrepFee(0);
-    setAdditionalFees(0);
-    setRawWfsFee(null);
-    setRawInboundShippingFee(null);
-    setRawStorageFee(null);
-    setRawPrepFee(null);
-    setRawAdditionalFees(null);
-    setHasEdited((prev) => ({
-      ...prev,
-      wfsFee: false,
-      inboundShippingFee: false,
-      storageFee: false,
-      prepFee: false,
-      additionalFees: false,
-    }));
-  };
-
 
 
 
@@ -641,18 +730,9 @@ ROI = (Total Profit / Product Cost) × 100
                     <input
                       type="text"
                       value={rawProductCost !== null ? rawProductCost : productCost.toFixed(2)}
-                      onChange={(e) => {
-                        setRawProductCost(e.target.value);
-                        setHasEdited((prev) => ({ ...prev, productCost: true }));
-                      }}
-                      onBlur={() => {
-                        if (rawProductCost !== null) {
-                          const formattedValue = parseFloat(rawProductCost).toFixed(2);
-                          setProductCost(parseFloat(formattedValue));
-                          setRawProductCost(null);
-                        }
-                      }}
-                      className="py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
+                      onChange={(e) => handleInputChange(e.target.value, setRawProductCost, 'productCost')}
+                      onBlur={() => handleInputBlur(rawProductCost, setProductCost, 'productCost')}
+                      className={getInputClassName('productCost', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
                 </div>
@@ -667,14 +747,9 @@ ROI = (Total Profit / Product Cost) × 100
                     <input
                       type="text"
                       value={rawSalePrice !== null ? rawSalePrice : salePrice.toFixed(2)}
-                      onChange={(e) => setRawSalePrice(e.target.value)}
-                      onBlur={() => {
-                        const formattedValue = parseFloat(rawSalePrice || salePrice.toString()).toFixed(2);
-                        setSalePrice(parseFloat(formattedValue));
-                        setRawSalePrice(null);
-                        setHasEdited((prev) => ({ ...prev, salePrice: true }));
-                      }}
-                      className="py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
+                      onChange={(e) => handleInputChange(e.target.value, setRawSalePrice, 'salePrice')}
+                      onBlur={() => handleInputBlur(rawSalePrice, setSalePrice, 'salePrice')}
+                      className={getInputClassName('salePrice', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
                 </div>
@@ -706,14 +781,9 @@ ROI = (Total Profit / Product Cost) × 100
                     <input
                       type="text"
                       value={rawLength !== null ? rawLength : typeof shippingLength === 'number' ? shippingLength.toFixed(2) : '0.00'}
-                      onChange={(e) => setRawLength(e.target.value)}
-                      onBlur={() => {
-                        const formattedValue = parseFloat(rawLength || shippingLength.toString()).toFixed(2);
-                        setShippingLength(parseFloat(formattedValue) || 0);
-                        setRawLength(null);
-                        setHasEdited((prev) => ({ ...prev, shippingLength: true }));
-                      }}
-                      className="py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
+                      onChange={(e) => handleInputChange(e.target.value, setRawLength, 'shippingLength')}
+                      onBlur={() => handleInputBlur(rawLength, setShippingLength, 'shippingLength')}
+                      className={getInputClassName('shippingLength', 'py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                     <span className="px-2 py-1 bg-gray-50 border-y border-r border-gray-200 rounded-r text-gray-600 text-xs">in</span>
                   </div>
@@ -728,14 +798,9 @@ ROI = (Total Profit / Product Cost) × 100
                     <input
                       type="text"
                       value={rawWidth !== null ? rawWidth : typeof shippingWidth === 'number' ? shippingWidth.toFixed(2) : '0.00'}
-                      onChange={(e) => setRawWidth(e.target.value)}
-                      onBlur={() => {
-                        const formattedValue = parseFloat(rawWidth || shippingWidth.toString()).toFixed(2);
-                        setShippingWidth(parseFloat(formattedValue) || 0);
-                        setRawWidth(null);
-                        setHasEdited((prev) => ({ ...prev, shippingWidth: true }));
-                      }}
-                      className="py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
+                      onChange={(e) => handleInputChange(e.target.value, setRawWidth, 'shippingWidth')}
+                      onBlur={() => handleInputBlur(rawWidth, setShippingWidth, 'shippingWidth')}
+                      className={getInputClassName('shippingWidth', 'py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                     <span className="px-2 py-1 bg-gray-50 border-y border-r border-gray-200 rounded-r text-gray-600 text-xs">in</span>
                   </div>
@@ -750,14 +815,9 @@ ROI = (Total Profit / Product Cost) × 100
                     <input
                       type="text"
                       value={rawHeight !== null ? rawHeight : typeof shippingHeight === 'number' ? shippingHeight.toFixed(2) : '0.00'}
-                      onChange={(e) => setRawHeight(e.target.value)}
-                      onBlur={() => {
-                        const formattedValue = parseFloat(rawHeight || shippingHeight.toString()).toFixed(2);
-                        setShippingHeight(parseFloat(formattedValue) || 0);
-                        setRawHeight(null);
-                        setHasEdited((prev) => ({ ...prev, shippingHeight: true }));
-                      }}
-                      className="py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
+                      onChange={(e) => handleInputChange(e.target.value, setRawHeight, 'shippingHeight')}
+                      onBlur={() => handleInputBlur(rawHeight, setShippingHeight, 'shippingHeight')}
+                      className={getInputClassName('shippingHeight', 'py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                     <span className="px-2 py-1 bg-gray-50 border-y border-r border-gray-200 rounded-r text-gray-600 text-xs">in</span>
                   </div>
@@ -772,14 +832,9 @@ ROI = (Total Profit / Product Cost) × 100
                     <input
                       type="text"
                       value={rawWeight !== null ? rawWeight : typeof weight === 'number' ? weight.toFixed(2) : '0.00'}
-                      onChange={(e) => setRawWeight(e.target.value)}
-                      onBlur={() => {
-                        const formattedValue = parseFloat(rawWeight || weight.toString()).toFixed(2);
-                        setWeight(parseFloat(formattedValue) || 0);
-                        setRawWeight(null);
-                        setHasEdited((prev) => ({ ...prev, weight: true }));
-                      }}
-                      className="py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500"
+                      onChange={(e) => handleInputChange(e.target.value, setRawWeight, 'weight')}
+                      onBlur={() => handleInputBlur(rawWeight, setWeight, 'weight')}
+                      className={getInputClassName('weight', 'py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                     <span className="px-2 py-1 bg-gray-50 border-y border-r border-gray-200 rounded-r text-gray-600 text-xs">lbs</span>
                   </div>
@@ -813,14 +868,9 @@ ROI = (Total Profit / Product Cost) × 100
                     <input
                       type="text"
                       value={rawReferralFee !== null ? rawReferralFee : referralFee.toFixed(2)}
-                      onChange={(e) => setRawReferralFee(e.target.value)}
-                      onBlur={() => {
-                        const formattedValue = parseFloat(rawReferralFee || referralFee.toString()).toFixed(2);
-                        setReferralFee(parseFloat(formattedValue) || 0);
-                        setRawReferralFee(null);
-                        setHasEdited((prev) => ({ ...prev, referralFee: true }));
-                      }}
-                      className={`py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 ${hasEdited.referralFee ? "text-black font-bold" : "text-gray-700"}`}
+                      onChange={(e) => handleInputChange(e.target.value, setRawReferralFee, 'referralFee')}
+                      onBlur={() => handleInputBlur(rawReferralFee, setReferralFee, 'referralFee')}
+                      className={getInputClassName('referralFee', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
                 </div>
@@ -835,15 +885,9 @@ ROI = (Total Profit / Product Cost) × 100
                     <input
                       type="text"
                       value={rawWfsFee !== null ? rawWfsFee : wfsFee.toFixed(2)}
-                      onChange={(e) => setRawWfsFee(e.target.value)}
-                      onBlur={() => {
-                        if (rawWfsFee !== null) {
-                          const formattedValue = parseFloat(rawWfsFee).toFixed(2);
-                          setWfsFee(parseFloat(formattedValue));
-                          setRawWfsFee(null);
-                        }
-                      }}
-                      className={`py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 ${hasEdited.wfsFee ? "text-black font-bold" : "text-gray-700"}`}
+                      onChange={(e) => handleInputChange(e.target.value, setRawWfsFee, 'wfsFee')}
+                      onBlur={() => handleInputBlur(rawWfsFee, setWfsFee, 'wfsFee')}
+                      className={getInputClassName('wfsFee', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
                 </div>
@@ -858,16 +902,9 @@ ROI = (Total Profit / Product Cost) × 100
                     <input
                       type="text"
                       value={rawInboundShippingFee !== null ? rawInboundShippingFee : inboundShippingFee.toFixed(2)}
-                      onChange={(e) => setRawInboundShippingFee(e.target.value)}
-                      onBlur={() => {
-                        if (rawInboundShippingFee !== null) {
-                          const formattedValue = parseFloat(rawInboundShippingFee).toFixed(2);
-                          setInboundShippingFee(parseFloat(formattedValue) || 0);
-                          setRawInboundShippingFee(null);
-                          setHasEdited((prev) => ({ ...prev, inboundShippingFee: true }));
-                        }
-                      }}
-                      className={`py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 ${hasEdited.inboundShippingFee ? "text-black font-bold" : "text-gray-700"}`}
+                      onChange={(e) => handleInputChange(e.target.value, setRawInboundShippingFee, 'inboundShippingFee')}
+                      onBlur={() => handleInputBlur(rawInboundShippingFee, setInboundShippingFee, 'inboundShippingFee')}
+                      className={getInputClassName('inboundShippingFee', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
                 </div>
@@ -882,16 +919,9 @@ ROI = (Total Profit / Product Cost) × 100
                     <input
                       type="text"
                       value={rawStorageFee !== null ? rawStorageFee : storageFee.toFixed(2)}
-                      onChange={(e) => setRawStorageFee(e.target.value)}
-                      onBlur={() => {
-                        if (rawStorageFee !== null) {
-                          const formattedValue = parseFloat(rawStorageFee).toFixed(2);
-                          setStorageFee(parseFloat(formattedValue) || 0);
-                          setRawStorageFee(null);
-                          setHasEdited((prev) => ({ ...prev, storageFee: true }));
-                        }
-                      }}
-                      className={`py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 ${hasEdited.storageFee ? "text-black font-bold" : "text-gray-700"}`}
+                      onChange={(e) => handleInputChange(e.target.value, setRawStorageFee, 'storageFee')}
+                      onBlur={() => handleInputBlur(rawStorageFee, setStorageFee, 'storageFee')}
+                      className={getInputClassName('storageFee', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
                 </div>
@@ -906,16 +936,9 @@ ROI = (Total Profit / Product Cost) × 100
                     <input
                       type="text"
                       value={rawPrepFee !== null ? rawPrepFee : prepFee.toFixed(2)}
-                      onChange={(e) => setRawPrepFee(e.target.value)}
-                      onBlur={() => {
-                        if (rawPrepFee !== null) {
-                          const formattedValue = parseFloat(rawPrepFee).toFixed(2);
-                          setPrepFee(parseFloat(formattedValue) || 0);
-                          setRawPrepFee(null);
-                          setHasEdited((prev) => ({ ...prev, prepFee: true }));
-                        }
-                      }}
-                      className={`py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 ${hasEdited.prepFee ? "text-black font-bold" : "text-gray-700"}`}
+                      onChange={(e) => handleInputChange(e.target.value, setRawPrepFee, 'prepFee')}
+                      onBlur={() => handleInputBlur(rawPrepFee, setPrepFee, 'prepFee')}
+                      className={getInputClassName('prepFee', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
                 </div>
@@ -930,16 +953,9 @@ ROI = (Total Profit / Product Cost) × 100
                     <input
                       type="text"
                       value={rawAdditionalFees !== null ? rawAdditionalFees : additionalFees.toFixed(2)}
-                      onChange={(e) => setRawAdditionalFees(e.target.value)}
-                      onBlur={() => {
-                        if (rawAdditionalFees !== null) {
-                          const formattedValue = parseFloat(rawAdditionalFees).toFixed(2);
-                          setAdditionalFees(parseFloat(formattedValue) || 0);
-                          setRawAdditionalFees(null);
-                          setHasEdited((prev) => ({ ...prev, additionalFees: true }));
-                        }
-                      }}
-                      className={`py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 ${hasEdited.additionalFees ? "text-black font-bold" : "text-gray-700"}`}
+                      onChange={(e) => handleInputChange(e.target.value, setRawAdditionalFees, 'additionalFees')}
+                      onBlur={() => handleInputBlur(rawAdditionalFees, setAdditionalFees, 'additionalFees')}
+                      className={getInputClassName('additionalFees', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
                 </div>

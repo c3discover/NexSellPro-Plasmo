@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { FiCheckCircle } from "react-icons/fi";
 import { getUsedData } from '../../utils/usedData';
 import type { UsedProductData } from '../../utils/usedData';
+import { isBrandMatch } from '../../utils/analysisHelpers';
 
 export const SellerTable: React.FC = () => {
     const [productData, setProductData] = React.useState<UsedProductData | null>(null);
@@ -58,10 +59,7 @@ export const SellerTable: React.FC = () => {
     const getSellerType = (seller: any, brand?: string | null) => {
         if (seller.sellerName === "Walmart.com") return "WMT";
 
-        const isBrandSeller = brand && seller.sellerName &&
-            brand.toLowerCase().split(' ').some(brandPart =>
-                seller.sellerName.toLowerCase().includes(brandPart)
-            );
+        const isBrandSeller = isBrandMatch(brand, seller.sellerName);
 
         if (isBrandSeller) {
             return seller.isWFS ? "WFS-Brand" : "SF-Brand";
