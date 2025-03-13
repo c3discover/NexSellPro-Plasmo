@@ -21,7 +21,6 @@ import { browserAPI } from './browser';
 // Send a message to the background script
 browserAPI.runtime.sendMessage({ type: 'HELLO' })
   .then(response => {
-    console.log('Response:', response);
   })
   .catch(error => {
     console.error('Error:', error);

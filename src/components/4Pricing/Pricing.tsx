@@ -67,6 +67,15 @@ const DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS = STYLES.input.rightPrefix;
 interface PricingProps {
   areSectionsOpen: boolean;
   product?: any; // Adding product prop as optional since it might be null initially
+  onMetricsUpdate?: (metrics: {
+    profit: number;
+    margin: number;
+    roi: number;
+    totalRatings: number;
+    ratingsLast30Days: number;
+    numSellers: number;
+    numWfsSellers: number;
+  }) => void;
 }
 
 interface CalculationResult {
@@ -77,7 +86,7 @@ interface CalculationResult {
 ////////////////////////////////////////////////
 // Component:
 ////////////////////////////////////////////////
-export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
+export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpdate }) => {
   // Component implementation will be in the following sections
 
 
@@ -460,10 +469,14 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
       const storedDimensions = JSON.parse(localStorage.getItem(storageKey) || "null");
       
       if (productData?.dimensions) {
+        // Log the dimensions data for debugging
+        
+        // Parse dimensions, ensuring we handle both string and number types
         const newLength = parseFloat(productData.dimensions.shippingLength?.toString() || "0");
         const newWidth = parseFloat(productData.dimensions.shippingWidth?.toString() || "0");
         const newHeight = parseFloat(productData.dimensions.shippingHeight?.toString() || "0");
         const newWeight = parseFloat(productData.dimensions.weight?.toString() || "0");
+
 
         // If we have valid product dimensions, use them on first load
         if (!storedDimensions && (newLength > 0 || newWidth > 0 || newHeight > 0 || newWeight > 0)) {
@@ -567,6 +580,25 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen }) => {
     setAdditionalFees(calculateAdditionalFees(weight));
   }, [weight]);
 
+  // Add effect to notify parent of metrics updates
+  useEffect(() => {
+    onMetricsUpdate?.({
+      profit: totalProfit,
+      margin: margin,
+      roi: roi,
+      totalRatings: parseInt(productData?.reviews?.numberOfRatings?.toString() || "0"),
+      ratingsLast30Days: productData?.reviews?.reviewDates?.filter(date => {
+        if (!date) return false;
+        const reviewDate = new Date(date);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return reviewDate >= thirtyDaysAgo;
+      }).length || 0,
+      numSellers: productData?.inventory?.totalSellers || 0,
+      numWfsSellers: productData?.sellers?.otherSellers?.filter(s => s.isWFS)?.length || 0
+    });
+  }, [totalProfit, margin, roi, productData, onMetricsUpdate]);
+
 
   /////////////////////////////////////////////////
   // Helper Functions
@@ -668,7 +700,7 @@ Total Profit                  $${totalProfit.toFixed(2)}`}</div>
 Margin = (Total Profit / Sale Price) × 100
 
 ($${totalProfit.toFixed(2)} / $${salePrice.toFixed(2)}) × 100 = ${margin}%`}</div>
-                  {`${margin}%`}
+                  {`${margin.toFixed(0)}%`}
                 </span>
                 <div 
                   className={`w-2 h-2 rounded-full ${margin >= desiredMetrics.minMargin ? 'bg-green-500' : 'bg-red-500'}`}
@@ -692,7 +724,7 @@ Margin = (Total Profit / Sale Price) × 100
 ROI = (Total Profit / Product Cost) × 100
 
 ($${totalProfit.toFixed(2)} / $${productCost.toFixed(2)}) × 100 = ${roi}%`}</div>
-                  {productCost === 0 ? "Enter Cost" : `${roi}%`}
+                  {productCost === 0 ? "Enter Cost" : `${roi.toFixed(0)}%`}
                 </span>
                 {productCost > 0 && (
                   <div 

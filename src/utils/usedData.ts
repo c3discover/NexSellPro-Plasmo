@@ -124,11 +124,16 @@ export async function getUsedData(): Promise<UsedProductData | null> {
       try {
         // Get raw product data
         const rawProductData = getData();
-        if (!rawProductData) return null;
+        if (!rawProductData) {
+          return null;
+        }
 
         // Get seller data
         const sellerData = await getSellerData();
         const mainSeller = sellerData[0] || null;
+
+        // Ensure weight is properly formatted
+        const processedWeight = rawProductData.weight || "0";
 
         // Organize data into our new structure
         const usedData: UsedProductData = {
@@ -147,10 +152,10 @@ export async function getUsedData(): Promise<UsedProductData | null> {
             sellerType: rawProductData.sellerType
           },
           dimensions: {
-            shippingLength: rawProductData.shippingLength,
-            shippingWidth: rawProductData.shippingWidth,
-            shippingHeight: rawProductData.shippingHeight,
-            weight: rawProductData.weight
+            shippingLength: rawProductData.shippingLength || "0",
+            shippingWidth: rawProductData.shippingWidth || "0",
+            shippingHeight: rawProductData.shippingHeight || "0",
+            weight: processedWeight
           },
           media: {
             imageUrl: rawProductData.imageUrl,

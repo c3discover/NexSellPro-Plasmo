@@ -120,14 +120,11 @@ const waitForElement = async (selectors: string | string[], maxAttempts = 5): Pr
         for (const selector of selectorArray) {
             const element = document.querySelector(selector);
             if (element) {
-                logDebug(`Found element with selector: ${selector}`);
                 return element;
             }
         }
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
-
-    console.warn(`Elements not found after ${maxAttempts} attempts. Tried selectors:`, selectorArray);
     return null;
 };
 
@@ -287,16 +284,13 @@ const formatDeliveryDate = (dateString: string | null): string => {
 
 const extractAllSellers = async (): Promise<SellerInfo[]> => {
     try {
-        logDebug('Starting seller extraction...');
-
         // First, try to click the "Compare all sellers" button if it exists
         const compareButton = await waitForElement(SELLER_SELECTORS.COMPARE_SELLERS_BUTTON);
         if (compareButton instanceof HTMLElement) {
             const now = Date.now();
             if (now - lastCompareButtonClick < COMPARE_BUTTON_COOLDOWN || isCompareButtonDebouncing) {
-                logDebug('Skipping compare button click - on cooldown or debouncing');
+                // Skip if on cooldown
             } else {
-                logDebug('Found compare sellers button, clicking...');
                 isCompareButtonDebouncing = true;
                 compareButton.click();
                 lastCompareButtonClick = now;
@@ -308,15 +302,11 @@ const extractAllSellers = async (): Promise<SellerInfo[]> => {
 
         // Try to find seller wrapper
         const sellersWrapper = await waitForElement(SELLER_SELECTORS.MORE_SELLERS_WRAPPER);
-        logDebug('Found sellers wrapper:', sellersWrapper);
 
         if (!sellersWrapper) {
-            console.warn('No sellers wrapper found, trying alternative methods...');
-
             // Try to find all seller elements directly
             const allSellerElements = document.querySelectorAll(SELLER_SELECTORS.SELLER_INFO.join(','));
             if (allSellerElements.length > 0) {
-                logDebug(`Found ${allSellerElements.length} seller elements directly`);
                 const sellers = Array.from(allSellerElements)
                     .map(element => {
                         const raw = extractSellerElements(element);
@@ -325,7 +315,6 @@ const extractAllSellers = async (): Promise<SellerInfo[]> => {
                     .filter((seller): seller is SellerInfo => seller !== null);
 
                 if (sellers.length > 0) {
-                    logDebug('Successfully extracted sellers directly:', sellers);
                     return sellers;
                 }
             }
@@ -341,7 +330,6 @@ const extractAllSellers = async (): Promise<SellerInfo[]> => {
                 );
 
                 if (uniqueSellers.size > 0) {
-                    logDebug('Found sellers in page source:', uniqueSellers);
                     return Array.from(uniqueSellers).map(name => ({
                         sellerName: name,
                         price: 'N/A',
@@ -353,49 +341,22 @@ const extractAllSellers = async (): Promise<SellerInfo[]> => {
                 }
             }
 
-            console.warn('No seller data found through any method');
             return [];
         }
 
         // Get all seller rows
         const sellerRows = sellersWrapper.querySelectorAll(SELLER_SELECTORS.SELLER_ROW.join(','));
-        logDebug(`Found ${sellerRows.length} seller rows:`, sellerRows);
 
-        if (sellerRows.length === 0) {
-            // If no seller rows found, try to extract from the wrapper itself
-            const wrapperData = extractSellerElements(sellersWrapper);
-            const processed = validateAndTransformSellerData(wrapperData);
-            if (processed) return [processed];
-
-            // Try to find seller elements within the wrapper
-            const sellerElements = sellersWrapper.querySelectorAll(SELLER_SELECTORS.SELLER_INFO.join(','));
-            if (sellerElements.length > 0) {
-                return Array.from(sellerElements)
-                    .map(element => {
-                        const raw = extractSellerElements(element);
-                        return validateAndTransformSellerData(raw);
-                    })
-                    .filter((seller): seller is SellerInfo => seller !== null);
-            }
-
-            return [];
-        }
-
-        // Extract data from each row
+        // Extract seller information from each row
         const sellers = Array.from(sellerRows)
-            .map((row, index) => {
-                logDebug(`Processing seller ${index + 1}/${sellerRows.length}`);
+            .map(row => {
                 const raw = extractSellerElements(row);
-                const processed = validateAndTransformSellerData(raw);
-                logDebug(`Processed seller ${index + 1}:`, processed);
-                return processed;
+                return validateAndTransformSellerData(raw);
             })
             .filter((seller): seller is SellerInfo => seller !== null);
 
-        logDebug('Final processed sellers:', sellers);
         return sellers;
     } catch (error) {
-        console.error('Error extracting sellers:', error);
         return [];
     }
 };
@@ -433,12 +394,10 @@ export const extractSellerData = async (): Promise<SellerInfo[]> => {
         // Try GraphQL endpoint first
         const graphQLData = await fetchSellerDataGraphQL(productDetails.productID);
         if (graphQLData && graphQLData.length > 0) {
-            logDebug('Successfully fetched data from GraphQL:', graphQLData);
             return graphQLData;
         }
 
         // Only try DOM extraction with button click if GraphQL failed
-        logDebug('GraphQL failed, falling back to DOM extraction');
         const domData = await extractAllSellers();
         if (domData && domData.length > 0) {
             return domData;
@@ -514,50 +473,24 @@ export const observeSellerData = (callback: (sellers: SellerInfo[]) => void): ()
 };
 
 export const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo[]> => {
-    // Check cache first
-    if (graphQLCache &&
-        graphQLCache.productId === itemId &&
-        Date.now() - graphQLCache.timestamp < GRAPHQL_CACHE_DURATION) {
-        logDebug('Returning cached GraphQL data');
-        return graphQLCache.data;
-    }
-
     try {
+        // Check cache first
+        if (graphQLCache.productId === itemId && 
+            Date.now() - graphQLCache.timestamp < GRAPHQL_CACHE_DURATION) {
+            return graphQLCache.data;
+        }
+
         const variables = {
-            itemId,
-            isSubscriptionEligible: true
+            id: itemId,
+            selected: true,
+            channel: "WWW",
+            pageType: "ItemPageGlobal"
         };
 
-        const correlationId = Math.random().toString(36).substring(2, 15);
-
         const response = await fetch(`${GRAPHQL_ENDPOINT}?variables=${encodeURIComponent(JSON.stringify(variables))}`, {
-            method: 'GET',
+            method: 'POST',
             headers: {
-                'accept': 'application/json',
-                'accept-language': 'en-US',
-                'cache-control': 'no-cache',
-                'content-type': 'application/json',
-                'pragma': 'no-cache',
-                'sec-ch-ua': '"Chromium";v="131", "Not_A Brand";v="24"',
-                'sec-ch-ua-mobile': '?0',
-                'sec-ch-ua-platform': '"macOS"',
-                'sec-fetch-dest': 'empty',
-                'sec-fetch-mode': 'cors',
-                'sec-fetch-site': 'same-origin',
-                'x-apollo-operation-name': 'GetAllSellerOffers',
-                'x-enable-server-timing': '1',
-                'x-latency-trace': '1',
-                'x-o-bu': 'WALMART-US',
-                'x-o-ccm': 'server',
-                'x-o-correlation-id': correlationId,
-                'x-o-gql-query': 'query GetAllSellerOffers',
-                'x-o-mart': 'B2C',
-                'x-o-platform': 'rweb',
-                'x-o-platform-version': 'us-web-1.173.0',
-                'x-o-segment': 'oaoh',
-                'wm_mp': 'true',
-                'wm_qos.correlation_id': correlationId,
-                'referer': 'https://www.walmart.com/',
+                'Content-Type': 'application/json',
                 'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
             },
             credentials: 'include'
@@ -568,7 +501,6 @@ export const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo
         }
 
         const data = await response.json();
-        logDebug('GraphQL Response:', data);
 
         if (data?.data?.product?.allOffers) {
             const sellers = data.data.product.allOffers
@@ -600,7 +532,6 @@ export const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo
 
         return [];
     } catch (error) {
-        console.error('Error fetching seller data from GraphQL:', error);
         return [];
     }
 };

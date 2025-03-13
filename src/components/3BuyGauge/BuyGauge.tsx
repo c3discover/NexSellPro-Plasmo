@@ -2,17 +2,14 @@
 // Imports:
 ////////////////////////////////////////////////
 import React, { useState, useEffect } from "react";
+import { BuyGaugeProps, MetricScore, MetricScores, ProductMetrics, GaugeSettings } from "./types";
+import MetricsBreakdown from "./MetricsBreakdown";
 
 ////////////////////////////////////////////////
 // Types and Interfaces:
 ////////////////////////////////////////////////
-interface BuyGaugeProps {
-  areSectionsOpen: boolean;
-}
-
 interface GaugeLevel {
-  min: number;
-  max: number;
+  score: number;
   label: string;
   color: string;
 }
@@ -21,16 +18,37 @@ interface GaugeLevel {
 // Constants:
 ////////////////////////////////////////////////
 const GAUGE_LEVELS: GaugeLevel[] = [
-  { min: 90, max: 100, label: "Prime Opportunity", color: "#22c55e" },
-  { min: 80, max: 89, label: "Strong Buy", color: "#22c55e" },
-  { min: 70, max: 79, label: "Confident Buy", color: "#22c55e" },
-  { min: 60, max: 69, label: "Promising", color: "#eab308" },
-  { min: 50, max: 59, label: "Moderate", color: "#eab308" },
-  { min: 40, max: 49, label: "Cautious", color: "#eab308" },
-  { min: 30, max: 39, label: "Risky", color: "#eab308" },
-  { min: 20, max: 29, label: "Not Recommended", color: "#ef4444" },
-  { min: 0, max: 19, label: "Avoid", color: "#ef4444" }
+  { score: 10, label: "Prime Opportunity", color: "#22c55e" },
+  { score: 9, label: "Strong Buy", color: "#22c55e" },
+  { score: 8, label: "Confident Buy", color: "#22c55e" },
+  { score: 7, label: "Good Buy", color: "#22c55e" },
+  { score: 6, label: "Promising", color: "#eab308" },
+  { score: 5, label: "Moderate", color: "#eab308" },
+  { score: 4, label: "Cautious", color: "#eab308" },
+  { score: 3, label: "Risky", color: "#eab308" },
+  { score: 2, label: "Not Recommended", color: "#ef4444" },
+  { score: 1, label: "Avoid", color: "#ef4444" }
 ];
+
+const METRIC_WEIGHTS = {
+  profit: 0.20,
+  margin: 0.20,
+  roi: 0.15,
+  totalRatings: 0.125,
+  ratingsLast30Days: 0.125,
+  numSellers: 0.10,
+  numWfsSellers: 0.10
+};
+
+const UNUSUAL_THRESHOLDS = {
+  profit: 5,
+  margin: 5,
+  roi: 5,
+  totalRatings: 20,
+  ratingsLast30Days: 10,
+  numSellers: 4,
+  numWfsSellers: 4
+};
 
 // Main categories for the gauge
 const MAIN_CATEGORIES = [
@@ -58,34 +76,153 @@ const describeArc = (x: number, y: number, radius: number, startAngle: number, e
   ].join(" ");
 };
 
+const DEFAULT_PRODUCT_DATA: ProductMetrics = {
+  profit: 0,
+  margin: 0,
+  roi: 0,
+  totalRatings: 0,
+  ratingsLast30Days: 0,
+  numSellers: 0,
+  numWfsSellers: 0
+};
+
+const DEFAULT_SETTINGS: GaugeSettings = {
+  minProfit: undefined,
+  minMargin: undefined,
+  minROI: undefined,
+  minTotalRatings: undefined,
+  minRatings30Days: undefined,
+  maxSellers: undefined,
+  maxWfsSellers: undefined
+};
+
+////////////////////////////////////////////////
+// Utility Functions:
+////////////////////////////////////////////////
+const calculateMetricScore = (
+  value: number,
+  baseline: number | undefined,
+  isInversed: boolean = false
+): MetricScore => {
+  if (!baseline) {
+    return {
+      value,
+      baseline,
+      score: 0,
+      status: 'yellow',
+      warning: {
+        type: 'unedited',
+        message: 'Baseline value not set in settings'
+      }
+    };
+  }
+
+  const ratio = value / baseline;
+  const normalizedRatio = isInversed ? (ratio > 1 ? 1/ratio : ratio) : ratio;
+  
+  // Calculate score (0-1 range)
+  let score = Math.min(normalizedRatio, 2) / 2; // Cap at 2x baseline for max score
+  
+  // Determine status
+  let status: 'red' | 'yellow' | 'green';
+  if (isInversed) {
+    status = ratio > 1.1 ? 'red' : ratio < 0.9 ? 'green' : 'yellow';
+  } else {
+    status = ratio < 0.9 ? 'red' : ratio > 1.1 ? 'green' : 'yellow';
+  }
+
+  // Check for unusual values
+  const metricKey = Object.keys(UNUSUAL_THRESHOLDS).find(
+    key => UNUSUAL_THRESHOLDS[key as keyof typeof UNUSUAL_THRESHOLDS] === baseline
+  ) as keyof typeof UNUSUAL_THRESHOLDS;
+
+  const warning = ratio >= UNUSUAL_THRESHOLDS[metricKey] ? {
+    type: 'unusual' as const,
+    message: `Value is ${ratio.toFixed(1)}x higher than baseline`
+  } : undefined;
+
+  return {
+    value,
+    baseline,
+    score,
+    status,
+    warning
+  };
+};
+
+const calculateBuyScore = (
+  productData: ProductMetrics,
+  settings: GaugeSettings
+): { score: number; metrics: Record<string, MetricScore> } => {
+  // Calculate individual metric scores
+  const metrics = {
+    profit: calculateMetricScore(productData.profit, settings.minProfit),
+    margin: calculateMetricScore(productData.margin, settings.minMargin),
+    roi: calculateMetricScore(productData.roi, settings.minROI),
+    totalRatings: calculateMetricScore(productData.totalRatings, settings.minTotalRatings),
+    ratingsLast30Days: calculateMetricScore(productData.ratingsLast30Days, settings.minRatings30Days),
+    numSellers: calculateMetricScore(productData.numSellers, settings.maxSellers, true),
+    numWfsSellers: calculateMetricScore(productData.numWfsSellers, settings.maxWfsSellers, true)
+  };
+
+  // Calculate available weights
+  let totalWeight = 0;
+  let availableMetrics = 0;
+  
+  Object.entries(metrics).forEach(([key, metric]) => {
+    if (metric.baseline !== undefined) {
+      totalWeight += METRIC_WEIGHTS[key as keyof typeof METRIC_WEIGHTS];
+      availableMetrics++;
+    }
+  });
+
+  // Calculate final score (1-10 scale)
+  let weightedScore = 0;
+  Object.entries(metrics).forEach(([key, metric]) => {
+    if (metric.baseline !== undefined) {
+      const adjustedWeight = METRIC_WEIGHTS[key as keyof typeof METRIC_WEIGHTS] / totalWeight;
+      weightedScore += metric.score * adjustedWeight;
+    }
+  });
+
+  // Convert to 1-10 scale
+  const finalScore = Math.max(1, Math.min(10, Math.round(weightedScore * 10)));
+
+  return {
+    score: finalScore,
+    metrics: metrics
+  };
+};
+
 ////////////////////////////////////////////////
 // Component:
 ////////////////////////////////////////////////
-export const BuyGauge: React.FC<BuyGaugeProps> = ({ areSectionsOpen }) => {
+export const BuyGauge: React.FC<BuyGaugeProps> = ({ 
+  areSectionsOpen, 
+  productData = DEFAULT_PRODUCT_DATA, 
+  settings = DEFAULT_SETTINGS 
+}) => {
   const [isOpen, setIsOpen] = useState(areSectionsOpen);
-  const [currentScore, setCurrentScore] = useState(50);
 
   useEffect(() => {
     setIsOpen(areSectionsOpen);
   }, [areSectionsOpen]);
 
-  const getCurrentLevel = (score: number): GaugeLevel => {
-    return GAUGE_LEVELS.find(level => score >= level.min && score <= level.max) || GAUGE_LEVELS[1];
-  };
-
+  // Calculate the actual buy score
+  const { score, metrics } = calculateBuyScore(productData, settings);
+   
+  // Calculate rotation (1-10 scale to 0-180 degrees)
   const calculateRotation = (score: number) => {
-    return (score * 1.8) - 90;
+    return ((score - 1) * 20) - 90; // Maps 1-10 to 0-180 degrees
   };
 
-  const currentLevel = getCurrentLevel(currentScore);
-  const rotation = calculateRotation(currentScore);
+  const rotation = calculateRotation(score);
+  const currentLevel = GAUGE_LEVELS.find(level => level.score === Math.round(score)) || GAUGE_LEVELS[0];
 
   return (
     <div
       id="Buy Gauge"
-      className={`items-center justify-start bg-[#1a1a1a] m-2 rounded-lg shadow-2xl ${
-        isOpen ? "h-auto opacity-100" : "h-12"
-      }`}
+      className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}
     >
       <h1
         className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-t-lg shadow-xl"
@@ -94,19 +231,18 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({ areSectionsOpen }) => {
         {isOpen ? "🔽  Buy Gauge" : "▶️  Buy Gauge"}
       </h1>
 
-      <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>
-        <div className="w-full p-6 flex flex-col items-center">
-          {/* SVG Gauge */}
-          <div className="relative w-80 h-48">
+      <div className={`flex flex-col items-center ${isOpen ? "block" : "hidden"}`}>
+        {/* Dark container for gauge and label */}
+        <div className="bg-[#3a3f47] rounded-lg p-2 my-4 w-[60%] mx-auto">
+          {/* Gauge Section */}
+          <div className="w-[100px] h-[60px] relative mb-2 mx-auto">
             <svg viewBox="0 0 200 120" className="w-full h-full">
               <defs>
-                {/* Metallic gradient for the outer ring */}
                 <linearGradient id="metallic" x1="0%" y1="0%" x2="0%" y2="100%">
                   <stop offset="0%" style={{ stopColor: '#666666' }} />
                   <stop offset="50%" style={{ stopColor: '#999999' }} />
                   <stop offset="100%" style={{ stopColor: '#666666' }} />
                 </linearGradient>
-      
               </defs>
 
               {/* Outer metallic ring */}
@@ -118,11 +254,9 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({ areSectionsOpen }) => {
                 strokeLinecap="round"
               />
 
- 
-
               {/* Tick Marks */}
-              {[0, 20, 40, 60, 80, 100].map((value) => {
-                const angle = value * 1.8;
+              {[1, 3, 5, 7, 9].map((value) => {
+                const angle = (value - 1) * 20;
                 const point1 = polarToCartesian(100, 100, 70, angle);
                 const point2 = polarToCartesian(100, 100, 60, angle);
                 const labelPoint = polarToCartesian(100, 100, 45, angle);
@@ -142,7 +276,7 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({ areSectionsOpen }) => {
                       y={labelPoint.y}
                       textAnchor="middle"
                       fill="#999999"
-                      fontSize="11"
+                      fontSize="8"
                       fontWeight="bold"
                       dominantBaseline="middle"
                     >
@@ -154,74 +288,41 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({ areSectionsOpen }) => {
 
               {/* Needle */}
               <g transform={`rotate(${rotation}, 100, 100)`}>
-                {/* Needle shadow */}
-                <line
-                  x1="100"
-                  y1="100"
-                  x2="100"
-                  y2="35"
-                  stroke="rgba(0,0,0,0.3)"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                  transform="translate(1, 1)"
-                />
-                {/* Needle */}
                 <line
                   x1="100"
                   y1="100"
                   x2="100"
                   y2="35"
                   stroke="#ffffff"
-                  strokeWidth="3"
+                  strokeWidth="2"
                   strokeLinecap="round"
                 />
-                {/* Center circle with metallic effect */}
                 <circle
                   cx="100"
                   cy="100"
-                  r="8"
+                  r="6"
                   fill="url(#metallic)"
                   stroke="#ffffff"
-                  strokeWidth="2"
-                  filter="drop-shadow(0 2px 3px rgb(0 0 0 / 0.4))"
+                  strokeWidth="1"
                 />
               </g>
             </svg>
           </div>
 
           {/* Score Display */}
-          <div className="text-center mt-4 space-y-1">
-            <div className="text-xl font-bold" style={{ color: currentLevel.color }}>
+          <div className="text-center">
+            <div className="text-lg font-bold mb-1" style={{ color: currentLevel.color }}>
               {currentLevel.label}
             </div>
-            <div className="text-base font-semibold text-gray-300">
-              Score: {currentScore}/100
+            <div className="text-sm text-gray-300">
+              Score: {score}/10
             </div>
           </div>
+        </div>
 
-          {/* Temporary Score Controls */}
-          <div className="flex items-center gap-4 mt-4">
-            <button
-              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded-full shadow transition-colors"
-              onClick={() => setCurrentScore(Math.max(0, currentScore - 5))}
-            >
-              -
-            </button>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              value={currentScore}
-              onChange={(e) => setCurrentScore(Number(e.target.value))}
-              className="w-40 h-2"
-            />
-            <button
-              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded-full shadow transition-colors"
-              onClick={() => setCurrentScore(Math.min(100, currentScore + 5))}
-            >
-              +
-            </button>
-          </div>
+        {/* Metrics Breakdown */}
+        <div className="w-[90%] mx-auto">
+          <MetricsBreakdown metrics={metrics as unknown as MetricScores} />
         </div>
       </div>
     </div>

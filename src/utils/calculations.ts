@@ -11,7 +11,6 @@ const DEBUG = false;
 // Helper function for debug logging
 const debugLog = (message: string, data?: any) => {
     if (!DEBUG) return;
-    console.log(`[Debug] ${message}`, data);
 };
 
 ////////////////////////////////////////////////

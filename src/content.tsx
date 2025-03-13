@@ -54,6 +54,15 @@ const ContentUI = () => {
   const [productDetails, setProductDetails] = useState(null);
   const [areSectionsOpen, setAreSectionsOpen] = useState(true);
   const [currentUrl, setCurrentUrl] = useState(window.location.href);
+  const [metrics, setMetrics] = useState({
+    profit: 0,
+    margin: 0,
+    roi: 0,
+    totalRatings: 0,
+    ratingsLast30Days: 0,
+    numSellers: 0,
+    numWfsSellers: 0
+  });
 
   // URL monitoring
   useEffect(() => {
@@ -92,7 +101,6 @@ const ContentUI = () => {
     try {
       chrome.runtime.onMessage.addListener(handleMessage);
     } catch (error) {
-      console.log('Extension context invalidated, reloading...');
       // Attempt to gracefully handle the error
       if (chrome.runtime && chrome.runtime.reload) {
         chrome.runtime.reload();
@@ -105,7 +113,6 @@ const ContentUI = () => {
       try {
         chrome.runtime.onMessage.removeListener(handleMessage);
       } catch (error) {
-        console.log('Error removing message listener:', error);
       }
       document.body.classList.remove("plasmo-google-sidebar-show");
     };
@@ -177,8 +184,24 @@ const ContentUI = () => {
           </button>
         </div>
 
-        <BuyGauge areSectionsOpen={areSectionsOpen} />
-        <Pricing product={productDetails} areSectionsOpen={areSectionsOpen} />
+        <BuyGauge 
+          areSectionsOpen={areSectionsOpen} 
+          productData={metrics}
+          settings={{
+            minProfit: productDetails?.settings?.minProfit,
+            minMargin: productDetails?.settings?.minMargin,
+            minROI: productDetails?.settings?.minROI,
+            minTotalRatings: productDetails?.settings?.minTotalRatings,
+            minRatings30Days: productDetails?.settings?.minRatings30Days,
+            maxSellers: productDetails?.settings?.maxSellers,
+            maxWfsSellers: productDetails?.settings?.maxWfsSellers
+          }}
+        />
+        <Pricing 
+          product={productDetails} 
+          areSectionsOpen={areSectionsOpen}
+          onMetricsUpdate={setMetrics}
+        />
         <ProductInfo product={productDetails} areSectionsOpen={areSectionsOpen} />
         <Analysis product={productDetails} areSectionsOpen={areSectionsOpen} />
         <Variations

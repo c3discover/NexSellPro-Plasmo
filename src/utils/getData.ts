@@ -65,8 +65,21 @@ const getProductSpecification = (idml, name) => {
 // Main Function:
 ////////////////////////////////////////////////
 
+import { secureStorage } from './secureStorage';
+import {
+  calculateTotalProfit,
+  calculateROI,
+  calculateMargin,
+  calculateStartingProductCost,
+  calculateReferralFee,
+  calculateWFSFee
+} from '../utils/calculations';
+
 // Function to extract and centralize product details, specifications, and reviews from given data
 export function getProductDetails(product, idml, reviews) {
+  // Load settings from localStorage
+  const settings = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+  
   const productDetailsUsed = {
     //Categories below
     badges: [] as string[],
@@ -105,6 +118,26 @@ export function getProductDetails(product, idml, reviews) {
     numberOfRatings: reviews?.totalReviewCount || "0",
     numberOfReviews: reviews?.reviewsWithTextCount || "0",
     customerReviews: reviews?.customerReviews || [],
+
+    // Add settings
+    settings: {
+      minProfit: parseFloat(settings.minProfit) || undefined,
+      minMargin: parseFloat(settings.minMargin) || undefined,
+      minROI: parseFloat(settings.minROI) || undefined,
+      minTotalRatings: parseFloat(settings.minTotalRatings) || undefined,
+      minRatings30Days: parseFloat(settings.minRatings30Days) || undefined,
+      maxSellers: parseFloat(settings.maxSellers) || undefined,
+      maxWfsSellers: parseFloat(settings.maxWfsSellers) || undefined
+    },
+    
+    // Add calculated metrics
+    totalProfit: 0,
+    margin: 0,
+    roi: 0,
+    totalRatings: reviews?.totalReviewCount || 0,
+    ratingsLast30Days: 0, // We'll calculate this from reviewDates
+    numSellers: 0,
+    numWfsSellers: 0,
   };
 
   // Extract shipping information from product specifications.
@@ -128,24 +161,56 @@ export function getProductDetails(product, idml, reviews) {
     productDetailsUsed.shippingHeight = specShippingInfo[2]?.split(" ")[1]?.trim() || "0";
   }
 
-  // Extract and log weight information
-  const weightSpec = idml?.specifications?.find(
-    (spec) => spec.name === "Assembled Product Weight"
-  );
-  console.log('Raw Weight Spec:', weightSpec);
-  
-  // Extract weight, defaulting to "0"
-  productDetailsUsed.weight = weightSpec?.value?.split(" ")[0] || "0";
-  console.log('Extracted Weight:', productDetailsUsed.weight);
+  // Extract weight with detailed logging
+  console.log('[getData] Raw data structure:', {
+    idml: idml,
+    productHighlights: idml?.productHighlights,
+    specifications: idml?.specifications,
+    allHighlights: idml?.productHighlights?.map((h, i) => ({ index: i, name: h.name, value: h.value }))
+  });
 
-  // Store the scraped values in localStorage
-  localStorage.setItem('scrapedValues', JSON.stringify({
-    length: productDetailsUsed.shippingLength,
-    width: productDetailsUsed.shippingWidth,
-    height: productDetailsUsed.shippingHeight,
-    weight: productDetailsUsed.weight,
-    timestamp: new Date().getTime()
-  }));
+  // Try multiple sources for weight
+  let extractedWeight = "0";
+  
+  // First try: Check product highlights for weight
+  const weightHighlight = idml?.productHighlights?.find(
+    highlight => highlight.name?.toLowerCase().includes('weight') || 
+                 highlight.value?.toLowerCase().includes('pound') ||
+                 highlight.value?.toLowerCase().includes('lb')
+  );
+
+  // Second try: Check specifications for weight
+  const weightSpec = idml?.specifications?.find(
+    spec => spec.name?.toLowerCase().includes('weight')
+  );
+
+  // Process found weight value
+  const rawWeightValue = weightHighlight?.value || weightSpec?.value;
+
+  if (rawWeightValue) {
+    // Try different regex patterns to extract the weight
+    const patterns = [
+      /(\d*\.?\d+)\s*(?:pound|lb|lbs)/i,  // matches "0.66 pounds" or "0.66 lbs"
+      /(\d*\.?\d+)\s*(?:oz|ounce|ounces)/i,  // matches ounces
+      /(\d*\.?\d+)/  // matches any number as last resort
+    ];
+
+    for (const pattern of patterns) {
+      const match = rawWeightValue.match(pattern);
+      if (match) {
+        extractedWeight = match[1];
+        // Convert ounces to pounds if needed
+        if (rawWeightValue.toLowerCase().includes('oz') || 
+            rawWeightValue.toLowerCase().includes('ounce')) {
+          extractedWeight = (parseFloat(extractedWeight) / 16).toFixed(2);
+        }
+        break;
+      }
+    }
+  }
+
+  // Set the weight in productDetailsUsed
+  productDetailsUsed.weight = extractedWeight;
 
   // Extract the last category in the path as the main category.
   productDetailsUsed.categories = product.category.path.map((category) => ({
@@ -178,6 +243,39 @@ export function getProductDetails(product, idml, reviews) {
   productDetailsUsed.badges =
     product.badges?.flags?.map((badge) => badge.text) || ["No Badges Available"];
 
+  // Calculate profit, margin, and ROI
+  const salePrice = product?.priceInfo?.currentPrice?.price || 0;
+  const productCost = calculateStartingProductCost(salePrice);
+  const referralFee = calculateReferralFee(salePrice, "Everything Else (Most Items)");
+  const wfsFee = calculateWFSFee({
+    weight: product?.shippingWeight || 0,
+    length: product?.dimensions?.length || 0,
+    width: product?.dimensions?.width || 0,
+    height: product?.dimensions?.height || 0,
+    isWalmartFulfilled: true,
+    isApparel: false,
+    isHazardousMaterial: false,
+    retailPrice: salePrice
+  });
+  const inboundShippingFee = 0; // This will be calculated later
+  const storageFee = 0; // This will be calculated later
+  const prepFee = 0; // This will be calculated later
+  const additionalFees = 0; // This will be calculated later
+
+  productDetailsUsed.totalProfit = calculateTotalProfit(
+    salePrice,
+    productCost,
+    referralFee,
+    wfsFee,
+    inboundShippingFee,
+    storageFee,
+    prepFee,
+    additionalFees
+  );
+
+  productDetailsUsed.margin = parseFloat(calculateMargin(productDetailsUsed.totalProfit, salePrice));
+  productDetailsUsed.roi = parseFloat(calculateROI(productDetailsUsed.totalProfit, productCost));
+
   // Logging the data used for transparency and debugging.
 
   return productDetailsUsed;
@@ -206,7 +304,6 @@ function getDataWithRetry(retryCount: number): any {
         const dataDiv = document.getElementById("__NEXT_DATA__");
         if (!dataDiv) {
             if (retryCount < MAX_RETRIES) {
-                console.log(`Data div not found, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
                 setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
                 return null;
             } else {
@@ -219,7 +316,6 @@ function getDataWithRetry(retryCount: number): any {
             const rawData = JSON.parse(dataDiv.innerText);
             if (!rawData?.props?.pageProps?.initialData?.data) {
                 if (retryCount < MAX_RETRIES) {
-                    console.log(`Incomplete data structure, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
                     setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
                     return null;
                 } else {
@@ -233,7 +329,6 @@ function getDataWithRetry(retryCount: number): any {
             // Check if we have valid product data
             if (!product) {
                 if (retryCount < MAX_RETRIES) {
-                    console.log(`No product data found, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
                     setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
                     return null;
                 } else {
@@ -255,7 +350,6 @@ function getDataWithRetry(retryCount: number): any {
         } catch (parseError) {
             console.error('Error parsing data:', parseError);
             if (retryCount < MAX_RETRIES) {
-                console.log(`Error parsing data, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
                 setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
                 return null;
             } else {
@@ -266,7 +360,6 @@ function getDataWithRetry(retryCount: number): any {
     } catch (error) {
         console.error('Error in getData:', error);
         if (retryCount < MAX_RETRIES) {
-            console.log(`Error in getData, retrying (${retryCount + 1}/${MAX_RETRIES})...`);
             setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
             return null;
         } else {

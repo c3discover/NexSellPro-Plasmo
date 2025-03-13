@@ -10,7 +10,6 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // Listen for messages from other parts of the extension (e.g., content scripts).
 chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
-  console.log("Background script received a message:", message);
   sendResponse({ status: "received" });
 });
 
@@ -40,7 +39,6 @@ chrome.webRequest.onCompleted.addListener(
       fetch(details.url)
         .then((response) => response.json())
         .then((data) => {
-          console.log("All Offers Data:", data);
           // Send the data to the content script
           chrome.tabs.sendMessage(details.tabId!, { type: "ALL_OFFERS_DATA", data });
         })
