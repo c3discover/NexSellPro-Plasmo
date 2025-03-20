@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Utility for extracting and processing seller data from Walmart product pages
+ * @author Your Name
+ * @created 2024-03-20
+ * @lastModified 2024-03-20
+ */
+
 ////////////////////////////////////////////////
 // Imports:
 ////////////////////////////////////////////////
@@ -5,14 +12,31 @@ import type { SellerInfo } from "~/types/seller";
 import { getProductDetails } from './getData';
 
 ////////////////////////////////////////////////
-// Constants and Variables:
+// Constants:
 ////////////////////////////////////////////////
 const DEBUG = true;
 const GRAPHQL_ENDPOINT = 'https://www.walmart.com/orchestra/home/graphql/GetAllSellerOffers/ceb1a19937155516286824bfb2b9cc9331cc89e6d4bea5756776737724d5b3cf';
-const GRAPHQL_CACHE_DURATION = 30000; // 30 seconds cache
-const OBSERVER_DEBOUNCE_DELAY = 1000; // 1 second debounce
-const COMPARE_BUTTON_COOLDOWN = 5000; // 5 seconds cooldown between clicks
+const GRAPHQL_CACHE_DURATION = 30000;  // 30 seconds cache
+const OBSERVER_DEBOUNCE_DELAY = 1000;  // 1 second debounce
+const COMPARE_BUTTON_COOLDOWN = 5000;  // 5 seconds cooldown between clicks
 
+////////////////////////////////////////////////
+// Types and Interfaces:
+////////////////////////////////////////////////
+/**
+ * Raw seller data extracted from DOM elements
+ */
+interface RawSellerData {
+    name: string | null;           // Seller name
+    price: string | null;          // Product price
+    deliveryInfo: string | null;   // Delivery information
+    isWFS: boolean;               // Whether seller uses Walmart Fulfillment Services
+    isProSeller: boolean;         // Whether seller is a Pro Seller
+}
+
+////////////////////////////////////////////////
+// Variables:
+////////////////////////////////////////////////
 // Cache for GraphQL responses
 let graphQLCache: {
     data: SellerInfo[];
@@ -23,7 +47,12 @@ let graphQLCache: {
 let lastCompareButtonClick = 0;
 let isCompareButtonDebouncing = false;
 
-// Selector constants for DOM operations
+////////////////////////////////////////////////
+// DOM Selectors:
+////////////////////////////////////////////////
+/**
+ * Collection of DOM selectors for extracting seller information
+ */
 const SELLER_SELECTORS = {
     MORE_SELLERS_WRAPPER: [
         // Multiple sellers view
@@ -92,27 +121,28 @@ const SELLER_SELECTORS = {
         "button[data-automation-id='compare-sellers']",
         "a[href*='seller-all']"
     ]
-}
-
-////////////////////////////////////////////////
-// Types and Interfaces:
-////////////////////////////////////////////////
-// Using imported SellerInfo type
-interface RawSellerData {
-    name: string | null;
-    price: string | null;
-    deliveryInfo: string | null;
-    isWFS: boolean;
-    isProSeller: boolean;
-}
+};
 
 ////////////////////////////////////////////////
 // Helper Functions:
 ////////////////////////////////////////////////
+
+/**
+ * Log debug information if DEBUG is enabled
+ * @param message - Debug message to log
+ * @param data - Optional data to log with the message
+ */
 const logDebug = (message: string, data?: any) => {
     if (!DEBUG) return;
-  };
+    console.log(`[SellerData Debug] ${message}`, data || '');
+};
 
+/**
+ * Wait for an element to appear in the DOM
+ * @param selectors - CSS selector(s) to look for
+ * @param maxAttempts - Maximum number of attempts to find the element
+ * @returns Promise resolving to the found element or null
+ */
 const waitForElement = async (selectors: string | string[], maxAttempts = 5): Promise<Element | null> => {
     const selectorArray = Array.isArray(selectors) ? selectors : [selectors];
 
@@ -128,6 +158,12 @@ const waitForElement = async (selectors: string | string[], maxAttempts = 5): Pr
     return null;
 };
 
+/**
+ * Query an element using multiple selectors
+ * @param container - Container element to search within
+ * @param selectors - CSS selector(s) to use
+ * @returns The first matching element or null
+ */
 const queryElement = (container: Element, selectors: string | string[]): Element | null => {
     const selectorArray = Array.isArray(selectors) ? selectors : [selectors];
 
@@ -139,12 +175,22 @@ const queryElement = (container: Element, selectors: string | string[]): Element
     return null;
 };
 
+/**
+ * Format a price string with proper currency symbol
+ * @param price - Raw price string to format
+ * @returns Formatted price string or 'N/A' if invalid
+ */
 const formatPrice = (price: string | null): string => {
     if (!price) return 'N/A';
     const cleanPrice = price.replace(/[^\d.]/g, '');
     return cleanPrice ? `$${cleanPrice}` : 'N/A';
 };
 
+/**
+ * Extract delivery information from a container element
+ * @param container - Container element to search within
+ * @returns Formatted delivery information or 'N/A' if not found
+ */
 const extractDeliveryInfo = (container: Element): string => {
     const deliveryOptions = container.querySelectorAll(SELLER_SELECTORS.DELIVERY_OPTIONS.join(','));
     if (!deliveryOptions.length) return 'N/A';
@@ -162,6 +208,11 @@ const extractDeliveryInfo = (container: Element): string => {
     return deliveryOptions[0].textContent?.trim() || 'N/A';
 };
 
+/**
+ * Extract seller information from a container element
+ * @param container - Container element to search within
+ * @returns Raw seller data object
+ */
 const extractSellerElements = (container: Element): RawSellerData => {
     logDebug('Extracting data from container:', container);
 
@@ -169,7 +220,7 @@ const extractSellerElements = (container: Element): RawSellerData => {
     const sellerInfoEl = queryElement(container, SELLER_SELECTORS.SELLER_INFO);
     logDebug('Found seller info element:', sellerInfoEl);
 
-    let sellerName = null;
+    let sellerName = 'Unknown Seller'; // Default value
     if (sellerInfoEl) {
         // Enhanced seller name extraction
         const possibleSellerSources = [
@@ -208,37 +259,28 @@ const extractSellerElements = (container: Element): RawSellerData => {
             priceEl.getAttribute('value');      // Finally try value attribute
         price = priceText;
     }
-    logDebug('Extracted price:', price);
 
     // Enhanced delivery info extraction
     const deliveryInfo = extractDeliveryInfo(container);
-    logDebug('Extracted delivery info:', deliveryInfo);
 
-    // Enhanced WFS detection
-    const isWFS = !!sellerInfoEl?.textContent?.toLowerCase().includes('fulfilled by walmart') ||
-        !!container.querySelector(SELLER_SELECTORS.WFS_INDICATOR.join(',')) ||
-        !!document.querySelector(SELLER_SELECTORS.WFS_INDICATOR.join(',')) ||
-        !!container.querySelector('[data-testid*="fulfillment"][data-testid*="walmart" i]');
-
-    // Enhanced Pro Seller detection
-    const isProSeller = !!container.querySelector(SELLER_SELECTORS.PRO_SELLER_BADGE.join(',')) ||
-        !!document.querySelector(SELLER_SELECTORS.PRO_SELLER_BADGE.join(',')) ||
-        !!container.querySelector('[data-testid*="pro-seller" i]');
-
-    logDebug('Seller status:', { isWFS, isProSeller });
-
-    const data = {
+    const data: RawSellerData = {
         name: sellerName,
         price: price,
         deliveryInfo: deliveryInfo,
-        isWFS,
-        isProSeller
+        isWFS: !!sellerInfoEl?.textContent?.toLowerCase().includes('fulfilled by walmart') ||
+               !!container.querySelector(SELLER_SELECTORS.WFS_INDICATOR.join(',')),
+        isProSeller: !!container.querySelector(SELLER_SELECTORS.PRO_SELLER_BADGE.join(','))
     };
 
     logDebug('Extracted seller data:', data);
     return data;
 };
 
+/**
+ * Validate and transform raw seller data into SellerInfo format
+ * @param raw - Raw seller data to validate and transform
+ * @returns Validated and transformed SellerInfo or null if invalid
+ */
 const validateAndTransformSellerData = (raw: RawSellerData): SellerInfo | null => {
     try {
         if (!raw.name) {
@@ -260,11 +302,23 @@ const validateAndTransformSellerData = (raw: RawSellerData): SellerInfo | null =
     }
 };
 
+/**
+ * Determine seller type based on name and flags
+ * @param sellerName - Name of the seller
+ * @param isWFS - Whether seller uses Walmart Fulfillment Services
+ * @param isProSeller - Whether seller is a Pro Seller
+ * @returns Seller type ('WMT', 'WFS', or 'SF')
+ */
 const determineSellerType = (sellerName: string, isWFS: boolean, isProSeller: boolean): SellerInfo['type'] => {
     if (sellerName.toLowerCase().includes('walmart.com')) return 'WMT';
     return isWFS ? 'WFS' : 'SF';
 };
 
+/**
+ * Determine seller type from offer data
+ * @param offer - Offer data from GraphQL response
+ * @returns Seller type ('WMT', 'WFS', or 'SF')
+ */
 const determineSellerTypeFromOffer = (offer: any): SellerInfo['type'] => {
     if (offer.sellerName === 'Walmart.com' || offer.sellerType === 'INTERNAL') {
         return 'WMT';
@@ -272,6 +326,11 @@ const determineSellerTypeFromOffer = (offer: any): SellerInfo['type'] => {
     return offer.wfsEnabled || offer.fulfillmentType === 'FC' ? 'WFS' : 'SF';
 };
 
+/**
+ * Format delivery date string
+ * @param dateString - Date string to format
+ * @returns Formatted date string or 'N/A' if invalid
+ */
 const formatDeliveryDate = (dateString: string | null): string => {
     if (!dateString) return 'N/A';
     try {
@@ -282,6 +341,14 @@ const formatDeliveryDate = (dateString: string | null): string => {
     }
 };
 
+////////////////////////////////////////////////
+// Main Functions:
+////////////////////////////////////////////////
+
+/**
+ * Extract all seller information from the page
+ * @returns Promise resolving to array of SellerInfo objects
+ */
 const extractAllSellers = async (): Promise<SellerInfo[]> => {
     try {
         // First, try to click the "Compare all sellers" button if it exists
@@ -361,6 +428,10 @@ const extractAllSellers = async (): Promise<SellerInfo[]> => {
     }
 };
 
+/**
+ * Extract single seller information from the main product page
+ * @returns Promise resolving to SellerInfo object or null if not found
+ */
 const extractSingleSellerData = async (): Promise<SellerInfo | null> => {
     try {
         // Try to find seller info in the main product page
@@ -375,7 +446,10 @@ const extractSingleSellerData = async (): Promise<SellerInfo | null> => {
     }
 };
 
-// Main function to get seller data, prioritizing GraphQL
+/**
+ * Main function to get seller data, prioritizing GraphQL
+ * @returns Promise resolving to array of SellerInfo objects
+ */
 export const extractSellerData = async (): Promise<SellerInfo[]> => {
     try {
         const dataDiv = document.getElementById("__NEXT_DATA__");
@@ -424,10 +498,11 @@ export const extractSellerData = async (): Promise<SellerInfo[]> => {
     }
 };
 
-// Export extractSellerData as getSellerData for backward compatibility
-export const getSellerData = extractSellerData;
-
-// Function to observe DOM changes and detect when seller data becomes available
+/**
+ * Function to observe DOM changes and detect when seller data becomes available
+ * @param callback - Function to call when seller data is available
+ * @returns Cleanup function to stop observing
+ */
 export const observeSellerData = (callback: (sellers: SellerInfo[]) => void): () => void => {
     let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
     let lastProcessedData: string | null = null;
@@ -472,6 +547,11 @@ export const observeSellerData = (callback: (sellers: SellerInfo[]) => void): ()
     };
 };
 
+/**
+ * Fetch seller data from Walmart's GraphQL endpoint
+ * @param itemId - Product ID to fetch seller data for
+ * @returns Promise resolving to array of SellerInfo objects
+ */
 export const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo[]> => {
     try {
         // Check cache first
@@ -537,6 +617,8 @@ export const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo
 };
 
 ////////////////////////////////////////////////
-// Export Statement:
+// Exports:
 ////////////////////////////////////////////////
+// Export extractSellerData as getSellerData for backward compatibility
+export const getSellerData = extractSellerData;
 export default extractSellerData; 
