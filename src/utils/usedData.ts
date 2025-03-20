@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Utility for processing and organizing product data used in the extension
+ * @author Your Name
+ * @created 2024-03-20
+ * @lastModified 2024-03-20
+ */
+
 ////////////////////////////////////////////////
 // Imports:
 ////////////////////////////////////////////////
@@ -6,65 +13,94 @@ import { getSellerData } from "./sellerData";
 import type { SellerInfo } from "~/types/seller";
 
 ////////////////////////////////////////////////
-// Types:
+// Types and Interfaces:
 ////////////////////////////////////////////////
 
-// Product Information Types
+/**
+ * Basic product information
+ */
 export interface ProductBasicInfo {
-  productID: string | null;
-  name: string | null;
-  upc: string | null;
-  brand: string | null;
-  brandUrl: string | null;
-  modelNumber: string | null;
+  productID: string | null;      // Unique product identifier
+  name: string | null;           // Product name
+  upc: string | null;           // Universal Product Code
+  brand: string | null;         // Product brand name
+  brandUrl: string | null;      // URL to brand page
+  modelNumber: string | null;   // Product model number
 }
 
+/**
+ * Product pricing information
+ */
 export interface ProductPricing {
-  currentPrice: number | null;
-  sellerName: string | null;
-  sellerDisplayName: string | null;
-  sellerType: string | null;
+  currentPrice: number | null;           // Current selling price
+  sellerName: string | null;             // Name of the seller
+  sellerDisplayName: string | null;      // Display name of the seller
+  sellerType: string | null;             // Type of seller (e.g., "Pro Seller")
 }
 
+/**
+ * Product physical dimensions
+ */
 export interface ProductDimensions {
-  shippingLength: string | null;
-  shippingWidth: string | null;
-  shippingHeight: string | null;
-  weight: string | null;
+  shippingLength: string | null;  // Product length for shipping
+  shippingWidth: string | null;   // Product width for shipping
+  shippingHeight: string | null;  // Product height for shipping
+  weight: string | null;          // Product weight
 }
 
+/**
+ * Product media content
+ */
 export interface ProductMedia {
-  imageUrl: string | null;
-  images: any[];
-  videos: any[];
+  imageUrl: string | null;  // Main product image URL
+  images: any[];           // Array of additional product images
+  videos: any[];           // Array of product videos
 }
 
+/**
+ * Product categorization
+ */
 export interface ProductCategories {
-  mainCategory: string | null;
-  categories: { name: string; url: string }[];
+  mainCategory: string | null;                    // Primary category
+  categories: { name: string; url: string }[];    // List of all categories
 }
 
+/**
+ * Product inventory information
+ */
 export interface ProductInventory {
-  stock: number;
-  totalSellers: number;
-  fulfillmentOptions: { type: string; availableQuantity: number }[];
+  stock: number;                                  // Current stock level
+  totalSellers: number;                          // Total number of sellers
+  fulfillmentOptions: {                          // Available fulfillment options
+    type: string;
+    availableQuantity: number;
+  }[];
 }
 
+/**
+ * Product review information
+ */
 export interface ProductReviews {
-  overallRating: string | number;
-  numberOfRatings: string | number;
-  numberOfReviews: string | number;
-  customerReviews: any[];
-  reviewDates: string[];
+  overallRating: string | number;     // Overall product rating
+  numberOfRatings: string | number;   // Total number of ratings
+  numberOfReviews: string | number;   // Total number of reviews
+  customerReviews: any[];            // Array of customer reviews
+  reviewDates: string[];            // Dates of reviews
 }
 
+/**
+ * Product variant information
+ */
 export interface ProductVariants {
-  variantCriteria: any[];
-  variantsMap: Record<string, any>;
+  variantCriteria: any[];           // Criteria for variants
+  variantsMap: Record<string, any>; // Map of variant options
 }
 
+/**
+ * Product seller information
+ */
 export interface ProductSellers {
-  mainSeller: {
+  mainSeller: {                      // Primary seller information
     sellerName: string;
     price: string | number;
     type: string;
@@ -75,37 +111,50 @@ export interface ProductSellers {
     fulfillmentStatus?: string;
     arrivalDate?: string;
   } | null;
-  otherSellers: SellerInfo[];
-  totalSellers: number;
+  otherSellers: SellerInfo[];       // List of other sellers
+  totalSellers: number;             // Total number of sellers
 }
 
-// Combined interface for all product data
+/**
+ * Complete product data structure used in the extension
+ */
 export interface UsedProductData {
-  basic: ProductBasicInfo;
-  pricing: ProductPricing;
-  dimensions: ProductDimensions;
-  media: ProductMedia;
-  categories: ProductCategories;
-  inventory: ProductInventory;
-  reviews: ProductReviews;
-  variants: ProductVariants;
-  badges: string[];
-  sellers: ProductSellers;
-  flags: {
+  basic: ProductBasicInfo;          // Basic product information
+  pricing: ProductPricing;          // Pricing information
+  dimensions: ProductDimensions;     // Physical dimensions
+  media: ProductMedia;              // Media content
+  categories: ProductCategories;     // Category information
+  inventory: ProductInventory;      // Inventory information
+  reviews: ProductReviews;          // Review information
+  variants: ProductVariants;        // Variant information
+  badges: string[];                // Product badges
+  sellers: ProductSellers;         // Seller information
+  flags: {                         // Product flags
     isApparel: boolean;
     isHazardousMaterial: boolean;
   };
 }
 
 ////////////////////////////////////////////////
+// Constants:
+////////////////////////////////////////////////
+const FETCH_COOLDOWN = 1000;  // 1 second cooldown between fetches
+
+////////////////////////////////////////////////
+// Variables:
+////////////////////////////////////////////////
+let dataFetchPromise: Promise<UsedProductData | null> | null = null;
+let lastFetchTimestamp = 0;
+
+////////////////////////////////////////////////
 // Main Function:
 ////////////////////////////////////////////////
 
-// Cache for data fetching
-let dataFetchPromise: Promise<UsedProductData | null> | null = null;
-let lastFetchTimestamp = 0;
-const FETCH_COOLDOWN = 1000; // 1 second cooldown
-
+/**
+ * Fetches and processes product data used in the extension
+ * Implements caching and rate limiting to prevent excessive API calls
+ * @returns Promise resolving to processed product data or null if unavailable
+ */
 export async function getUsedData(): Promise<UsedProductData | null> {
   try {
     // If there's an ongoing fetch, return its promise

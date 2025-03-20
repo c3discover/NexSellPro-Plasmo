@@ -1,13 +1,38 @@
+/**
+ * @fileoverview Secure wrapper around localStorage with error handling and sanitization
+ * @author Your Name
+ * @created 2024-03-20
+ * @lastModified 2024-03-20
+ */
+
+////////////////////////////////////////////////
+// Imports:
+////////////////////////////////////////////////
 import { logError, ErrorSeverity } from './errorHandling';
 
+////////////////////////////////////////////////
+// Types and Interfaces:
+////////////////////////////////////////////////
+// No additional types needed beyond the built-in ones
+
+////////////////////////////////////////////////
+// Constants:
+////////////////////////////////////////////////
+// No constants needed
+
+////////////////////////////////////////////////
+// Main Object:
+////////////////////////////////////////////////
+
 /**
- * A secure wrapper around localStorage with error handling and sanitization
+ * Secure wrapper around localStorage with error handling and sanitization
+ * Provides type-safe methods for interacting with localStorage
  */
 export const secureStorage = {
   /**
-   * Gets a value from localStorage
-   * @param key The key to get
-   * @param defaultValue The default value to return if the key doesn't exist
+   * Gets a value from localStorage with type safety
+   * @param key - The key to retrieve from localStorage
+   * @param defaultValue - The default value to return if the key doesn't exist
    * @returns The value from localStorage or the default value
    */
   get<T>(key: string, defaultValue: T): T {
@@ -29,9 +54,9 @@ export const secureStorage = {
   },
   
   /**
-   * Sets a value in localStorage
-   * @param key The key to set
-   * @param value The value to set
+   * Sets a value in localStorage with type safety
+   * @param key - The key to set in localStorage
+   * @param value - The value to store
    * @returns True if the value was set successfully, false otherwise
    */
   set<T>(key: string, value: T): boolean {
@@ -51,7 +76,7 @@ export const secureStorage = {
   
   /**
    * Removes a value from localStorage
-   * @param key The key to remove
+   * @param key - The key to remove from localStorage
    * @returns True if the value was removed successfully, false otherwise
    */
   remove(key: string): boolean {
@@ -71,7 +96,7 @@ export const secureStorage = {
   
   /**
    * Checks if a key exists in localStorage
-   * @param key The key to check
+   * @param key - The key to check in localStorage
    * @returns True if the key exists, false otherwise
    */
   has(key: string): boolean {

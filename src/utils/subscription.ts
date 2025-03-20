@@ -1,14 +1,36 @@
 /**
- * Subscription and Premium Features Management
+ * @fileoverview Subscription and Premium Features Management
+ * @author Your Name
+ * @created 2024-03-20
+ * @lastModified 2024-03-20
  */
 
+////////////////////////////////////////////////
+// Imports:
+////////////////////////////////////////////////
+// No external imports needed
+
+////////////////////////////////////////////////
+// Types and Interfaces:
+////////////////////////////////////////////////
+
+/**
+ * Interface defining a subscription tier's properties
+ */
 export interface SubscriptionTier {
-  name: string;
-  features: string[];
-  requestsPerMinute: number;
-  analysisDepth: 'basic' | 'advanced' | 'premium';
+  name: string;                    // Display name of the tier
+  features: string[];             // List of features available in this tier
+  requestsPerMinute: number;      // API rate limit for this tier
+  analysisDepth: 'basic' | 'advanced' | 'premium';  // Level of analysis available
 }
 
+////////////////////////////////////////////////
+// Constants:
+////////////////////////////////////////////////
+
+/**
+ * Available subscription tiers and their features
+ */
 export const SUBSCRIPTION_TIERS: Record<string, SubscriptionTier> = {
   free: {
     name: 'Free',
@@ -51,12 +73,23 @@ export const SUBSCRIPTION_TIERS: Record<string, SubscriptionTier> = {
   }
 };
 
+////////////////////////////////////////////////
+// Main Class:
+////////////////////////////////////////////////
+
+/**
+ * Singleton service for managing subscription features and tiers
+ */
 class SubscriptionService {
   private static instance: SubscriptionService;
   private currentTier: string = 'free';
 
   private constructor() {}
 
+  /**
+   * Get the singleton instance of SubscriptionService
+   * @returns The singleton instance
+   */
   static getInstance(): SubscriptionService {
     if (!SubscriptionService.instance) {
       SubscriptionService.instance = new SubscriptionService();
@@ -65,7 +98,8 @@ class SubscriptionService {
   }
 
   /**
-   * Get current subscription tier
+   * Get the current subscription tier details
+   * @returns Promise resolving to the current subscription tier
    */
   async getCurrentTier(): Promise<SubscriptionTier> {
     // Get subscription status from chrome.storage
@@ -75,7 +109,9 @@ class SubscriptionService {
   }
 
   /**
-   * Check if a feature is available in current tier
+   * Check if a specific feature is available in the current tier
+   * @param feature - The feature to check
+   * @returns Promise resolving to whether the feature is available
    */
   async canUseFeature(feature: string): Promise<boolean> {
     const currentTier = await this.getCurrentTier();
@@ -83,7 +119,8 @@ class SubscriptionService {
   }
 
   /**
-   * Get rate limit for current tier
+   * Get the rate limit for the current tier
+   * @returns Promise resolving to the rate limit (requests per minute)
    */
   async getRateLimit(): Promise<number> {
     const currentTier = await this.getCurrentTier();
@@ -91,7 +128,8 @@ class SubscriptionService {
   }
 
   /**
-   * Get analysis depth for current tier
+   * Get the analysis depth level for the current tier
+   * @returns Promise resolving to the analysis depth level
    */
   async getAnalysisDepth(): Promise<'basic' | 'advanced' | 'premium'> {
     const currentTier = await this.getCurrentTier();
@@ -99,7 +137,9 @@ class SubscriptionService {
   }
 
   /**
-   * Update subscription tier
+   * Update the user's subscription tier
+   * @param newTier - The new tier to set
+   * @throws Error if the tier is invalid
    */
   async updateTier(newTier: string): Promise<void> {
     if (!SUBSCRIPTION_TIERS[newTier]) {
@@ -110,7 +150,9 @@ class SubscriptionService {
   }
 
   /**
-   * Check if user needs to upgrade for a feature
+   * Check if the user needs to upgrade to use a specific feature
+   * @param feature - The feature to check
+   * @returns Promise resolving to whether an upgrade is needed
    */
   async checkUpgradeNeeded(feature: string): Promise<boolean> {
     const canUse = await this.canUseFeature(feature);
@@ -118,5 +160,8 @@ class SubscriptionService {
   }
 }
 
+////////////////////////////////////////////////
+// Exports:
+////////////////////////////////////////////////
 export const subscriptionService = SubscriptionService.getInstance();
 export default subscriptionService; 

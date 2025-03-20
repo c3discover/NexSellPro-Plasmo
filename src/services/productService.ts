@@ -1,13 +1,49 @@
+/**
+ * @fileoverview Service for handling product data extraction and processing
+ * @author Your Name
+ * @created 2024-03-20
+ * @lastModified 2024-03-20
+ */
+
+////////////////////////////////////////////////
+// Imports:
+////////////////////////////////////////////////
+// Import error handling utilities
 import { logError, ErrorSeverity, withErrorHandling } from '../utils/errorHandling';
+// Import type definitions
 import type { ProductDetails } from '../types/product';
+// Import performance optimization utilities
 import { throttle, memoize } from '../utils/memoization';
+// Import product type definition
 import { Product } from '../types';
 
+////////////////////////////////////////////////
+// Constants and Variables:
+////////////////////////////////////////////////
+// Cache expiration time (5 minutes)
+const CACHE_EXPIRATION = 5 * 60 * 1000;
 // Cache for the last data and timestamp
 let lastData: ProductDetails | null = null;
 let lastDataTimestamp = 0;
-const CACHE_EXPIRATION = 5 * 60 * 1000; // 5 minutes
 
+////////////////////////////////////////////////
+// Types and Interfaces:
+////////////////////////////////////////////////
+// No additional types needed as we're using imported types
+
+////////////////////////////////////////////////
+// Enums:
+////////////////////////////////////////////////
+// No enums needed
+
+////////////////////////////////////////////////
+// Configuration:
+////////////////////////////////////////////////
+// No additional configuration needed
+
+////////////////////////////////////////////////
+// Helper Functions:
+////////////////////////////////////////////////
 /**
  * Gets the data div from the page
  * @returns The data div element or null if not found
@@ -27,6 +63,9 @@ function getProductSpecification(idml: any, name: string): string | null {
   return idml.specifications.find((spec: any) => spec.name === name)?.value || null;
 }
 
+////////////////////////////////////////////////
+// Export Statement:
+////////////////////////////////////////////////
 /**
  * Extracts and processes product details from raw data
  * @param product The product data
@@ -37,14 +76,14 @@ function getProductSpecification(idml: any, name: string): string | null {
 export function processProductDetails(product: any, idml: any, reviews: any): ProductDetails {
   // Extract basic product information
   const productDetails: ProductDetails = {
-    productID: product?.usItemId || null,
-    name: product?.name || null,
-    upc: product?.upc || null,
-    brand: product?.brand || null,
-    brandUrl: product?.brandUrl || null,
-    imageUrl: product?.imageInfo?.thumbnailUrl || null,
-    mainCategory: product?.category?.path?.[0]?.name || null,
-    currentPrice: product?.priceInfo?.currentPrice?.price || null,
+    id: product?.usItemId || '',
+    name: product?.name || '',
+    upc: product?.upc || '',
+    brand: product?.brand || '',
+    brandUrl: product?.brandUrl || '',
+    imageUrl: product?.imageInfo?.thumbnailUrl || '',
+    mainCategory: product?.category?.path?.[0]?.name || '',
+    currentPrice: product?.priceInfo?.currentPrice?.price || 0,
     variantCriteria: product?.variantCriteria || [],
     variantsMap: product?.variantsMap || {},
     shippingLength: getProductSpecification(idml, "Shipping Length") || "0",
@@ -53,10 +92,16 @@ export function processProductDetails(product: any, idml: any, reviews: any): Pr
     weight: getProductSpecification(idml, "Shipping Weight") || "0",
     stock: 0,
     fulfillmentOptions: [],
-    modelNumber: product?.model || null,
+    modelNumber: product?.model || '',
     reviewDates: [],
     badges: [],
-    totalSellers: 0
+    totalSellers: 0,
+    price: product?.priceInfo?.currentPrice?.price || 0,
+    category: product?.category?.path?.[0]?.name || '',
+    rating: 0,
+    reviewCount: 0,
+    inStock: true,
+    specifications: {}
   };
 
   // Extract fulfillment options
@@ -130,7 +175,7 @@ export const getProductDetailsFromPage = withErrorHandling(
 );
 
 /**
- * Get product specifications
+ * Get product specifications with memoization
  */
 const getProductSpecifications = memoize(async (productId: string): Promise<Record<string, string>> => {
   const specDiv = document.querySelector(`[data-product-id="${productId}"] .specifications`);
@@ -147,12 +192,14 @@ const getProductSpecifications = memoize(async (productId: string): Promise<Reco
 
   return specs;
 }, {
-  maxCacheSize: 50,
-  cacheKeyFn: (productId) => productId
+  maxSize: 50,
+  keyFn: (args: any[]) => args[0]
 });
 
 /**
  * Get product data from the page
+ * @param productId The product ID
+ * @returns The product data
  */
 export const getProductData = async (productId: string): Promise<Product> => {
   const productDiv = document.querySelector(`[data-product-id="${productId}"]`);
@@ -177,9 +224,9 @@ const throttledGetProductDetails = throttle(getProductDetailsFromPage, 500);
  * Gets product data with caching
  */
 export const getProductDataWithCache = memoize(getProductData, {
-  maxCacheSize: 50,
-  cacheKeyFn: (productId) => productId,
-  ttl: 5 * 60 * 1000 // 5 minutes
+  maxSize: 50,
+  keyFn: (args: any[]) => args[0],
+  expiry: 5 * 60 * 1000 // 5 minutes
 });
 
 /**

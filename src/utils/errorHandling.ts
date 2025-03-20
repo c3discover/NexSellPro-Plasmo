@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Error handling and logging utilities
+ * @author Your Name
+ * @created 2024-03-20
+ * @lastModified 2024-03-20
+ */
+
 ////////////////////////////////////////////////
 // Imports:
 ////////////////////////////////////////////////
@@ -6,15 +13,20 @@
 ////////////////////////////////////////////////
 // Constants and Variables:
 ////////////////////////////////////////////////
-// Error severity levels
+
+/**
+ * Error severity levels for logging and handling
+ */
 export enum ErrorSeverity {
-  INFO = 'info',
-  WARNING = 'warning',
-  ERROR = 'error',
-  CRITICAL = 'critical'
+  INFO = 'info',      // Informational messages
+  WARNING = 'warning', // Warning messages
+  ERROR = 'error',    // Error messages
+  CRITICAL = 'critical' // Critical error messages
 }
 
-// Default error messages for common scenarios
+/**
+ * Default error messages for common scenarios
+ */
 const DEFAULT_ERROR_MESSAGES = {
   dataFetch: "Failed to fetch data. Please try again later.",
   parsing: "Failed to process data. Please try again later.",
@@ -22,19 +34,23 @@ const DEFAULT_ERROR_MESSAGES = {
   unknown: "An unexpected error occurred. Please try again later."
 };
 
-// Store a reference to the notification function
+// Store reference to notification function
 let notificationFunction: ((message: string, severity: ErrorSeverity, duration?: number) => void) | null = null;
 
 ////////////////////////////////////////////////
 // Types and Interfaces:
 ////////////////////////////////////////////////
+
+/**
+ * Interface for error details
+ */
 export interface ErrorDetails {
-  message: string;
-  severity: ErrorSeverity;
-  context?: Record<string, any>;
-  error?: Error;
-  timestamp?: Date;
-  component?: string;
+  message: string;                    // Error message
+  severity: ErrorSeverity;           // Error severity level
+  context?: Record<string, any>;     // Additional context data
+  error?: Error;                     // Original error object
+  timestamp?: Date;                  // When the error occurred
+  component?: string;                // Component where error occurred
 }
 
 ////////////////////////////////////////////////
@@ -42,9 +58,8 @@ export interface ErrorDetails {
 ////////////////////////////////////////////////
 
 /**
- * Sets the notification function to be used by showErrorNotification
- * This allows us to use the React notification component from non-React code
- * @param fn The notification function from the React context
+ * Set the notification function for error display
+ * @param fn - Function to display notifications
  */
 export const setNotificationFunction = (
   fn: (message: string, severity: ErrorSeverity, duration?: number) => void
@@ -53,19 +68,19 @@ export const setNotificationFunction = (
 };
 
 /**
- * Logs an error with additional context
- * @param details Error details including message, severity, and context
+ * Log an error with additional context
+ * @param details - Error details including message and severity
  */
 export const logError = (details: ErrorDetails): void => {
   const { message, severity, context, error, component } = details;
   const timestamp = details.timestamp || new Date();
   
-  // Format the error message
+  // Format error message with component name if available
   const formattedMessage = component 
     ? `[${component}] ${message}`
     : message;
   
-  // Log based on severity
+  // Log based on severity level
   switch (severity) {
     case ErrorSeverity.INFO:
       console.info(`[INFO] ${formattedMessage}`, { timestamp, context, error });
@@ -81,22 +96,22 @@ export const logError = (details: ErrorDetails): void => {
       console.error(`[ERROR] ${formattedMessage}`, { timestamp, context, error });
   }
   
-  // For critical errors, we might want to report them to a monitoring service
+  // Report critical errors to monitoring service
   if (severity === ErrorSeverity.CRITICAL) {
     reportCriticalError(details);
   }
   
-  // Show a notification for errors and critical errors
+  // Show notification for errors and critical errors
   if (severity === ErrorSeverity.ERROR || severity === ErrorSeverity.CRITICAL) {
     showErrorNotification(message, severity);
   }
 };
 
 /**
- * Gets a user-friendly error message based on the error type
- * @param error The error object
- * @param fallbackMessage A fallback message if no specific message is found
- * @returns A user-friendly error message
+ * Get user-friendly error message based on error type
+ * @param error - The error object
+ * @param fallbackMessage - Default message if no specific message found
+ * @returns User-friendly error message
  */
 export const getUserFriendlyErrorMessage = (
   error: Error | unknown,
@@ -116,9 +131,8 @@ export const getUserFriendlyErrorMessage = (
     return DEFAULT_ERROR_MESSAGES.parsing;
   }
   
-  // If it's an Error object with a message, use that
+  // Use error message if available
   if (error instanceof Error && error.message) {
-    // Clean up the message if needed
     return error.message;
   }
   
@@ -127,10 +141,10 @@ export const getUserFriendlyErrorMessage = (
 };
 
 /**
- * Wraps an async function with error handling
- * @param fn The async function to wrap
- * @param errorHandler A function to handle errors
- * @returns A wrapped function with error handling
+ * Wrap an async function with error handling
+ * @param fn - Async function to wrap
+ * @param errorHandler - Function to handle errors
+ * @returns Wrapped function with error handling
  */
 export const withErrorHandling = <T, Args extends any[]>(
   fn: (...args: Args) => Promise<T>,
@@ -146,16 +160,14 @@ export const withErrorHandling = <T, Args extends any[]>(
 };
 
 /**
- * Reports a critical error to a monitoring service
- * This is a placeholder function that should be implemented based on your monitoring solution
- * @param details Error details
+ * Report critical errors to monitoring service
+ * @param details - Error details
  */
 const reportCriticalError = (details: ErrorDetails): void => {
-  // This would typically send the error to a service like Sentry, LogRocket, etc.
-  // For now, we'll just log it
+  // Log critical error (placeholder for monitoring service integration)
   console.error('[REPORTING] Critical error:', details);
   
-  // In the future, you might implement something like:
+  // Example of future monitoring service integration:
   // Sentry.captureException(details.error, {
   //   extra: {
   //     context: details.context,
@@ -166,22 +178,27 @@ const reportCriticalError = (details: ErrorDetails): void => {
 };
 
 /**
- * Displays an error notification to the user
- * @param message The error message to display
- * @param severity The severity of the error
- * @param duration Optional duration in milliseconds
+ * Display error notification to user
+ * @param message - Error message to display
+ * @param severity - Error severity level
+ * @param duration - Optional display duration in milliseconds
  */
 export const showErrorNotification = (
   message: string,
   severity: ErrorSeverity = ErrorSeverity.ERROR,
   duration?: number
 ): void => {
-  // If we have a notification function, use it
+  // Use notification function if available
   if (notificationFunction) {
     notificationFunction(message, severity, duration);
     return;
   }
   
-  // Fallback to console logging if no notification function is set
+  // Fallback to console logging
   console.log(`[NOTIFICATION] ${severity.toUpperCase()}: ${message}`);
-}; 
+};
+
+////////////////////////////////////////////////
+// Export Statement:
+////////////////////////////////////////////////
+// All functions and types are exported above 

@@ -1,142 +1,166 @@
+/**
+ * @fileoverview Type definitions for product-related data
+ * @author Your Name
+ * @created 2024-03-20
+ * @lastModified 2024-03-20
+ */
+
 ////////////////////////////////////////////////
 // Imports:
 ////////////////////////////////////////////////
-// No imports needed
+// No imports needed as this is a type definition file
 
 ////////////////////////////////////////////////
-// Types:
+// Constants and Variables:
+////////////////////////////////////////////////
+// No constants needed
+
+////////////////////////////////////////////////
+// Types and Interfaces:
 ////////////////////////////////////////////////
 
 /**
- * Product dimensions and weight
+ * Represents physical dimensions and weight of a product
+ * Used for shipping and storage calculations
  */
 export interface ProductDimensions {
-  length: number;
-  width: number;
-  height: number;
-  weight: number;
+  length: number;  // Length in inches
+  width: number;   // Width in inches
+  height: number;  // Height in inches
+  weight: number;  // Weight in pounds
 }
 
 /**
- * Product pricing information
+ * Represents pricing information for a product
+ * Includes current price, list price, and price history
  */
 export interface ProductPricing {
-  currentPrice: number;
-  listPrice?: number;
-  priceHistory?: {
-    date: string;
-    price: number;
+  currentPrice: number;  // Current selling price
+  listPrice?: number;    // Original list price
+  priceHistory?: {       // Historical price data
+    date: string;        // Date of price change
+    price: number;       // Price at that date
   }[];
-  salePrice?: number;
-  savingsAmount?: number;
-  savingsPercent?: number;
+  salePrice?: number;    // Sale price if on discount
+  savingsAmount?: number;  // Amount saved from list price
+  savingsPercent?: number; // Percentage saved from list price
 }
 
 /**
- * Product review information
+ * Represents review information for a product
+ * Includes average rating and detailed review data
  */
 export interface ProductReviews {
-  averageRating: number;
-  numberOfReviews: number;
-  reviewsData?: {
-    text: string;
-    rating: number;
-    date: string;
-    reviewer: string;
-    title?: string;
+  averageRating: number;  // Average review rating (1-5)
+  numberOfReviews: number;  // Total number of reviews
+  reviewsData?: {          // Detailed review information
+    text: string;          // Review text
+    rating: number;        // Individual rating
+    date: string;          // Review date
+    reviewer: string;      // Reviewer name
+    title?: string;        // Optional review title
   }[];
 }
 
 /**
- * Product category and classification
+ * Represents category and classification information
+ * Used for product organization and filtering
  */
 export interface ProductCategory {
-  primaryCategory: string;
-  subCategory?: string;
-  contractCategory?: string;
-  department?: string;
+  primaryCategory: string;   // Main product category
+  subCategory?: string;      // Sub-category
+  contractCategory?: string; // Contract category for fees
+  department?: string;       // Department classification
 }
 
 /**
- * Product variation information
+ * Represents a single product variation
+ * Used for products with multiple options (size, color, etc.)
  */
 export interface ProductVariation {
-  id: string;
-  name: string;
-  value: string;
-  selected: boolean;
-  url?: string;
-  image?: string;
-  price?: number;
-  inStock?: boolean;
+  id: string;        // Unique variation ID
+  name: string;      // Variation name
+  value: string;     // Variation value
+  selected: boolean; // Whether this variation is selected
+  url?: string;      // URL for this variation
+  image?: string;    // Image URL for this variation
+  price?: number;    // Price for this variation
+  inStock?: boolean; // Stock status
 }
 
 /**
- * Product variation map
+ * Represents a map of product variations
+ * Organizes variations by their type (size, color, etc.)
  */
 export interface ProductVariationsMap {
-  [key: string]: {
-    name: string;
-    values: ProductVariation[];
+  [key: string]: {           // Key is the variation type
+    name: string;            // Name of the variation type
+    values: ProductVariation[]; // Available values for this type
   };
 }
 
 /**
- * Product flags for special handling
+ * Represents special handling flags for a product
+ * Used for shipping and storage requirements
  */
 export interface ProductFlags {
-  isApparel: boolean;
-  isHazardousMaterial: boolean;
-  isFragile: boolean;
-  isOversized: boolean;
-  isWalmartFulfilled: boolean;
-  isInStock: boolean;
-  isBestSeller?: boolean;
+  isApparel: boolean;           // Whether the product is clothing
+  isHazardousMaterial: boolean; // Whether it's hazardous material
+  isFragile: boolean;          // Whether it needs special handling
+  isOversized: boolean;        // Whether it's oversized
+  isWalmartFulfilled: boolean; // Whether fulfilled by Walmart
+  isInStock: boolean;          // Current stock status
+  isBestSeller?: boolean;      // Whether it's a best seller
 }
 
 /**
- * Product specifications
+ * Represents product specifications
+ * Key-value pairs of product details
  */
 export interface ProductSpecifications {
-  [key: string]: string | number | boolean;
+  [key: string]: string | number | boolean;  // Flexible specification values
 }
 
 /**
- * Complete product details
+ * Complete product details interface
+ * Combines all product-related information
  */
 export interface ProductDetails {
   // Basic information
-  id: string;
-  name: string;
-  brand: string;
-  upc?: string;
-  brandUrl?: string;
-  modelNumber?: string;
+  id: string;           // Unique product ID
+  name: string;         // Product name
+  brand: string;        // Brand name
+  upc?: string;         // Universal Product Code
+  brandUrl?: string;    // Brand website URL
+  modelNumber?: string; // Product model number
 
-  // Pricing
-  price: number;
-  currentPrice?: number;
-  listPrice?: number;
-  salePrice?: number;
-  savingsAmount?: number;
-  savingsPercent?: number;
-  priceHistory?: {
+  // Pricing information
+  price: number;        // Current price
+  currentPrice?: number; // Alternative price field
+  listPrice?: number;   // Original list price
+  salePrice?: number;   // Sale price
+  savingsAmount?: number; // Amount saved
+  savingsPercent?: number; // Percentage saved
+  priceHistory?: {      // Price history
     date: string;
     price: number;
   }[];
 
-  // Categories
-  category: string;
-  mainCategory?: string;
-  categories?: { name: string; url: string }[];
-  contractCategory?: string;
-  department?: string;
+  // Category information
+  category: string;     // Primary category
+  mainCategory?: string; // Main category
+  categories?: {        // Category hierarchy
+    name: string;
+    url: string;
+  }[];
+  contractCategory?: string; // Contract category
+  department?: string;      // Department
 
-  // Reviews
-  rating: number;
-  reviewCount: number;
-  reviewDates?: string[];
-  reviewsData?: {
+  // Review information
+  rating: number;       // Average rating
+  reviewCount: number;  // Number of reviews
+  reviewDates?: string[]; // Dates of reviews
+  reviewsData?: {       // Detailed review data
     text: string;
     rating: number;
     date: string;
@@ -145,97 +169,98 @@ export interface ProductDetails {
   }[];
 
   // Physical attributes
-  specifications: Record<string, string>;
-  shippingLength?: string;
-  shippingWidth?: string;
-  shippingHeight?: string;
-  weight?: string;
+  specifications: Record<string, string>; // Product specifications
+  shippingLength?: string;  // Shipping length
+  shippingWidth?: string;   // Shipping width
+  shippingHeight?: string;  // Shipping height
+  weight?: string;         // Product weight
 
-  // Inventory
-  inStock: boolean;
-  stock?: number;
-  fulfillmentOptions?: { type: string; availableQuantity: number }[];
+  // Inventory information
+  inStock: boolean;     // Stock status
+  stock?: number;       // Current stock level
+  fulfillmentOptions?: { // Fulfillment options
+    type: string;
+    availableQuantity: number;
+  }[];
 
   // Media
-  imageUrl?: string;
+  imageUrl?: string;    // Product image URL
 
-  // Variations
-  variantCriteria?: {
-    id: string;
-    name: string;
-    value: string;
-    selected: boolean;
-    url?: string;
-    image?: string;
-    price?: number;
-    inStock?: boolean;
-  }[];
-  variantsMap?: {
-    [key: string]: {
-      name: string;
-      values: {
-        id: string;
-        name: string;
-        value: string;
-        selected: boolean;
-        url?: string;
-        image?: string;
-        price?: number;
-        inStock?: boolean;
-      }[];
-    };
-  };
+  // Variation information
+  variantCriteria?: ProductVariation[]; // Available variations
+  variantsMap?: ProductVariationsMap;   // Organized variations
 
-  // Flags and badges
-  badges?: string[];
-  totalSellers?: number;
-  isBestSeller?: boolean;
+  // Additional information
+  badges?: string[];    // Product badges
+  totalSellers?: number; // Number of sellers
+  isBestSeller?: boolean; // Best seller status
 }
 
 /**
- * Raw product data from API response
+ * Represents raw product data from API response
+ * Used for data transformation
  */
 export interface RawProductData {
   product: {
-    usItemId: string;
-    name: string;
-    brand?: string;
-    upc?: string;
-    brandUrl?: string;
-    imageInfo?: {
+    usItemId: string;    // Walmart item ID
+    name: string;        // Product name
+    brand?: string;      // Brand name
+    upc?: string;        // Universal Product Code
+    brandUrl?: string;   // Brand URL
+    imageInfo?: {        // Image information
       thumbnailUrl?: string;
     };
-    category?: {
+    category?: {         // Category information
       path?: { name: string }[];
     };
-    priceInfo?: {
+    priceInfo?: {        // Price information
       currentPrice?: {
         price: number;
       };
     };
-    variantCriteria?: any[];
-    variantsMap?: any;
-    model?: string;
-    badges?: { key: string }[];
-    sellerInfo?: {
+    variantCriteria?: any[];  // Raw variation data
+    variantsMap?: any;        // Raw variation map
+    model?: string;           // Model number
+    badges?: { key: string }[]; // Product badges
+    sellerInfo?: {            // Seller information
       sellerCount?: number;
     };
-    fulfillmentOptions?: {
+    fulfillmentOptions?: {    // Fulfillment options
       fulfillmentType: string;
       availableQuantity: number;
     }[];
   };
-  idml?: {
-    specifications?: {
+  idml?: {              // IDML data
+    specifications?: {   // Product specifications
       name: string;
       value: string;
     }[];
   };
-  reviews?: {
+  reviews?: {           // Review data
     reviewStatistics?: {
       reviewDateDistribution?: {
         date: string;
       }[];
     };
   };
-} 
+}
+
+////////////////////////////////////////////////
+// Enums:
+////////////////////////////////////////////////
+// No enums needed
+
+////////////////////////////////////////////////
+// Configuration:
+////////////////////////////////////////////////
+// No configuration needed
+
+////////////////////////////////////////////////
+// Helper Functions:
+////////////////////////////////////////////////
+// No helper functions needed
+
+////////////////////////////////////////////////
+// Export Statement:
+////////////////////////////////////////////////
+// All types are exported above 

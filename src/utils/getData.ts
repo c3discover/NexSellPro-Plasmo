@@ -1,71 +1,16 @@
+/**
+ * @fileoverview Data fetching and processing utilities
+ * @author Your Name
+ * @created 2024-03-20
+ * @lastModified 2024-03-20
+ */
+
 ////////////////////////////////////////////////
 // Imports:
 ////////////////////////////////////////////////
-// No imports needed here.
-
-////////////////////////////////////////////////
-// Constants and Variables:
-////////////////////////////////////////////////
-// No constants or variables defined here.
-
-////////////////////////////////////////////////
-// Props and Types:
-////////////////////////////////////////////////
-// No props or types defined here.
-
-////////////////////////////////////////////////
-// State and Hooks:
-////////////////////////////////////////////////
-// No state or hooks defined here.
-
-////////////////////////////////////////////////
-// Helper Functions:
-////////////////////////////////////////////////
-
-// Function to get the data div element by its ID. It continues to search until it finds the element.
-function getDataDiv() {
-  let dataDiv = null;
-  let retryCount = 0;
-  const maxRetries = 10; // Add a limit to avoid an infinite loop
-
-  while (!dataDiv && retryCount < maxRetries) {
-    dataDiv = document.getElementById("__NEXT_DATA__");
-    if (!dataDiv) {
-      setTimeout(() => {
-        dataDiv = document.getElementById("__NEXT_DATA__");
-      }, 1000);
-      retryCount++;
-    }
-  }
-
-  if (!dataDiv) {
-    console.error("Data div not found.");
-    return null; // Return null if the element is not found after retries
-  }
-
-  return dataDiv;
-}
-
-// Helper function to extract product specifications by name.
-const getProductSpecification = (idml, name) => {
-  return idml.specifications.find((spec) => spec.name === name)?.value || null;
-}
-
-////////////////////////////////////////////////
-// Event Handlers:
-////////////////////////////////////////////////
-// No event handlers defined here.
-
-////////////////////////////////////////////////
-// JSX (Return):
-////////////////////////////////////////////////
-// No JSX return here, as this is a data processing module.
-
-////////////////////////////////////////////////
-// Main Function:
-////////////////////////////////////////////////
-
-import { secureStorage } from './secureStorage';
+import { logError, ErrorSeverity } from './errorHandling';
+import { sanitizeString, sanitizeNumber } from './sanitize';
+import RateLimiter from './rateLimit';
 import {
   calculateTotalProfit,
   calculateROI,
@@ -73,34 +18,250 @@ import {
   calculateStartingProductCost,
   calculateReferralFee,
   calculateWFSFee
-} from '../utils/calculations';
+} from './calculations';
 
-// Function to extract and centralize product details, specifications, and reviews from given data
-export function getProductDetails(product, idml, reviews) {
+////////////////////////////////////////////////
+// Constants and Variables:
+////////////////////////////////////////////////
+
+/**
+ * API endpoints for data fetching
+ */
+const API_ENDPOINTS = {
+  products: '/api/products',
+  sellers: '/api/sellers',
+  categories: '/api/categories',
+  pricing: '/api/pricing'
+};
+
+/**
+ * Default request options
+ */
+const DEFAULT_OPTIONS: RequestInit = {
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  },
+  credentials: 'include'
+};
+
+// Cache for data
+let lastData: any = null;
+let lastDataTimestamp = 0;
+const DATA_COOLDOWN = 1000; // 1 second cooldown
+const MAX_RETRIES = 5;
+const RETRY_DELAY = 300; // ms
+
+////////////////////////////////////////////////
+// Types and Interfaces:
+////////////////////////////////////////////////
+
+/**
+ * Interface for API response data
+ */
+interface ApiResponse<T> {
+  data: T;
+  status: number;
+  message?: string;
+}
+
+/**
+ * Interface for pagination parameters
+ */
+interface PaginationParams {
+  page: number;
+  limit: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+/**
+ * Interface for filter parameters
+ */
+interface FilterParams {
+  search?: string;
+  category?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  status?: string;
+}
+
+/**
+ * Interface for product details
+ */
+interface ProductDetails {
+  badges: string[];
+  categories: { name: string; url: string }[];
+  stock: number;
+  reviewDates: string[];
+  shippingLength: string;
+  shippingWidth: string;
+  shippingHeight: string;
+  weight: string;
+  totalSellers: number;
+  productID: string | null;
+  name: string | null;
+  upc: string | null;
+  brand: string | null;
+  brandUrl: string | null;
+  imageUrl: string | null;
+  mainCategory: string | null;
+  fulfillmentOptions: { type: string; availableQuantity: number }[];
+  modelNumber: string | null;
+  currentPrice: number | null;
+  variantCriteria: any[];
+  variantsMap: Record<string, any>;
+  sellerName: string | null;
+  sellerDisplayName: string | null;
+  sellerType: string | null;
+  images: string[];
+  videos: any[];
+  overallRating: string;
+  numberOfRatings: string;
+  numberOfReviews: string;
+  customerReviews: any[];
+  settings: {
+    minProfit?: number;
+    minMargin?: number;
+    minROI?: number;
+    minTotalRatings?: number;
+    minRatings30Days?: number;
+    maxSellers?: number;
+    maxWfsSellers?: number;
+  };
+  totalProfit: number;
+  margin: number;
+  roi: number;
+  totalRatings: number;
+  ratingsLast30Days: number;
+  numSellers: number;
+  numWfsSellers: number;
+}
+
+////////////////////////////////////////////////
+// Helper Functions:
+////////////////////////////////////////////////
+
+/**
+ * Function to get the data div element by its ID
+ * @returns The data div element or null if not found
+ */
+function getDataDiv() {
+  let dataDiv = null;
+  let retryCount = 0;
+
+  while (!dataDiv && retryCount < MAX_RETRIES) {
+    dataDiv = document.getElementById("__NEXT_DATA__");
+    if (!dataDiv) {
+      setTimeout(() => {
+        dataDiv = document.getElementById("__NEXT_DATA__");
+      }, RETRY_DELAY);
+      retryCount++;
+    }
+  }
+
+  if (!dataDiv) {
+    console.error("Data div not found.");
+    return null;
+  }
+
+  return dataDiv;
+}
+
+/**
+ * Construct URL with query parameters
+ * @param baseUrl - Base URL to append parameters to
+ * @param params - Query parameters to add
+ * @returns Complete URL with parameters
+ */
+const buildUrl = (baseUrl: string, params?: Record<string, any>): string => {
+  if (!params) return baseUrl;
+  
+  const queryParams = new URLSearchParams();
+  
+  // Add each parameter to URL
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      queryParams.append(key, value.toString());
+    }
+  });
+  
+  // Return URL with query string if parameters exist
+  return queryParams.toString() 
+    ? `${baseUrl}?${queryParams.toString()}`
+    : baseUrl;
+};
+
+/**
+ * Handle API response
+ * @param response - Fetch API response
+ * @returns Processed API response
+ */
+const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  return {
+    data,
+    status: response.status
+  };
+};
+
+// Create rate limiter instance for API calls
+const apiRateLimiter = new RateLimiter({
+  maxRequests: 100,    // 100 requests
+  timeWindow: 60000    // per minute
+});
+
+/**
+ * Apply rate limiting to API requests
+ * @param endpoint - API endpoint to rate limit
+ * @returns Rate-limited request function
+ */
+const withRateLimit = (endpoint: string) => {
+  return async (url: string, options: RequestInit) => {
+    return apiRateLimiter.executeWithRateLimit(() => fetch(url, options));
+  };
+};
+
+////////////////////////////////////////////////
+// Main Functions:
+////////////////////////////////////////////////
+
+/**
+ * Extract and centralize product details, specifications, and reviews
+ * @param product - Product data
+ * @param idml - IDML data
+ * @param reviews - Reviews data
+ * @returns Processed product details
+ */
+export function getProductDetails(product: any, idml: any, reviews: any): ProductDetails {
   // Load settings from localStorage
   const settings = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
   
-  const productDetailsUsed = {
-    //Categories below
-    badges: [] as string[],
-    categories: [] as { name: string; url: string }[],
+  const productDetailsUsed: ProductDetails = {
+    // Categories below
+    badges: [],
+    categories: [],
     stock: 0,
-    reviewDates: [] as string[],
+    reviewDates: [],
     shippingLength: "0",
     shippingWidth: "0",
     shippingHeight: "0",
     weight: "0",
     totalSellers: 0,
 
-    //Categories from product getData
+    // Categories from product getData
     productID: product?.usItemId || null,
     name: product?.name || null,
     upc: product?.upc || null,
     brand: product?.brand || null,
     brandUrl: product?.brandUrl || null,
     imageUrl: product?.imageInfo?.thumbnailUrl || null,
-    mainCategory: product?.category?.path?.[0]?.name || null, // This holds the last/main category name
-    fulfillmentOptions: [] as { type: string; availableQuantity: number }[], // Store details for each fulfillment option
+    mainCategory: product?.category?.path?.[0]?.name || null,
+    fulfillmentOptions: [],
     modelNumber: product?.model || null,
     currentPrice: product?.priceInfo?.currentPrice?.price || null,
     variantCriteria: product?.variantCriteria || [],
@@ -110,10 +271,10 @@ export function getProductDetails(product, idml, reviews) {
     sellerType: product?.sellerType || null,
     images: product?.imageInfo?.allImages || [],
 
-    //Categories from idml getData
+    // Categories from idml getData
     videos: idml?.videos || [],
 
-    //Categories from reviews getData
+    // Categories from reviews getData
     overallRating: reviews?.roundedAverageOverallRating || product?.averageRating || "not available",
     numberOfRatings: reviews?.totalReviewCount || "0",
     numberOfReviews: reviews?.reviewsWithTextCount || "0",
@@ -135,19 +296,19 @@ export function getProductDetails(product, idml, reviews) {
     margin: 0,
     roi: 0,
     totalRatings: reviews?.totalReviewCount || 0,
-    ratingsLast30Days: 0, // We'll calculate this from reviewDates
+    ratingsLast30Days: 0,
     numSellers: 0,
     numWfsSellers: 0,
   };
 
-  // Extract shipping information from product specifications.
+  // Extract shipping information from product specifications
   const shippingInfo = idml?.productHighlights?.find(
-    (highlight) => highlight.name === "Dimensions"
+    (highlight: any) => highlight.name === "Dimensions"
   )?.value?.split("x");
 
   // Extract from specifications if available
   const specShippingInfo = idml?.specifications?.find(
-    (spec) => spec.name === "Assembled Product Dimensions (L x W x H)"
+    (spec: any) => spec.name === "Assembled Product Dimensions (L x W x H)"
   )?.value?.split("x");
 
   // Try to get dimensions from either source
@@ -161,27 +322,19 @@ export function getProductDetails(product, idml, reviews) {
     productDetailsUsed.shippingHeight = specShippingInfo[2]?.split(" ")[1]?.trim() || "0";
   }
 
-  // Extract weight with detailed logging
-  console.log('[getData] Raw data structure:', {
-    idml: idml,
-    productHighlights: idml?.productHighlights,
-    specifications: idml?.specifications,
-    allHighlights: idml?.productHighlights?.map((h, i) => ({ index: i, name: h.name, value: h.value }))
-  });
-
   // Try multiple sources for weight
   let extractedWeight = "0";
-  
+
   // First try: Check product highlights for weight
   const weightHighlight = idml?.productHighlights?.find(
-    highlight => highlight.name?.toLowerCase().includes('weight') || 
-                 highlight.value?.toLowerCase().includes('pound') ||
-                 highlight.value?.toLowerCase().includes('lb')
+    (highlight: any) => highlight.name?.toLowerCase().includes('weight') || 
+                       highlight.value?.toLowerCase().includes('pound') ||
+                       highlight.value?.toLowerCase().includes('lb')
   );
 
   // Second try: Check specifications for weight
   const weightSpec = idml?.specifications?.find(
-    spec => spec.name?.toLowerCase().includes('weight')
+    (spec: any) => spec.name?.toLowerCase().includes('weight')
   );
 
   // Process found weight value
@@ -212,8 +365,8 @@ export function getProductDetails(product, idml, reviews) {
   // Set the weight in productDetailsUsed
   productDetailsUsed.weight = extractedWeight;
 
-  // Extract the last category in the path as the main category.
-  productDetailsUsed.categories = product.category.path.map((category) => ({
+  // Extract the last category in the path as the main category
+  productDetailsUsed.categories = product.category.path.map((category: any) => ({
     name: category.name,
     url: category.url
   }));
@@ -225,11 +378,11 @@ export function getProductDetails(product, idml, reviews) {
 
   // Extract review submission times (dates)
   productDetailsUsed.reviewDates = reviews.customerReviews
-    ? reviews.customerReviews.map(review => review.reviewSubmissionTime)
+    ? reviews.customerReviews.map((review: any) => review.reviewSubmissionTime)
     : [];
 
-  // Extract fulfillment options and calculate total available stock.
-  productDetailsUsed.fulfillmentOptions = product.fulfillmentOptions.map((option) => ({
+  // Extract fulfillment options and calculate total available stock
+  productDetailsUsed.fulfillmentOptions = product.fulfillmentOptions.map((option: any) => ({
     type: option.type,
     availableQuantity: option.availableQuantity || 0,
   }));
@@ -239,9 +392,9 @@ export function getProductDetails(product, idml, reviews) {
     0
   );
 
-  // Extract badges from product data, or use default if not available.
+  // Extract badges from product data, or use default if not available
   productDetailsUsed.badges =
-    product.badges?.flags?.map((badge) => badge.text) || ["No Badges Available"];
+    product.badges?.flags?.map((badge: any) => badge.text) || ["No Badges Available"];
 
   // Calculate profit, margin, and ROI
   const salePrice = product?.priceInfo?.currentPrice?.price || 0;
@@ -276,95 +429,300 @@ export function getProductDetails(product, idml, reviews) {
   productDetailsUsed.margin = parseFloat(calculateMargin(productDetailsUsed.totalProfit, salePrice));
   productDetailsUsed.roi = parseFloat(calculateROI(productDetailsUsed.totalProfit, productCost));
 
-  // Logging the data used for transparency and debugging.
-
   return productDetailsUsed;
 }
 
-// Cache for data
-let lastData: any = null;
-let lastDataTimestamp = 0;
-const DATA_COOLDOWN = 1000; // 1 second cooldown
-const MAX_RETRIES = 5;
-const RETRY_DELAY = 300; // ms
-
-export default function getData() {
-    // Return cached data if it's recent enough
-    const now = Date.now();
-    if (lastData && now - lastDataTimestamp < DATA_COOLDOWN) {
-        return lastData;
-    }
-
-    // Try to get data with retries
-    return getDataWithRetry(0);
-}
-
+/**
+ * Get data with retry mechanism
+ * @param retryCount - Current retry count
+ * @returns Processed data or null if failed
+ */
 function getDataWithRetry(retryCount: number): any {
-    try {
-        const dataDiv = document.getElementById("__NEXT_DATA__");
-        if (!dataDiv) {
-            if (retryCount < MAX_RETRIES) {
-                setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
-                return null;
-            } else {
-                console.error("Data div not found after maximum retries.");
-                return null;
-            }
-        }
-
-        try {
-            const rawData = JSON.parse(dataDiv.innerText);
-            if (!rawData?.props?.pageProps?.initialData?.data) {
-                if (retryCount < MAX_RETRIES) {
-                    setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
-                    return null;
-                } else {
-                    console.error("Incomplete data structure after maximum retries.");
-                    return null;
-                }
-            }
-
-            const { product, idml, reviews } = rawData.props.pageProps.initialData.data;
-            
-            // Check if we have valid product data
-            if (!product) {
-                if (retryCount < MAX_RETRIES) {
-                    setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
-                    return null;
-                } else {
-                    console.error("No product data found after maximum retries.");
-                    return null;
-                }
-            }
-
-            // Always log the raw data
-            console.log('%c[All JSON Data]', 'color: #22c55e; font-weight: bold', {
-                timestamp: new Date().toISOString(),
-                data: { product, idml, reviews }
-            });
-
-            // Cache the processed data
-            lastData = getProductDetails(product, idml, reviews);
-            lastDataTimestamp = Date.now();
-            return lastData;
-        } catch (parseError) {
-            console.error('Error parsing data:', parseError);
-            if (retryCount < MAX_RETRIES) {
-                setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
-                return null;
-            } else {
-                console.error("Failed to parse data after maximum retries.");
-                return null;
-            }
-        }
-    } catch (error) {
-        console.error('Error in getData:', error);
-        if (retryCount < MAX_RETRIES) {
-            setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
-            return null;
-        } else {
-            console.error("Failed to get data after maximum retries.");
-            return null;
-        }
+  try {
+    const dataDiv = document.getElementById("__NEXT_DATA__");
+    if (!dataDiv) {
+      if (retryCount < MAX_RETRIES) {
+        setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+        return null;
+      } else {
+        console.error("Data div not found after maximum retries.");
+        return null;
+      }
     }
+
+    try {
+      const rawData = JSON.parse(dataDiv.innerText);
+      if (!rawData?.props?.pageProps?.initialData?.data) {
+        if (retryCount < MAX_RETRIES) {
+          setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+          return null;
+        } else {
+          console.error("Incomplete data structure after maximum retries.");
+          return null;
+        }
+      }
+
+      const { product, idml, reviews } = rawData.props.pageProps.initialData.data;
+      
+      // Check if we have valid product data
+      if (!product) {
+        if (retryCount < MAX_RETRIES) {
+          setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+          return null;
+        } else {
+          console.error("No product data found after maximum retries.");
+          return null;
+        }
+      }
+
+      // Always log the raw data
+      console.log('%c[All JSON Data]', 'color: #22c55e; font-weight: bold', {
+        timestamp: new Date().toISOString(),
+        data: { product, idml, reviews }
+      });
+
+      // Cache the processed data
+      lastData = getProductDetails(product, idml, reviews);
+      lastDataTimestamp = Date.now();
+      return lastData;
+    } catch (parseError) {
+      console.error('Error parsing data:', parseError);
+      if (retryCount < MAX_RETRIES) {
+        setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+        return null;
+      } else {
+        console.error("Failed to parse data after maximum retries.");
+        return null;
+      }
+    }
+  } catch (error) {
+    console.error('Error in getData:', error);
+    if (retryCount < MAX_RETRIES) {
+      setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+      return null;
+    } else {
+      console.error("Failed to get data after maximum retries.");
+      return null;
+    }
+  }
 }
+
+/**
+ * Get data with caching
+ * @returns Processed data
+ */
+export default function getData() {
+  // Return cached data if it's recent enough
+  const now = Date.now();
+  if (lastData && now - lastDataTimestamp < DATA_COOLDOWN) {
+    return lastData;
+  }
+
+  // Try to get data with retries
+  return getDataWithRetry(0);
+}
+
+/**
+ * Fetch data from API with pagination and filtering
+ * @param endpoint - API endpoint to fetch from
+ * @param pagination - Pagination parameters
+ * @param filters - Filter parameters
+ * @returns Paginated and filtered data
+ */
+export const fetchData = async <T>(
+  endpoint: string,
+  pagination?: PaginationParams,
+  filters?: FilterParams
+): Promise<ApiResponse<T>> => {
+  try {
+    // Sanitize inputs
+    const sanitizedPagination = pagination ? {
+      ...pagination,
+      page: sanitizeNumber(pagination.page),
+      limit: sanitizeNumber(pagination.limit)
+    } : undefined;
+    
+    const sanitizedFilters = filters ? {
+      ...filters,
+      search: filters.search ? sanitizeString(filters.search) : undefined,
+      category: filters.category ? sanitizeString(filters.category) : undefined,
+      minPrice: filters.minPrice ? sanitizeNumber(filters.minPrice) : undefined,
+      maxPrice: filters.maxPrice ? sanitizeNumber(filters.maxPrice) : undefined,
+      status: filters.status ? sanitizeString(filters.status) : undefined
+    } : undefined;
+    
+    // Build URL with parameters
+    const url = buildUrl(endpoint, {
+      ...sanitizedPagination,
+      ...sanitizedFilters
+    });
+    
+    // Make rate-limited request
+    const response = await withRateLimit(endpoint)(url, DEFAULT_OPTIONS);
+    
+    // Handle response
+    return handleResponse<T>(response);
+  } catch (error) {
+    // Log error and rethrow
+    logError({
+      message: `Failed to fetch data from ${endpoint}`,
+      severity: ErrorSeverity.ERROR,
+      error: error as Error,
+      context: { endpoint, pagination, filters }
+    });
+    throw error;
+  }
+};
+
+/**
+ * Fetch single item by ID
+ * @param endpoint - API endpoint to fetch from
+ * @param id - ID of item to fetch
+ * @returns Item data
+ */
+export const fetchById = async <T>(endpoint: string, id: string): Promise<ApiResponse<T>> => {
+  try {
+    // Sanitize ID
+    const sanitizedId = sanitizeString(id);
+    
+    // Build URL with ID
+    const url = `${endpoint}/${sanitizedId}`;
+    
+    // Make rate-limited request
+    const response = await withRateLimit(endpoint)(url, DEFAULT_OPTIONS);
+    
+    // Handle response
+    return handleResponse<T>(response);
+  } catch (error) {
+    // Log error and rethrow
+    logError({
+      message: `Failed to fetch item with ID ${id} from ${endpoint}`,
+      severity: ErrorSeverity.ERROR,
+      error: error as Error,
+      context: { endpoint, id }
+    });
+    throw error;
+  }
+};
+
+/**
+ * Create new item
+ * @param endpoint - API endpoint to create at
+ * @param data - Data to create
+ * @returns Created item data
+ */
+export const createItem = async <T>(endpoint: string, data: Partial<T>): Promise<ApiResponse<T>> => {
+  try {
+    // Sanitize data
+    const sanitizedData = Object.entries(data).reduce((acc, [key, value]) => {
+      acc[key] = typeof value === 'string' ? sanitizeString(value) :
+                 typeof value === 'number' ? sanitizeNumber(value) :
+                 value;
+      return acc;
+    }, {} as Record<string, any>);
+    
+    // Make rate-limited request
+    const response = await withRateLimit(endpoint)(endpoint, {
+      ...DEFAULT_OPTIONS,
+      method: 'POST',
+      body: JSON.stringify(sanitizedData)
+    });
+    
+    // Handle response
+    return handleResponse<T>(response);
+  } catch (error) {
+    // Log error and rethrow
+    logError({
+      message: `Failed to create item at ${endpoint}`,
+      severity: ErrorSeverity.ERROR,
+      error: error as Error,
+      context: { endpoint, data }
+    });
+    throw error;
+  }
+};
+
+/**
+ * Update existing item
+ * @param endpoint - API endpoint to update at
+ * @param id - ID of item to update
+ * @param data - Data to update
+ * @returns Updated item data
+ */
+export const updateItem = async <T>(
+  endpoint: string,
+  id: string,
+  data: Partial<T>
+): Promise<ApiResponse<T>> => {
+  try {
+    // Sanitize inputs
+    const sanitizedId = sanitizeString(id);
+    const sanitizedData = Object.entries(data).reduce((acc, [key, value]) => {
+      acc[key] = typeof value === 'string' ? sanitizeString(value) :
+                 typeof value === 'number' ? sanitizeNumber(value) :
+                 value;
+      return acc;
+    }, {} as Record<string, any>);
+    
+    // Build URL with ID
+    const url = `${endpoint}/${sanitizedId}`;
+    
+    // Make rate-limited request
+    const response = await withRateLimit(endpoint)(url, {
+      ...DEFAULT_OPTIONS,
+      method: 'PUT',
+      body: JSON.stringify(sanitizedData)
+    });
+    
+    // Handle response
+    return handleResponse<T>(response);
+  } catch (error) {
+    // Log error and rethrow
+    logError({
+      message: `Failed to update item with ID ${id} at ${endpoint}`,
+      severity: ErrorSeverity.ERROR,
+      error: error as Error,
+      context: { endpoint, id, data }
+    });
+    throw error;
+  }
+};
+
+/**
+ * Delete item
+ * @param endpoint - API endpoint to delete from
+ * @param id - ID of item to delete
+ * @returns Deletion response
+ */
+export const deleteItem = async (endpoint: string, id: string): Promise<ApiResponse<void>> => {
+  try {
+    // Sanitize ID
+    const sanitizedId = sanitizeString(id);
+    
+    // Build URL with ID
+    const url = `${endpoint}/${sanitizedId}`;
+    
+    // Make rate-limited request
+    const response = await withRateLimit(endpoint)(url, {
+      ...DEFAULT_OPTIONS,
+      method: 'DELETE'
+    });
+    
+    // Handle response
+    return handleResponse<void>(response);
+  } catch (error) {
+    // Log error and rethrow
+    logError({
+      message: `Failed to delete item with ID ${id} from ${endpoint}`,
+      severity: ErrorSeverity.ERROR,
+      error: error as Error,
+      context: { endpoint, id }
+    });
+    throw error;
+  }
+};
+
+////////////////////////////////////////////////
+// Export Statement:
+////////////////////////////////////////////////
+// All functions and types are exported above

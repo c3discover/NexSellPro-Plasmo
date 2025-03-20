@@ -1,6 +1,74 @@
+/**
+ * @fileoverview Service for handling API interactions with Walmart's GraphQL API
+ * @author Your Name
+ * @created 2024-03-20
+ * @lastModified 2024-03-20
+ */
+
+////////////////////////////////////////////////
+// Imports:
+////////////////////////////////////////////////
+// Import error handling utilities
 import { logError, ErrorSeverity, withErrorHandling } from '../utils/errorHandling';
+// Import type definitions
 import type { SellerInfo } from '../types/seller';
 
+////////////////////////////////////////////////
+// Constants and Variables:
+////////////////////////////////////////////////
+// API endpoint for Walmart's GraphQL service
+const WALMART_GRAPHQL_URL = 'https://www.walmart.com/orchestra/home/graphql/getMultipleSellerOffersMetaData';
+
+////////////////////////////////////////////////
+// Types and Interfaces:
+////////////////////////////////////////////////
+// No additional types needed as we're using imported types
+
+////////////////////////////////////////////////
+// Enums:
+////////////////////////////////////////////////
+// No enums needed
+
+////////////////////////////////////////////////
+// Configuration:
+////////////////////////////////////////////////
+// No additional configuration needed
+
+////////////////////////////////////////////////
+// Helper Functions:
+////////////////////////////////////////////////
+/**
+ * Determines the seller type based on seller information
+ * @param seller The seller information from the API
+ * @returns The formatted seller type (WFS-Pro, WFS, SF-Pro, or SF)
+ */
+function determineSellerType(seller: any): string {
+  if (seller.fulfillmentType === 'WFS') {
+    return seller.sellerType === 'PRO' ? 'WFS-Pro' : 'WFS';
+  } else {
+    return seller.sellerType === 'PRO' ? 'SF-Pro' : 'SF';
+  }
+}
+
+/**
+ * Formats a delivery date string into a readable format
+ * @param dateString The delivery date string from the API
+ * @returns A formatted date string (e.g., "Mar 20") or "N/A" if invalid
+ */
+function formatDeliveryDate(dateString: string | null): string {
+  if (!dateString) return 'N/A';
+  
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch (error) {
+    return dateString;
+  }
+}
+
+////////////////////////////////////////////////
+// Export Statement:
+////////////////////////////////////////////////
 /**
  * Fetches seller data from the Walmart GraphQL API
  * @param itemId The product ID to fetch seller data for
@@ -8,8 +76,7 @@ import type { SellerInfo } from '../types/seller';
  */
 export const fetchSellerDataFromAPI = withErrorHandling(
   async (itemId: string): Promise<SellerInfo[]> => {
-    const url = `https://www.walmart.com/orchestra/home/graphql/getMultipleSellerOffersMetaData`;
-    
+    // Prepare the GraphQL query payload
     const payload = {
       query: `
         query getMultipleSellerOffersMetaData($itemId: String!) {
@@ -32,30 +99,30 @@ export const fetchSellerDataFromAPI = withErrorHandling(
           }
         }
       `,
-      variables: {
-        itemId
-      }
+      variables: { itemId }
     };
     
-    const response = await fetch(url, {
+    // Make the API request
+    const response = await fetch(WALMART_GRAPHQL_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
     
+    // Handle API errors
     if (!response.ok) {
       throw new Error(`API error: ${response.status} ${response.statusText}`);
     }
     
+    // Parse the response
     const data = await response.json();
     
-    if (!data.data || !data.data.product || !data.data.product.sellerInfo) {
+    // Return empty array if no data found
+    if (!data.data?.product?.sellerInfo) {
       return [];
     }
     
-    // Transform the API response to match our SellerInfo interface
+    // Transform API response into our SellerInfo format
     return data.data.product.sellerInfo.map((seller: any) => ({
       sellerName: seller.sellerName || 'Unknown Seller',
       price: seller.priceInfo?.currentPrice?.priceString || 'N/A',
@@ -67,6 +134,7 @@ export const fetchSellerDataFromAPI = withErrorHandling(
     }));
   },
   (error) => {
+    // Log error and return empty array on failure
     logError({
       message: 'Error fetching seller data from API',
       severity: ErrorSeverity.ERROR,
@@ -79,22 +147,26 @@ export const fetchSellerDataFromAPI = withErrorHandling(
 );
 
 /**
- * Fetches product variant data
+ * Fetches product variant data from Walmart's product page
  * @param variantId The variant ID to fetch data for
- * @returns The variant data
+ * @returns The variant data including image, title, ratings, etc.
  */
 export const fetchVariantData = withErrorHandling(
   async (variantId: string) => {
+    // Construct the product page URL
     const url = `https://www.walmart.com/ip/${variantId}`;
     
+    // Fetch the page content
     const response = await fetch(url);
     const text = await response.text();
     
+    // Parse the HTML content
     const parser = new DOMParser();
     const doc = parser.parseFromString(text, 'text/html');
     const dataScript = doc.querySelector('script[id="__NEXT_DATA__"]');
     
-    if (!dataScript || !dataScript.textContent) {
+    // Return default values if no data found
+    if (!dataScript?.textContent) {
       return {
         image: '-',
         title: '-',
@@ -104,9 +176,11 @@ export const fetchVariantData = withErrorHandling(
       };
     }
     
+    // Parse the JSON data from the script tag
     const jsonData = JSON.parse(dataScript.textContent);
     const product = jsonData.props.pageProps?.initialData?.data?.product;
     
+    // Return default values if no product data found
     if (!product) {
       return {
         image: '-',
@@ -117,6 +191,7 @@ export const fetchVariantData = withErrorHandling(
       };
     }
     
+    // Return formatted product data
     return {
       image: product.imageInfo?.thumbnailUrl || '-',
       title: product.name || '-',
@@ -126,6 +201,7 @@ export const fetchVariantData = withErrorHandling(
     };
   },
   (error) => {
+    // Log error and return default values on failure
     logError({
       message: 'Error fetching variant data',
       severity: ErrorSeverity.ERROR,
@@ -141,33 +217,4 @@ export const fetchVariantData = withErrorHandling(
       upc: '-'
     };
   }
-);
-
-/**
- * Determines the seller type based on seller information
- * @param seller The seller information
- * @returns The seller type
- */
-function determineSellerType(seller: any): string {
-  if (seller.fulfillmentType === 'WFS') {
-    return seller.sellerType === 'PRO' ? 'WFS-Pro' : 'WFS';
-  } else {
-    return seller.sellerType === 'PRO' ? 'SF-Pro' : 'SF';
-  }
-}
-
-/**
- * Formats a delivery date string
- * @param dateString The delivery date string
- * @returns A formatted delivery date string
- */
-function formatDeliveryDate(dateString: string | null): string {
-  if (!dateString) return 'N/A';
-  
-  try {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  } catch (error) {
-    return dateString;
-  }
-} 
+); 

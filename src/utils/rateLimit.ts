@@ -1,19 +1,44 @@
 /**
- * Rate limiting utility for API calls
+ * @fileoverview Rate limiting utility for API calls
+ * @author Your Name
+ * @created 2024-03-20
+ * @lastModified 2024-03-20
  */
 
+////////////////////////////////////////////////
+// Imports:
+////////////////////////////////////////////////
+// No external imports needed
+
+////////////////////////////////////////////////
+// Types and Interfaces:
+////////////////////////////////////////////////
+
+/**
+ * Configuration for rate limiting
+ */
 interface RateLimitConfig {
   maxRequests: number;  // Maximum number of requests allowed
   timeWindow: number;   // Time window in milliseconds
 }
 
+/**
+ * Log entry for tracking requests
+ */
 interface RequestLog {
-  timestamp: number;
+  timestamp: number;    // When the request was made
 }
 
+////////////////////////////////////////////////
+// Main Class:
+////////////////////////////////////////////////
+
+/**
+ * Rate limiter class for managing API request limits
+ */
 class RateLimiter {
-  private requests: RequestLog[] = [];
-  private config: RateLimitConfig;
+  private requests: RequestLog[] = [];  // Array to store request timestamps
+  private config: RateLimitConfig;      // Rate limit configuration
 
   constructor(config: RateLimitConfig) {
     this.config = config;
@@ -21,7 +46,7 @@ class RateLimiter {
 
   /**
    * Check if a new request can be made
-   * @returns boolean
+   * @returns boolean indicating if request is allowed
    */
   canMakeRequest(): boolean {
     const now = Date.now();

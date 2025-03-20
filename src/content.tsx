@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Main content script component for the Walmart product analysis extension
+ * @author Your Name
+ * @created 2024-03-20
+ * @lastModified 2024-03-20
+ */
+
 ////////////////////////////////////////////////
 // Imports:
 ////////////////////////////////////////////////
@@ -42,19 +49,41 @@ export const getStyle = () => {
 export const getShadowHostId = () => "plasmo-google-sidebar";
 
 ////////////////////////////////////////////////
-// Props and Types:
+// Types and Interfaces:
 ////////////////////////////////////////////////
+// Interface for product metrics state
+interface ProductMetrics {
+  profit: number;
+  margin: number;
+  roi: number;
+  totalRatings: number;
+  ratingsLast30Days: number;
+  numSellers: number;
+  numWfsSellers: number;
+}
 
 ////////////////////////////////////////////////
-// State and Hooks:
+// Props Interface:
+////////////////////////////////////////////////
+// No props interface needed as this is the root component
+
+////////////////////////////////////////////////
+// Component:
 ////////////////////////////////////////////////
 const ContentUI = () => {
-  // State variables
+  ////////////////////////////////////////////////
+  // State and Hooks:
+  ////////////////////////////////////////////////
+  // State for controlling sidebar visibility
   const [isOpen, setIsOpen] = useState(true);
+  // State for storing product details
   const [productDetails, setProductDetails] = useState(null);
+  // State for controlling section expansion/collapse
   const [areSectionsOpen, setAreSectionsOpen] = useState(true);
+  // State for tracking current URL
   const [currentUrl, setCurrentUrl] = useState(window.location.href);
-  const [metrics, setMetrics] = useState({
+  // State for storing product metrics
+  const [metrics, setMetrics] = useState<ProductMetrics>({
     profit: 0,
     margin: 0,
     roi: 0,
@@ -64,7 +93,10 @@ const ContentUI = () => {
     numWfsSellers: 0
   });
 
-  // URL monitoring
+  ////////////////////////////////////////////////
+  // Chrome API Handlers:
+  ////////////////////////////////////////////////
+  // URL monitoring effect
   useEffect(() => {
     let lastUrl = window.location.href;
 
@@ -107,7 +139,7 @@ const ContentUI = () => {
       }
     }
 
-    // Cleanup
+    // Cleanup function to remove listeners and clear classes
     return () => {
       clearInterval(interval);
       try {
@@ -118,7 +150,18 @@ const ContentUI = () => {
     };
   }, []);
 
-  // React to URL changes
+  ////////////////////////////////////////////////
+  // Event Handlers:
+  ////////////////////////////////////////////////
+  // Handler for toggling section expansion/collapse
+  const toggleSections = () => {
+    setAreSectionsOpen(!areSectionsOpen);
+  };
+
+  ////////////////////////////////////////////////
+  // Helper Functions:
+  ////////////////////////////////////////////////
+  // Effect to update product details when URL changes
   useEffect(() => {
     const isProductPage = currentUrl.includes("/ip/");
     
@@ -134,7 +177,7 @@ const ContentUI = () => {
     }
   }, [currentUrl]);
 
-  // Toggle sidebar visibility in the DOM
+  // Effect to handle sidebar visibility
   useEffect(() => {
     const isProductPage = currentUrl.includes("/ip/");
     document.body.classList.toggle("plasmo-google-sidebar-show", isOpen && isProductPage && productDetails !== null);
@@ -149,15 +192,21 @@ const ContentUI = () => {
     return null;
   }
 
-  // Expand/Collapse handler
-  const toggleSections = () => {
-    setAreSectionsOpen(!areSectionsOpen);
+  ////////////////////////////////////////////////
+  // Styles:
+  ////////////////////////////////////////////////
+  // Inline styles for the sidebar container
+  const sidebarStyle = {
+    backgroundColor: "#FBFBFB"
   };
 
+  ////////////////////////////////////////////////
+  // JSX:
+  ////////////////////////////////////////////////
   return (
     <div
       id="sidebar"
-      style={{ backgroundColor: "#FBFBFB" }}
+      style={sidebarStyle}
       className={`absolute w-[400px] h-screen transition-all duration-500 ease-in-out mb-3 text-sm flex flex-col p-2 ${isOpen ? "open" : "closed"}`}
     >
       {/* Toggle button for sidebar open/close */}
@@ -184,6 +233,7 @@ const ContentUI = () => {
           </button>
         </div>
 
+        {/* Product analysis components */}
         <BuyGauge 
           areSectionsOpen={areSectionsOpen} 
           productData={metrics}
@@ -220,6 +270,4 @@ const ContentUI = () => {
 ////////////////////////////////////////////////
 // Export Statement:
 ////////////////////////////////////////////////
-
-// Exporting the ContentUI component as default
 export default ContentUI;

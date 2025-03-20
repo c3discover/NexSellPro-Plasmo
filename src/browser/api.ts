@@ -1,10 +1,74 @@
+/**
+ * @fileoverview Chrome API wrapper implementation
+ * @author Your Name
+ * @created 2024-03-20
+ * @lastModified 2024-03-20
+ */
+
+////////////////////////////////////////////////
+// Imports:
+////////////////////////////////////////////////
+// Import error handling utilities from our custom error handling module
 import { logError, ErrorSeverity } from '../utils/errorHandling';
 
+////////////////////////////////////////////////
+// Constants and Variables:
+////////////////////////////////////////////////
+// Default component name used for error logging
+const DEFAULT_COMPONENT = 'browserAPI';
+
+////////////////////////////////////////////////
+// Types and Interfaces:
+////////////////////////////////////////////////
+// Interface for Chrome-specific error messages
+interface ChromeError {
+  message: string;
+}
+
+// Type definition for message callback functions
+// These are used when sending/receiving messages between different parts of the extension
+interface MessageCallback {
+  (message: any, sender: any, sendResponse: (response?: any) => void): void;
+}
+
+// Type definition for tab update callback functions
+// Used when monitoring changes to browser tabs
+interface TabCallback {
+  (tabId: number, changeInfo: any, tab: any): void;
+}
+
+// Type definition for web navigation callback functions
+// Used when monitoring page navigation events
+interface WebNavigationCallback {
+  (details: any): void;
+}
+
+// Type definition for web request filter
+// Used to specify which URLs to monitor for web requests
+interface WebRequestFilter {
+  urls: string[];
+}
+
+////////////////////////////////////////////////
+// Enums:
+////////////////////////////////////////////////
+// No enums needed
+
+////////////////////////////////////////////////
+// Configuration:
+////////////////////////////////////////////////
+// No configuration needed
+
+////////////////////////////////////////////////
+// Helper Functions:
+////////////////////////////////////////////////
 /**
  * Checks if the Chrome API is available
  * @returns True if the Chrome API is available
  */
 export function isBrowserAPIAvailable(): boolean {
+  // Check if chrome object exists and has runtime property
+  // This is important because the extension might run in different contexts
   return typeof chrome !== 'undefined' && !!chrome.runtime;
 }
 
@@ -15,21 +79,26 @@ export function isBrowserAPIAvailable(): boolean {
  * @param component The component that failed
  * @returns The error
  */
-function handleBrowserAPIError(error: any, operation: string, component: string = 'browserAPI'): Error {
-  // Check for specific Chrome error types
+function handleBrowserAPIError(error: any, operation: string, component: string = DEFAULT_COMPONENT): Error {
+  // Initialize variable to store the processed error
   let browserError: Error;
   
+  // Check for different types of errors and handle them appropriately
   if (chrome?.runtime?.lastError) {
+    // Chrome-specific runtime error
     browserError = new Error(chrome.runtime.lastError.message || 'Unknown Chrome error');
   } else if (error instanceof Error) {
+    // Standard JavaScript Error object
     browserError = error;
   } else if (typeof error === 'string') {
+    // String error message
     browserError = new Error(error);
   } else {
+    // Unknown error type
     browserError = new Error('Unknown browser API error');
   }
   
-  // Log the error
+  // Log the error using our error handling utility
   logError({
     message: `Error ${operation}`,
     severity: ErrorSeverity.ERROR,
@@ -40,23 +109,20 @@ function handleBrowserAPIError(error: any, operation: string, component: string 
   return browserError;
 }
 
-/**
- * A Chrome-specific API for browser extensions
- */
+////////////////////////////////////////////////
+// Export Statement:
+////////////////////////////////////////////////
+// Main API object that wraps Chrome extension APIs
 export const browserAPI = {
-  /**
-   * Gets the runtime API
-   */
+  // Runtime API for messaging and extension lifecycle
   runtime: {
-    /**
-     * Sends a message to the background script
-     * @param message The message to send
-     * @returns A promise that resolves with the response
-     */
+    // Send messages between different parts of the extension
     sendMessage: <T = any>(message: any): Promise<T> => {
       return new Promise((resolve, reject) => {
         try {
+          // Check if Chrome API is available
           if (typeof chrome !== 'undefined' && chrome.runtime) {
+            // Send message and handle response
             chrome.runtime.sendMessage(message, (response) => {
               if (chrome.runtime.lastError) {
                 reject(chrome.runtime.lastError);
@@ -74,12 +140,10 @@ export const browserAPI = {
       });
     },
     
-    /**
-     * Adds a listener for messages from the content script or popup
-     * @param callback The callback to call when a message is received
-     */
+    // Handle incoming messages
     onMessage: {
-      addListener: (callback: (message: any, sender: any, sendResponse: (response?: any) => void) => void): void => {
+      // Add a listener for incoming messages
+      addListener: (callback: MessageCallback): void => {
         try {
           if (typeof chrome !== 'undefined' && chrome.runtime) {
             chrome.runtime.onMessage.addListener(callback);
@@ -89,11 +153,8 @@ export const browserAPI = {
         }
       },
       
-      /**
-       * Removes a listener for messages
-       * @param callback The callback to remove
-       */
-      removeListener: (callback: (message: any, sender: any, sendResponse: (response?: any) => void) => void): void => {
+      // Remove a message listener
+      removeListener: (callback: MessageCallback): void => {
         try {
           if (typeof chrome !== 'undefined' && chrome.runtime) {
             chrome.runtime.onMessage.removeListener(callback);
@@ -104,9 +165,7 @@ export const browserAPI = {
       }
     },
     
-    /**
-     * Reloads the extension
-     */
+    // Reload the extension
     reload: (): void => {
       try {
         if (typeof chrome !== 'undefined' && chrome.runtime) {
@@ -118,19 +177,11 @@ export const browserAPI = {
     }
   },
   
-  /**
-   * Gets the storage API
-   */
+  // Storage API for saving and retrieving data
   storage: {
-    /**
-     * Gets the sync storage API
-     */
+    // Sync storage - data is synced across devices
     sync: {
-      /**
-       * Gets items from sync storage
-       * @param keys The keys to get
-       * @returns A promise that resolves with the items
-       */
+      // Get items from sync storage
       get: <T = any>(keys: string | string[] | Record<string, any> | null): Promise<T> => {
         return new Promise((resolve, reject) => {
           try {
@@ -152,11 +203,7 @@ export const browserAPI = {
         });
       },
       
-      /**
-       * Sets items in sync storage
-       * @param items The items to set
-       * @returns A promise that resolves when the items are set
-       */
+      // Set items in sync storage
       set: (items: Record<string, any>): Promise<void> => {
         return new Promise((resolve, reject) => {
           try {
@@ -179,15 +226,9 @@ export const browserAPI = {
       }
     },
     
-    /**
-     * Gets the local storage API
-     */
+    // Local storage - data is stored only on the current device
     local: {
-      /**
-       * Gets items from local storage
-       * @param keys The keys to get
-       * @returns A promise that resolves with the items
-       */
+      // Get items from local storage
       get: <T = any>(keys: string | string[] | Record<string, any> | null): Promise<T> => {
         return new Promise((resolve, reject) => {
           try {
@@ -209,11 +250,7 @@ export const browserAPI = {
         });
       },
       
-      /**
-       * Sets items in local storage
-       * @param items The items to set
-       * @returns A promise that resolves when the items are set
-       */
+      // Set items in local storage
       set: (items: Record<string, any>): Promise<void> => {
         return new Promise((resolve, reject) => {
           try {
@@ -237,16 +274,9 @@ export const browserAPI = {
     }
   },
   
-  /**
-   * Gets the tabs API
-   */
+  // Tabs API for working with browser tabs
   tabs: {
-    /**
-     * Sends a message to a specific tab
-     * @param tabId The ID of the tab to send the message to
-     * @param message The message to send
-     * @returns A promise that resolves with the response
-     */
+    // Send message to a specific tab
     sendMessage: <T = any>(tabId: number, message: any): Promise<T> => {
       return new Promise((resolve, reject) => {
         try {
@@ -268,11 +298,7 @@ export const browserAPI = {
       });
     },
     
-    /**
-     * Queries for tabs that match the given criteria
-     * @param queryInfo The criteria to match
-     * @returns A promise that resolves with the matching tabs
-     */
+    // Query for tabs matching specific criteria
     query: <T = any>(queryInfo: Record<string, any>): Promise<T> => {
       return new Promise((resolve, reject) => {
         try {
@@ -294,12 +320,10 @@ export const browserAPI = {
       });
     },
     
-    /**
-     * Adds a listener for tab updates
-     * @param callback The callback to call when a tab is updated
-     */
+    // Monitor tab updates
     onUpdated: {
-      addListener: (callback: (tabId: number, changeInfo: any, tab: any) => void): void => {
+      // Add listener for tab updates
+      addListener: (callback: TabCallback): void => {
         try {
           if (typeof chrome !== 'undefined' && chrome.tabs) {
             chrome.tabs.onUpdated.addListener(callback);
@@ -311,16 +335,12 @@ export const browserAPI = {
     }
   },
   
-  /**
-   * Gets the web navigation API
-   */
+  // Web Navigation API for monitoring page navigation
   webNavigation: {
-    /**
-     * Adds a listener for history state updates
-     * @param callback The callback to call when the history state is updated
-     */
+    // Monitor history state changes (like SPA navigation)
     onHistoryStateUpdated: {
-      addListener: (callback: (details: any) => void): void => {
+      // Add listener for history state updates
+      addListener: (callback: WebNavigationCallback): void => {
         try {
           if (typeof chrome !== 'undefined' && chrome.webNavigation) {
             chrome.webNavigation.onHistoryStateUpdated.addListener(callback);
@@ -332,17 +352,12 @@ export const browserAPI = {
     }
   },
   
-  /**
-   * Gets the web request API
-   */
+  // Web Request API for monitoring network requests
   webRequest: {
-    /**
-     * Adds a listener for completed web requests
-     * @param callback The callback to call when a web request is completed
-     * @param filter The filter to apply to the web requests
-     */
+    // Monitor completed web requests
     onCompleted: {
-      addListener: (callback: (details: any) => void, filter: { urls: string[] }): void => {
+      // Add listener for completed web requests
+      addListener: (callback: WebNavigationCallback, filter: WebRequestFilter): void => {
         try {
           if (typeof chrome !== 'undefined' && chrome.webRequest) {
             chrome.webRequest.onCompleted.addListener(callback, filter);

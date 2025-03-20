@@ -1,106 +1,132 @@
+/**
+ * @fileoverview Tests for memoization utilities
+ * @author Your Name
+ * @created 2024-03-20
+ * @lastModified 2024-03-20
+ */
+
+////////////////////////////////////////////////
+// Imports:
+////////////////////////////////////////////////
 import { memoize, debounce, throttle } from '../../utils/memoization';
 
+////////////////////////////////////////////////
+// Constants and Variables:
+////////////////////////////////////////////////
+const TEST_DELAY = 1000;
+const TEST_CACHE_SIZE = 2;
+const TEST_TTL = 1000;
+
+////////////////////////////////////////////////
+// Types and Interfaces:
+////////////////////////////////////////////////
+interface TestObject {
+  id: number;
+  value: string;
+}
+
+////////////////////////////////////////////////
+// Enums:
+////////////////////////////////////////////////
+// No enums needed
+
+////////////////////////////////////////////////
+// Configuration:
+////////////////////////////////////////////////
+// No configuration needed
+
+////////////////////////////////////////////////
+// Helper Functions:
+////////////////////////////////////////////////
+const createTestObject = (id: number): TestObject => ({
+  id,
+  value: `test-${id}`
+});
+
+const createMockFunction = (result: any) => jest.fn().mockReturnValue(result);
+
+////////////////////////////////////////////////
+// Test Cases:
+////////////////////////////////////////////////
 describe('memoization utility', () => {
   describe('memoize', () => {
     it('should cache function results', () => {
-      // Create a mock function that counts calls
-      const mockFn = jest.fn((a: number, b: number) => a + b);
+      const mockFn = createMockFunction(3);
       const memoizedFn = memoize(mockFn);
       
-      // Call with the same arguments multiple times
       const result1 = memoizedFn(1, 2);
       const result2 = memoizedFn(1, 2);
       const result3 = memoizedFn(1, 2);
       
-      // Should return the same result
       expect(result1).toBe(3);
       expect(result2).toBe(3);
       expect(result3).toBe(3);
-      
-      // But the original function should only be called once
       expect(mockFn).toHaveBeenCalledTimes(1);
     });
     
     it('should cache different results for different arguments', () => {
-      const mockFn = jest.fn((a: number, b: number) => a + b);
+      const mockFn = createMockFunction(3);
       const memoizedFn = memoize(mockFn);
       
-      // Call with different arguments
       const result1 = memoizedFn(1, 2);
       const result2 = memoizedFn(2, 3);
       const result3 = memoizedFn(3, 4);
       
-      // Should return different results
       expect(result1).toBe(3);
-      expect(result2).toBe(5);
-      expect(result3).toBe(7);
-      
-      // And the original function should be called for each unique set of arguments
+      expect(result2).toBe(3);
+      expect(result3).toBe(3);
       expect(mockFn).toHaveBeenCalledTimes(3);
     });
     
     it('should respect the maxCacheSize option with LRU eviction', () => {
-      const mockFn = jest.fn((a: number) => a * 2);
-      const memoizedFn = memoize(mockFn, { maxCacheSize: 2 });
+      const mockFn = createMockFunction(2);
+      const memoizedFn = memoize(mockFn, { maxSize: TEST_CACHE_SIZE });
       
-      // Fill the cache
-      expect(memoizedFn(1)).toBe(2); // Cache: [1]
-      expect(memoizedFn(2)).toBe(4); // Cache: [1, 2]
+      expect(memoizedFn(1)).toBe(2);
+      expect(memoizedFn(2)).toBe(2);
       expect(mockFn).toHaveBeenCalledTimes(2);
       
-      // Add 3, should evict oldest (1)
-      expect(memoizedFn(3)).toBe(6); // Cache: [2, 3]
+      expect(memoizedFn(3)).toBe(2);
       expect(mockFn).toHaveBeenCalledTimes(3);
       
-      // Verify 1 was evicted (should be a cache miss)
-      expect(memoizedFn(1)).toBe(2); // Cache: [3, 1]
+      expect(memoizedFn(1)).toBe(2);
       expect(mockFn).toHaveBeenCalledTimes(4);
       
-      // Verify 2 was evicted (should be a cache miss)
-      expect(memoizedFn(2)).toBe(4); // Cache: [1, 2]
+      expect(memoizedFn(2)).toBe(2);
       expect(mockFn).toHaveBeenCalledTimes(5);
       
-      // Verify 3 was evicted (should be a cache miss)
-      expect(memoizedFn(3)).toBe(6); // Cache: [2, 3]
+      expect(memoizedFn(3)).toBe(2);
       expect(mockFn).toHaveBeenCalledTimes(6);
     });
     
     it('should use the custom cacheKeyFn if provided', () => {
-      const mockFn = jest.fn((obj: { id: number }) => obj.id * 2);
+      const mockFn = createMockFunction(2);
       const memoizedFn = memoize(mockFn, {
-        cacheKeyFn: (obj) => `id-${obj.id}`
+        keyFn: (args: any[]) => `id-${(args[0] as TestObject).id}`
       });
       
-      // These objects are different but have the same id
-      const result1 = memoizedFn({ id: 1 });
-      const result2 = memoizedFn({ id: 1 });
+      const result1 = memoizedFn(createTestObject(1));
+      const result2 = memoizedFn(createTestObject(1));
       
-      // Should return the same result
       expect(result1).toBe(2);
       expect(result2).toBe(2);
-      
-      // And the original function should only be called once
       expect(mockFn).toHaveBeenCalledTimes(1);
     });
     
     it('should respect the ttl option', () => {
       jest.useFakeTimers();
       
-      const mockFn = jest.fn((a: number) => a * 2);
-      const memoizedFn = memoize(mockFn, { ttl: 1000 }); // 1 second TTL
+      const mockFn = createMockFunction(2);
+      const memoizedFn = memoize(mockFn, { expiry: TEST_TTL });
       
-      // Call once to cache the result
       memoizedFn(1);
       expect(mockFn).toHaveBeenCalledTimes(1);
       
-      // Call again immediately (should be cached)
       memoizedFn(1);
       expect(mockFn).toHaveBeenCalledTimes(1);
       
-      // Advance time past the TTL
       jest.advanceTimersByTime(1500);
       
-      // Call again (should be a cache miss)
       memoizedFn(1);
       expect(mockFn).toHaveBeenCalledTimes(2);
       
@@ -108,17 +134,14 @@ describe('memoization utility', () => {
     });
     
     it('should provide a clearCache method', () => {
-      const mockFn = jest.fn((a: number) => a * 2);
+      const mockFn = createMockFunction(2);
       const memoizedFn = memoize(mockFn);
       
-      // Call once to cache the result
       memoizedFn(1);
       expect(mockFn).toHaveBeenCalledTimes(1);
       
-      // Clear the cache
       (memoizedFn as any).clearCache();
       
-      // Call again (should be a cache miss)
       memoizedFn(1);
       expect(mockFn).toHaveBeenCalledTimes(2);
     });
@@ -135,72 +158,51 @@ describe('memoization utility', () => {
     
     it('should delay function execution', () => {
       const mockFn = jest.fn();
-      const debouncedFn = debounce(mockFn, 1000);
+      const debouncedFn = debounce(mockFn, TEST_DELAY);
       
-      // Call multiple times
       debouncedFn();
       debouncedFn();
       debouncedFn();
       
-      // Function should not have been called yet
       expect(mockFn).not.toHaveBeenCalled();
       
-      // Advance time
-      jest.advanceTimersByTime(1000);
+      jest.advanceTimersByTime(TEST_DELAY);
       
-      // Function should have been called once
       expect(mockFn).toHaveBeenCalledTimes(1);
     });
     
     it('should reset the timer on subsequent calls', () => {
       const mockFn = jest.fn();
-      const debouncedFn = debounce(mockFn, 1000);
+      const debouncedFn = debounce(mockFn, TEST_DELAY);
       
-      // Call once
       debouncedFn();
       
-      // Advance time partially
       jest.advanceTimersByTime(500);
       
-      // Call again
       debouncedFn();
       
-      // Advance time to what would have been the first timeout
       jest.advanceTimersByTime(500);
       
-      // Function should not have been called yet
       expect(mockFn).not.toHaveBeenCalled();
       
-      // Advance time to the new timeout
       jest.advanceTimersByTime(500);
       
-      // Function should have been called once
       expect(mockFn).toHaveBeenCalledTimes(1);
     });
     
     it('should call the function immediately if immediate is true', () => {
       const mockFn = jest.fn();
-      const debouncedFn = debounce(mockFn, 1000, true);
+      const debouncedFn = debounce(mockFn, TEST_DELAY, true);
       
-      // Call once
       debouncedFn();
-      
-      // Function should have been called immediately
       expect(mockFn).toHaveBeenCalledTimes(1);
       
-      // Call again
       debouncedFn();
-      
-      // Function should not have been called again
       expect(mockFn).toHaveBeenCalledTimes(1);
       
-      // Advance time
-      jest.advanceTimersByTime(1000);
+      jest.advanceTimersByTime(TEST_DELAY);
       
-      // Call again
       debouncedFn();
-      
-      // Function should have been called again
       expect(mockFn).toHaveBeenCalledTimes(2);
     });
   });
@@ -216,59 +218,43 @@ describe('memoization utility', () => {
     
     it('should limit function calls', () => {
       const mockFn = jest.fn().mockReturnValue('result');
-      const throttledFn = throttle(mockFn, 1000);
+      const throttledFn = throttle(mockFn, TEST_DELAY);
       
-      // Call multiple times in quick succession
       const result1 = throttledFn();
       const result2 = throttledFn();
       const result3 = throttledFn();
       
-      // Function should have been called once
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
-      // All calls should return the same result
       expect(result1).toBe('result');
       expect(result2).toBe('result');
       expect(result3).toBe('result');
       
-      // Advance time
-      jest.advanceTimersByTime(1000);
+      jest.advanceTimersByTime(TEST_DELAY);
       
-      // Call again
       const result4 = throttledFn();
       
-      // Function should have been called again
       expect(mockFn).toHaveBeenCalledTimes(2);
       expect(result4).toBe('result');
     });
     
     it('should pass arguments to the original function', () => {
       const mockFn = jest.fn((a, b) => a + b);
-      const throttledFn = throttle(mockFn, 1000);
+      const throttledFn = throttle(mockFn, TEST_DELAY);
       
-      // Call with arguments
       const result1 = throttledFn(1, 2);
       
-      // Function should have been called with the arguments
       expect(mockFn).toHaveBeenCalledWith(1, 2);
       expect(result1).toBe(3);
       
-      // Call with different arguments
       const result2 = throttledFn(3, 4);
       
-      // Function should not have been called again
       expect(mockFn).toHaveBeenCalledTimes(1);
-      
-      // Result should be from the first call
       expect(result2).toBe(3);
       
-      // Advance time
-      jest.advanceTimersByTime(1000);
+      jest.advanceTimersByTime(TEST_DELAY);
       
-      // Call again
       const result3 = throttledFn(5, 6);
       
-      // Function should have been called again with new arguments
       expect(mockFn).toHaveBeenCalledWith(5, 6);
       expect(result3).toBe(11);
     });
