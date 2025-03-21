@@ -15,9 +15,6 @@ import type { UsedProductData } from "../../utils/usedData";
 ////////////////////////////////////////////////
 // Constants and Variables:
 ////////////////////////////////////////////////
-// Cache duration in milliseconds (5 minutes)
-const CACHE_DURATION = 5 * 60 * 1000;
-
 // Loading states for better UX
 const LOADING_STATES = {
   INITIAL: 'initial',
@@ -65,38 +62,35 @@ export const Product = () => {
   // State to track image loading
   const [imageLoaded, setImageLoaded] = useState<boolean>(false);
 
+  // State to track current URL
+  const [currentUrl, setCurrentUrl] = useState<string>(window.location.href);
+
   ////////////////////////////////////////////////
   // Effect Hooks:
   ////////////////////////////////////////////////
-  // Effect hook to fetch product data with caching
+  // Effect to update URL state
+  useEffect(() => {
+    const checkUrl = () => {
+      const newUrl = window.location.href;
+      if (newUrl !== currentUrl) {
+        setCurrentUrl(newUrl);
+      }
+    };
+
+    // Check URL periodically
+    const interval = setInterval(checkUrl, 100);
+    return () => clearInterval(interval);
+  }, [currentUrl]);
+
+  // Effect hook to fetch product data when URL changes
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoadingState(LOADING_STATES.LOADING);
-
-        // Check cache first
-        const cachedData = localStorage.getItem('productData');
-        const cacheTimestamp = localStorage.getItem('productDataTimestamp');
-
-        if (cachedData && cacheTimestamp) {
-          const isExpired = Date.now() - Number(cacheTimestamp) > CACHE_DURATION;
-          
-          if (!isExpired) {
-            setProductData(JSON.parse(cachedData));
-            setLoadingState(LOADING_STATES.SUCCESS);
-            return;
-          }
-        }
-
-        // Fetch fresh data if cache is expired or doesn't exist
         const data = await getUsedData();
         if (data) {
           setProductData(data);
           setLoadingState(LOADING_STATES.SUCCESS);
-          
-          // Update cache
-          localStorage.setItem('productData', JSON.stringify(data));
-          localStorage.setItem('productDataTimestamp', Date.now().toString());
         }
       } catch (error) {
         console.error('Error fetching product data:', error);
@@ -105,7 +99,7 @@ export const Product = () => {
     };
 
     fetchData();
-  }, []);
+  }, [currentUrl]); // Re-fetch when URL changes
 
   ////////////////////////////////////////////////
   // Event Handlers:

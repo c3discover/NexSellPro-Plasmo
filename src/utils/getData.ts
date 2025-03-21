@@ -58,32 +58,9 @@ const CACHE_CONFIG = {
   }
 };
 
-// Cache for data
-let lastData: any = null;
-let lastDataTimestamp = 0;
-let consecutiveFetches = 0;
-let lastFetchTime = 0;
-
-/**
- * Calculate current cooldown based on fetch patterns
- */
-const calculateCooldown = () => {
-  const now = Date.now();
-  const timeSinceLastFetch = now - lastFetchTime;
-
-  // Reset consecutive fetches if enough time has passed
-  if (timeSinceLastFetch > CACHE_CONFIG.DATA_FETCH.RESET_AFTER) {
-    consecutiveFetches = 0;
-    return CACHE_CONFIG.DATA_FETCH.BASE_COOLDOWN;
-  }
-
-  // Implement progressive backoff
-  const cooldown = Math.min(
-    CACHE_CONFIG.DATA_FETCH.BASE_COOLDOWN * Math.pow(1.5, consecutiveFetches),
-    CACHE_CONFIG.DATA_FETCH.MAX_COOLDOWN
-  );
-
-  return cooldown;
+// Add logging constants
+const LOG_STYLES = {
+  RAW_DATA: 'color: #22c55e; font-weight: bold; font-size: 12px',  // Green
 };
 
 ////////////////////////////////////////////////
@@ -275,6 +252,7 @@ export function getProductDetails(product: any, idml: any, reviews: any): Produc
   // Load settings from localStorage
   const settings = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
   
+
   const productDetailsUsed: ProductDetails = {
     // Categories below
     badges: [],
@@ -467,106 +445,47 @@ export function getProductDetails(product: any, idml: any, reviews: any): Produc
 }
 
 /**
- * Get data with retry mechanism
- * @param retryCount - Current retry count
- * @returns Processed data or null if failed
+ * Main function to get product data
+ * @param forceRefresh - Whether to force a refresh of the data
+ * @returns Product data or null if not available
  */
-function getDataWithRetry(retryCount: number): any {
+export default function getData(forceRefresh: boolean = false) {
   try {
     const dataDiv = document.getElementById("__NEXT_DATA__");
     if (!dataDiv) {
-      if (retryCount < CACHE_CONFIG.DATA_FETCH.MAX_RETRIES) {
-        setTimeout(() => getDataWithRetry(retryCount + 1), CACHE_CONFIG.DATA_FETCH.RETRY_DELAY);
-        return null;
-      } else {
-        console.error("Data div not found after maximum retries.");
-        return null;
-      }
+      console.error("Data div not found.");
+      return null;
     }
 
-    try {
-      const rawData = JSON.parse(dataDiv.innerText);
-      if (!rawData?.props?.pageProps?.initialData?.data) {
-        if (retryCount < CACHE_CONFIG.DATA_FETCH.MAX_RETRIES) {
-          setTimeout(() => getDataWithRetry(retryCount + 1), CACHE_CONFIG.DATA_FETCH.RETRY_DELAY);
-          return null;
-        } else {
-          console.error("Incomplete data structure after maximum retries.");
-          return null;
-        }
-      }
-
-      const { product, idml, reviews } = rawData.props.pageProps.initialData.data;
-      
-      // Check if we have valid product data
-      if (!product) {
-        if (retryCount < CACHE_CONFIG.DATA_FETCH.MAX_RETRIES) {
-          setTimeout(() => getDataWithRetry(retryCount + 1), CACHE_CONFIG.DATA_FETCH.RETRY_DELAY);
-          return null;
-        } else {
-          console.error("No product data found after maximum retries.");
-          return null;
-        }
-      }
-
-      // Always log the raw data
-      console.log('%c[All JSON Data]', 'color: #22c55e; font-weight: bold', {
-        timestamp: new Date().toISOString(),
-        data: { product, idml, reviews }
-      });
-
-      // Cache the processed data
-      lastData = getProductDetails(product, idml, reviews);
-      lastDataTimestamp = Date.now();
-      return lastData;
-    } catch (parseError) {
-      console.error('Error parsing data:', parseError);
-      if (retryCount < CACHE_CONFIG.DATA_FETCH.MAX_RETRIES) {
-        setTimeout(() => getDataWithRetry(retryCount + 1), CACHE_CONFIG.DATA_FETCH.RETRY_DELAY);
-        return null;
-      } else {
-        console.error("Failed to parse data after maximum retries.");
-        return null;
-      }
+    const rawData = JSON.parse(dataDiv.innerText);
+    if (!rawData?.props?.pageProps?.initialData?.data) {
+      console.error("Incomplete data structure.");
+      return null;
     }
+
+    const { product, idml, reviews } = rawData.props.pageProps.initialData.data;
+    
+    if (!product) {
+      console.error("No product data found.");
+      return null;
+    }
+
+    // Log all raw data in one group
+    if (!forceRefresh) {  // Only log if not a forced refresh
+      console.groupCollapsed('%c[Raw JSON Data]', LOG_STYLES.RAW_DATA);
+      console.log('Timestamp:', new Date().toISOString());
+      console.log('Product:', product);
+      console.log('IDML:', idml);
+      console.log('Reviews:', reviews);
+      console.groupEnd();
+    }
+
+    // Get processed data and return
+    return getProductDetails(product, idml, reviews);
   } catch (error) {
     console.error('Error in getData:', error);
-    if (retryCount < CACHE_CONFIG.DATA_FETCH.MAX_RETRIES) {
-      setTimeout(() => getDataWithRetry(retryCount + 1), CACHE_CONFIG.DATA_FETCH.RETRY_DELAY);
-      return null;
-    } else {
-      console.error("Failed to get data after maximum retries.");
-      return null;
-    }
+    return null;
   }
-}
-
-/**
- * Get data with caching
- * @returns Processed data
- */
-export default function getData() {
-  const now = Date.now();
-  const currentCooldown = calculateCooldown();
-  
-  // Return cached data if within cooldown
-  if (lastData && now - lastDataTimestamp < currentCooldown) {
-    return lastData;
-  }
-
-  // Update fetch tracking
-  lastFetchTime = now;
-  consecutiveFetches++;
-
-  // Try to get data with retries
-  const result = getDataWithRetry(0);
-  
-  if (result) {
-    lastData = result;
-    lastDataTimestamp = now;
-  }
-
-  return result;
 }
 
 /**

@@ -67,6 +67,8 @@ const handleTabUpdate = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo, t
     chrome.tabs.sendMessage(tabId, {
       type: 'URL_CHANGED',
       url: changeInfo.url
+    }).catch(() => {
+      // Ignore errors from closed tabs or unloaded content scripts
     });
   }
 };
@@ -74,9 +76,12 @@ const handleTabUpdate = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo, t
 // Navigation handler
 const handleNavigation = (details: chrome.webNavigation.WebNavigationTransitionCallbackDetails) => {
   if (details.url.startsWith(WALMART_DOMAIN)) {
+    // Send message for both regular navigation and history state updates
     chrome.tabs.sendMessage(details.tabId, {
       type: 'URL_CHANGED',
       url: details.url
+    }).catch(() => {
+      // Ignore errors from closed tabs or unloaded content scripts
     });
   }
 };
@@ -91,6 +96,8 @@ const handleWebRequest = (details: chrome.webRequest.WebResponseCacheDetails) =>
         chrome.tabs.sendMessage(details.tabId!, { 
           type: "ALL_OFFERS_DATA", 
           data 
+        }).catch(() => {
+          // Ignore errors from closed tabs or unloaded content scripts
         });
       })
       .catch((error) => console.error("Error fetching alloffers data:", error));
@@ -111,6 +118,9 @@ chrome.tabs.onUpdated.addListener(handleTabUpdate);
 
 // Listen for navigation state changes (e.g., single-page app navigation)
 chrome.webNavigation.onHistoryStateUpdated.addListener(handleNavigation);
+
+// Listen for completed navigation
+chrome.webNavigation.onCompleted.addListener(handleNavigation);
 
 // Listen for network requests to capture seller data
 chrome.webRequest.onCompleted.addListener(

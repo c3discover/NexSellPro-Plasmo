@@ -22,6 +22,11 @@ const FETCH_COOLDOWN = 1000; // 1 second cooldown between fetches
 let dataFetchPromise: Promise<UsedProductData | null> | null = null;
 let lastFetchTimestamp = 0;
 
+// Add logging constants
+const LOG_STYLES = {
+  EXTENSION_DATA: 'color: #0ea5e9; font-weight: bold; font-size: 12px',  // Sky blue
+};
+
 ////////////////////////////////////////////////
 // Types and Interfaces:
 ////////////////////////////////////////////////
@@ -151,8 +156,8 @@ export async function getUsedData(): Promise<UsedProductData | null> {
     lastFetchTimestamp = now;
     dataFetchPromise = (async () => {
       try {
-        // Get raw product data
-        const rawProductData = getData();
+        // Get raw product data with forceRefresh=true to prevent duplicate logging
+        const rawProductData = getData(true);
         if (!rawProductData) {
           return null;
         }
@@ -223,11 +228,18 @@ export async function getUsedData(): Promise<UsedProductData | null> {
           }
         };
 
-        // Log the used data for debugging
-        console.log('%c[Data Used in Extension]', 'color: #0ea5e9; font-weight: bold', {
-          timestamp: new Date().toISOString(),
-          data: usedData
-        });
+        // Log the used data in a collapsible group
+        console.groupCollapsed('%c[Used Extension Data]', LOG_STYLES.EXTENSION_DATA);
+        console.log('Timestamp:', new Date().toISOString());
+        console.log('Basic Info:', usedData.basic);
+        console.log('Pricing:', usedData.pricing);
+        console.log('Dimensions:', usedData.dimensions);
+        console.log('Categories:', usedData.categories);
+        console.log('Inventory:', usedData.inventory);
+        console.log('Reviews:', usedData.reviews);
+        console.log('Sellers:', usedData.sellers);
+        console.log('Flags:', usedData.flags);
+        console.groupEnd();
 
         return usedData;
       } catch (error) {

@@ -25,6 +25,8 @@ const GRAPHQL_CACHE_DURATION = 30000; // 30 seconds cache
 const OBSERVER_DEBOUNCE_DELAY = 1000; // 1 second debounce
 const COMPARE_BUTTON_COOLDOWN = 5000; // 5 seconds cooldown between clicks
 
+
+
 // DOM Selectors for finding seller information
 const SELLER_SELECTORS = {
   // Main selectors for more sellers panel
@@ -142,10 +144,19 @@ let isCompareButtonDebouncing = false;
 ////////////////////////////////////////////////
 // Helper Functions:
 ////////////////////////////////////////////////
-// Debug logging helper
+// Add logging constants
+const LOG_STYLES = {
+  SELLER_DATA: 'color: #6366f1; font-weight: bold; font-size: 12px',  // Indigo
+  GRAPHQL: 'color: #8b5cf6; font-weight: bold; font-size: 12px',      // Purple
+};
+
+// Update the logDebug function to only log essential information
 const logDebug = (message: string, data?: any) => {
   if (!DEBUG) return;
-  console.log(`%c[Seller Extraction] ${message}`, 'color: #6366f1', data || '');
+  // Only log specific debug messages that are essential
+  if (message.includes('Error') || message.includes('not found')) {
+    console.log(`%c[Seller Data] ${message}`, LOG_STYLES.SELLER_DATA, data || '');
+  }
 };
 
 // Wait for element to appear in DOM
@@ -448,7 +459,6 @@ const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo[]> => 
   if (graphQLCache && 
       graphQLCache.productId === itemId && 
       Date.now() - graphQLCache.timestamp < GRAPHQL_CACHE_DURATION) {
-    logDebug('Returning cached GraphQL data');
     return graphQLCache.data;
   }
 
@@ -498,7 +508,10 @@ const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo[]> => 
     }
 
     const data = await response.json();
-    logDebug('GraphQL Response:', data);
+    console.groupCollapsed('%c[Seller Data GraphQL]', LOG_STYLES.GRAPHQL);
+    console.log('Timestamp:', new Date().toISOString());
+    console.log('Data:', data);
+    console.groupEnd();
 
     if (data?.data?.product?.allOffers) {
       const sellers = data.data.product.allOffers

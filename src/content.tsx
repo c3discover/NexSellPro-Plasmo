@@ -100,30 +100,43 @@ const ContentUI = () => {
   useEffect(() => {
     let lastUrl = window.location.href;
 
-    // Function to check URL changes
+    // Function to check URL changes and update data
     const checkForUrlChange = () => {
       const newUrl = window.location.href;
       
-      // Always update currentUrl to trigger the effect
-      setCurrentUrl(newUrl);
-      
-      // If URL actually changed, handle cleanup
       if (newUrl !== lastUrl) {
+        console.log('URL changed:', newUrl);
         lastUrl = newUrl;
-        if (!newUrl.includes("/ip/")) {
-          setProductDetails(null);
+        setCurrentUrl(newUrl);
+        
+        // Clear product details immediately on URL change
+        setProductDetails(null);
+        
+        // Only fetch new data if we're on a product page
+        if (newUrl.includes("/ip/")) {
+          const data = getData();
+          if (data) {
+            setProductDetails(data);
+          }
+        } else {
           document.body.classList.remove("plasmo-google-sidebar-show");
         }
       }
     };
 
-    // Check immediately
-    checkForUrlChange();
+    // Create a MutationObserver to watch for DOM changes
+    const observer = new MutationObserver(() => {
+      requestAnimationFrame(checkForUrlChange);
+    });
 
-    // Set up interval to check URL
-    const interval = setInterval(checkForUrlChange, 100);
+    // Observe changes to the document body
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true
+    });
 
-    // Listen for URL changes from background script as backup
+    // Listen for URL changes from background script
     const handleMessage = (message: any) => {
       if (message.type === 'URL_CHANGED') {
         checkForUrlChange();
@@ -133,18 +146,19 @@ const ContentUI = () => {
     try {
       chrome.runtime.onMessage.addListener(handleMessage);
     } catch (error) {
-      // Attempt to gracefully handle the error
-      if (chrome.runtime && chrome.runtime.reload) {
-        chrome.runtime.reload();
-      }
+      console.error("Error setting up message listener:", error);
     }
 
-    // Cleanup function to remove listeners and clear classes
+    // Initial check
+    checkForUrlChange();
+
+    // Cleanup function
     return () => {
-      clearInterval(interval);
+      observer.disconnect();
       try {
         chrome.runtime.onMessage.removeListener(handleMessage);
       } catch (error) {
+        console.error("Error removing message listener:", error);
       }
       document.body.classList.remove("plasmo-google-sidebar-show");
     };
