@@ -1,16 +1,50 @@
+/**
+ * @fileoverview SellerTable component for displaying detailed seller information
+ * @author NexSellPro
+ * @created 2024-03-21
+ * @lastModified 2024-03-21
+ */
+
+////////////////////////////////////////////////
+// Imports:
+////////////////////////////////////////////////
 import React, { useEffect, useState } from "react";
 import { FiCheckCircle } from "react-icons/fi";
 import { getUsedData } from '../../utils/usedData';
 import type { UsedProductData } from '../../utils/usedData';
 import { isBrandMatch } from '../../utils/analysisHelpers';
 
+////////////////////////////////////////////////
+// Constants and Variables:
+////////////////////////////////////////////////
+// CSS class constants for styling seller metrics
+const CLASS_SECTION_CONTENT_GREEN = "text-xs font-bold bg-green-100 text-black-600 border-2 border-green-500 text-center p-1 w-full rounded-b-lg shadow-md shadow-black";
+const CLASS_SECTION_CONTENT_RED = "text-xs font-bold bg-red-200 text-black-600 border-2 border-red-500 text-center p-1 w-full rounded-b-lg shadow-md shadow-black";
+const CLASS_SECTION_CONTENT_DEFAULT = "text-xs font-bold bg-white text-black-600 border-2 border-black-700 text-center p-1 w-full rounded-b-lg shadow-md shadow-black";
+
+////////////////////////////////////////////////
+// Types and Interfaces:
+////////////////////////////////////////////////
+// Using UsedProductData type from usedData.ts
+
+////////////////////////////////////////////////
+// Props Interface:
+////////////////////////////////////////////////
+// No props needed for this component
+
+////////////////////////////////////////////////
+// Component:
+////////////////////////////////////////////////
 export const SellerTable: React.FC = () => {
+    ////////////////////////////////////////////////
+    // State and Hooks:
+    ////////////////////////////////////////////////
+    // State for storing product data
     const [productData, setProductData] = React.useState<UsedProductData | null>(null);
+    // State for tracking loading status
     const [isLoading, setIsLoading] = useState(true);
 
-    const CLASS_SECTION_CONTENT_GREEN = "text-xs font-bold bg-green-100 text-black-600 border-2 border-green-500 text-center p-1 w-full rounded-b-lg shadow-md shadow-black";
-    const CLASS_SECTION_CONTENT_RED = "text-xs font-bold bg-red-200 text-black-600 border-2 border-red-500 text-center p-1 w-full rounded-b-lg shadow-md shadow-black";
-
+    // Effect hook to fetch seller data on component mount
     useEffect(() => {
         const fetchSellers = async () => {
             try {
@@ -28,6 +62,14 @@ export const SellerTable: React.FC = () => {
         fetchSellers();
     }, []);
 
+    ////////////////////////////////////////////////
+    // Helper Functions:
+    ////////////////////////////////////////////////
+    /**
+     * Determines the style classes for different seller types
+     * @param type The type of seller (WMT, WFS, SF, etc.)
+     * @returns CSS classes for styling the seller type badge
+     */
     const getTypeStyle = (type: string) => {
         switch (type) {
             case 'WMT':
@@ -43,7 +85,11 @@ export const SellerTable: React.FC = () => {
         }
     };
 
-    // Helper function to format price
+    /**
+     * Formats price values to consistent display format
+     * @param price Price value to format
+     * @returns Formatted price string with $ symbol
+     */
     const formatPrice = (price: string | number | undefined): string => {
         if (typeof price === 'number') {
             return `$${price.toFixed(2)}`;
@@ -55,7 +101,12 @@ export const SellerTable: React.FC = () => {
         return '-';
     };
 
-    // Helper function to determine seller type
+    /**
+     * Determines the seller type based on seller info and brand
+     * @param seller Seller object containing seller information
+     * @param brand Brand name to check against
+     * @returns Seller type classification
+     */
     const getSellerType = (seller: any, brand?: string | null) => {
         if (seller.sellerName === "Walmart.com") return "WMT";
 
@@ -68,6 +119,10 @@ export const SellerTable: React.FC = () => {
         return seller.isWFS ? "WFS" : "SF";
     };
 
+    /**
+     * Applies highlighting based on maximum sellers threshold
+     * @returns CSS classes for styling based on seller count
+     */
     const applyMaxSellersHighlight = (): string => {
         const storedSettings = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
         const maxSellers = typeof storedSettings.maxSellers === "string"
@@ -75,7 +130,7 @@ export const SellerTable: React.FC = () => {
             : storedSettings.maxSellers || null;
 
         if (maxSellers === null || maxSellers === 0) {
-            return "bg-white text-black-600 border-2 border-black";
+            return CLASS_SECTION_CONTENT_DEFAULT;
         }
 
         return (productData?.sellers.totalSellers || 0) <= maxSellers
@@ -83,6 +138,9 @@ export const SellerTable: React.FC = () => {
             : CLASS_SECTION_CONTENT_RED;
     };
 
+    ////////////////////////////////////////////////
+    // Render Logic:
+    ////////////////////////////////////////////////
     if (isLoading) {
         return (
             <div className="p-4 w-full text-center">
@@ -92,22 +150,30 @@ export const SellerTable: React.FC = () => {
     }
 
     return (
-        <div className="overflow-hidden w-full rounded-lg border shadow-lg">
+        <div className="w-full rounded-lg border shadow-lg">
             {/* Quick Stats Section */}
-            <div className="flex justify-between px-4 py-2 bg-gray-50 border-b">
+            <div className="flex justify-between px-4 py-2 bg-gray-50 border-b overflow-visible">
                 
                 {/* Total Sellers */}
-                <div className="text-center pb-2">
-                    <div className="text-sm font-semibold bg-gray-100">Total Sellers</div>
-                    <div className={`mt-1 px-3 py-1 border border-black rounded-full text-xs font-medium ${applyMaxSellersHighlight()}`}>
-                        {productData?.sellers.totalSellers || 0}
+                <div className="text-center pb-2 relative group">
+                    <div className="text-sm font-semibold bg-gray-50">Total Sellers</div>
+                    <div className="relative">
+                        <div className={`mt-1 px-3 py-1 rounded-full text-xs font-medium ${!JSON.parse(localStorage.getItem("desiredMetrics") || "{}")?.maxSellers ? 'cursor-help' : ''} ${applyMaxSellersHighlight()}`}>
+                            {productData?.sellers.totalSellers || 0}
+                        </div>
+                        {!JSON.parse(localStorage.getItem("desiredMetrics") || "{}")?.maxSellers && (
+                            <div className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-lg z-[100] whitespace-nowrap">
+                                Baseline value not in settings
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-800"></div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
                 {/* WFS Sellers */}
                 <div className="text-center pb-2">
-                    <div className="text-sm font-semibold bg-gray-100">WFS Sellers</div>
-                    <div className={`mt-1 px-3 py-1 border border-black rounded-full text-xs font-medium ${
+                    <div className="text-sm font-semibold bg-gray-50">WFS Sellers</div>
+                    <div className={`mt-1 px-3 py-1 rounded-full text-xs font-medium ${
                         productData?.sellers.otherSellers.filter(s => s.type === "WFS" || s.type === "WFS-Brand").length === 0
                         ? CLASS_SECTION_CONTENT_GREEN
                         : CLASS_SECTION_CONTENT_RED
@@ -118,8 +184,8 @@ export const SellerTable: React.FC = () => {
 
                 {/* Walmart Sells */}
                 <div className="text-center pb-2">
-                    <div className="text-sm font-semibold bg-gray-100">Walmart Sells</div>
-                    <div className={`mt-1 px-3 py-1 border border-black rounded-full text-xs font-medium ${
+                    <div className="text-sm font-semibold bg-gray-50">Walmart Sells</div>
+                    <div className={`mt-1 px-3 py-1 rounded-full text-xs font-medium ${
                         productData?.sellers.mainSeller?.sellerName === "Walmart.com"
                         ? CLASS_SECTION_CONTENT_RED
                         : CLASS_SECTION_CONTENT_GREEN
@@ -130,8 +196,8 @@ export const SellerTable: React.FC = () => {
 
                 {/* Brand Sells */}
                 <div className="text-center pb-2">
-                    <div className="text-sm font-semibold bg-gray-100">Brand Sells</div>
-                    <div className={`mt-1 px-3 py-1 border border-black rounded-full text-xs font-medium ${
+                    <div className="text-sm font-semibold bg-gray-50">Brand Sells</div>
+                    <div className={`mt-1 px-3 py-1 rounded-full text-xs font-medium ${
                         productData?.sellers.otherSellers.some(s =>
                             productData?.basic.brand && s.sellerName &&
                             productData.basic.brand.toLowerCase().split(' ').some(brandPart =>
@@ -199,4 +265,9 @@ export const SellerTable: React.FC = () => {
             </table>
         </div>
     );
-}; 
+};
+
+////////////////////////////////////////////////
+// Export Statement:
+////////////////////////////////////////////////
+export default SellerTable; 

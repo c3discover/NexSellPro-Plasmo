@@ -1,8 +1,8 @@
 /**
- * @fileoverview Utility for processing and organizing product data used in the extension
- * @author Your Name
- * @created 2024-03-20
- * @lastModified 2024-03-20
+ * @fileoverview Utility for collecting and organizing product data from various sources
+ * @author NexSellPro
+ * @created 2024-03-07
+ * @lastModified 2024-03-21
  */
 
 ////////////////////////////////////////////////
@@ -13,94 +13,82 @@ import { getSellerData } from "./sellerData";
 import type { SellerInfo } from "~/types/seller";
 
 ////////////////////////////////////////////////
+// Constants and Variables:
+////////////////////////////////////////////////
+// Cache settings for data fetching
+const FETCH_COOLDOWN = 1000; // 1 second cooldown between fetches
+
+// Cache state
+let dataFetchPromise: Promise<UsedProductData | null> | null = null;
+let lastFetchTimestamp = 0;
+
+////////////////////////////////////////////////
 // Types and Interfaces:
 ////////////////////////////////////////////////
-
-/**
- * Basic product information
- */
+// Basic product information
 export interface ProductBasicInfo {
   productID: string | null;      // Unique product identifier
   name: string | null;           // Product name
-  upc: string | null;           // Universal Product Code
-  brand: string | null;         // Product brand name
-  brandUrl: string | null;      // URL to brand page
-  modelNumber: string | null;   // Product model number
+  upc: string | null;            // Universal Product Code
+  brand: string | null;          // Brand name
+  brandUrl: string | null;       // Brand page URL
+  modelNumber: string | null;    // Product model number
 }
 
-/**
- * Product pricing information
- */
+// Product pricing information
 export interface ProductPricing {
-  currentPrice: number | null;           // Current selling price
-  sellerName: string | null;             // Name of the seller
-  sellerDisplayName: string | null;      // Display name of the seller
-  sellerType: string | null;             // Type of seller (e.g., "Pro Seller")
+  currentPrice: number | null;
+  sellerName: string | null;
+  sellerDisplayName: string | null;
+  sellerType: string | null;
 }
 
-/**
- * Product physical dimensions
- */
+// Product physical characteristics
 export interface ProductDimensions {
-  shippingLength: string | null;  // Product length for shipping
-  shippingWidth: string | null;   // Product width for shipping
-  shippingHeight: string | null;  // Product height for shipping
-  weight: string | null;          // Product weight
+  shippingLength: string | null;
+  shippingWidth: string | null;
+  shippingHeight: string | null;
+  weight: string | null;
 }
 
-/**
- * Product media content
- */
+// Product media assets
 export interface ProductMedia {
-  imageUrl: string | null;  // Main product image URL
-  images: any[];           // Array of additional product images
-  videos: any[];           // Array of product videos
+  imageUrl: string | null;
+  images: any[];
+  videos: any[];
 }
 
-/**
- * Product categorization
- */
+// Product category information
 export interface ProductCategories {
-  mainCategory: string | null;                    // Primary category
-  categories: { name: string; url: string }[];    // List of all categories
+  mainCategory: string | null;
+  categories: { name: string; url: string }[];
 }
 
-/**
- * Product inventory information
- */
+// Product stock information
 export interface ProductInventory {
-  stock: number;                                  // Current stock level
-  totalSellers: number;                          // Total number of sellers
-  fulfillmentOptions: {                          // Available fulfillment options
-    type: string;
-    availableQuantity: number;
-  }[];
+  stock: number;
+  totalSellers: number;
+  fulfillmentOptions: { type: string; availableQuantity: number }[];
 }
 
-/**
- * Product review information
- */
+// Product review information
 export interface ProductReviews {
-  overallRating: string | number;     // Overall product rating
-  numberOfRatings: string | number;   // Total number of ratings
-  numberOfReviews: string | number;   // Total number of reviews
-  customerReviews: any[];            // Array of customer reviews
-  reviewDates: string[];            // Dates of reviews
+  overallRating: string | number;
+  numberOfRatings: string | number;
+  numberOfReviews: string | number;
+  customerReviews: any[];
+  reviewDates: string[];
 }
 
-/**
- * Product variant information
- */
+// Product variant information
 export interface ProductVariants {
-  variantCriteria: any[];           // Criteria for variants
-  variantsMap: Record<string, any>; // Map of variant options
+  variantCriteria: any[];
+  variantsMap: Record<string, any>;
 }
 
-/**
- * Product seller information
- */
+// Seller information
 export interface ProductSellers {
-  mainSeller: {                      // Primary seller information
+  mainSeller: {
     sellerName: string;
     price: string | number;
     type: string;
@@ -111,58 +99,50 @@ export interface ProductSellers {
     fulfillmentStatus?: string;
     arrivalDate?: string;
   } | null;
-  otherSellers: SellerInfo[];       // List of other sellers
-  totalSellers: number;             // Total number of sellers
+  otherSellers: SellerInfo[];
+  totalSellers: number;
 }
 
-/**
- * Complete product data structure used in the extension
- */
+// Combined product data interface
 export interface UsedProductData {
-  basic: ProductBasicInfo;          // Basic product information
-  pricing: ProductPricing;          // Pricing information
-  dimensions: ProductDimensions;     // Physical dimensions
-  media: ProductMedia;              // Media content
-  categories: ProductCategories;     // Category information
-  inventory: ProductInventory;      // Inventory information
-  reviews: ProductReviews;          // Review information
-  variants: ProductVariants;        // Variant information
-  badges: string[];                // Product badges
-  sellers: ProductSellers;         // Seller information
-  flags: {                         // Product flags
+  basic: ProductBasicInfo;
+  pricing: ProductPricing;
+  dimensions: ProductDimensions;
+  media: ProductMedia;
+  categories: ProductCategories;
+  inventory: ProductInventory;
+  reviews: ProductReviews;
+  variants: ProductVariants;
+  badges: string[];
+  sellers: ProductSellers;
+  flags: {
     isApparel: boolean;
     isHazardousMaterial: boolean;
   };
 }
 
 ////////////////////////////////////////////////
-// Constants:
+// Enums:
 ////////////////////////////////////////////////
-const FETCH_COOLDOWN = 1000;  // 1 second cooldown between fetches
+// No enums needed for this utility
 
 ////////////////////////////////////////////////
-// Variables:
+// Configuration:
 ////////////////////////////////////////////////
-let dataFetchPromise: Promise<UsedProductData | null> | null = null;
-let lastFetchTimestamp = 0;
+// Configuration is handled through constants above
 
 ////////////////////////////////////////////////
-// Main Function:
+// Helper Functions:
 ////////////////////////////////////////////////
-
-/**
- * Fetches and processes product data used in the extension
- * Implements caching and rate limiting to prevent excessive API calls
- * @returns Promise resolving to processed product data or null if unavailable
- */
+// Main function to get and organize product data
 export async function getUsedData(): Promise<UsedProductData | null> {
   try {
-    // If there's an ongoing fetch, return its promise
+    // Return existing promise if there's an ongoing fetch
     if (dataFetchPromise) {
       return dataFetchPromise;
     }
 
-    // Check cooldown
+    // Check cooldown period
     const now = Date.now();
     if (now - lastFetchTimestamp < FETCH_COOLDOWN) {
       return null;
@@ -184,7 +164,7 @@ export async function getUsedData(): Promise<UsedProductData | null> {
         // Ensure weight is properly formatted
         const processedWeight = rawProductData.weight || "0";
 
-        // Organize data into our new structure
+        // Organize data into structured format
         const usedData: UsedProductData = {
           basic: {
             productID: rawProductData.productID,
@@ -243,7 +223,7 @@ export async function getUsedData(): Promise<UsedProductData | null> {
           }
         };
 
-        // Always log the used data
+        // Log the used data for debugging
         console.log('%c[Data Used in Extension]', 'color: #0ea5e9; font-weight: bold', {
           timestamp: new Date().toISOString(),
           data: usedData
@@ -262,4 +242,9 @@ export async function getUsedData(): Promise<UsedProductData | null> {
     console.error('Error in getUsedData:', error);
     return null;
   }
-} 
+}
+
+////////////////////////////////////////////////
+// Export Statement:
+////////////////////////////////////////////////
+export default getUsedData; 

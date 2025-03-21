@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Pricing Calculator Component for product profitability analysis
+ * @author NexSellPro
+ * @created 2024-03-20
+ * @lastModified 2024-03-21
+ */
+
 ////////////////////////////////////////////////
 // Imports:
 ////////////////////////////////////////////////
@@ -113,10 +120,10 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
   }, []);
 
   // General State (Group 1)
-  const [contractCategory, setContractCategory] = useState<string>("Everything Else (Most Items)");
-  const [season, setSeason] = useState<string>("Jan-Sep");
-  const [storageLength, setStorageLength] = useState<number>(1);
-  const [inboundShippingRate, setInboundShippingRate] = useState<number>(0.0);
+  const [contractCategory, setContractCategory] = useState<string>(DEFAULT_CONTRACT_CATEGORY);
+  const [season, setSeason] = useState<string>(DEFAULT_SEASON);
+  const [storageLength, setStorageLength] = useState<number>(DEFAULT_STORAGE_LENGTH);
+  const [inboundShippingRate, setInboundShippingRate] = useState<number>(DEFAULT_INBOUND_RATE);
   const [totalProfit, setTotalProfit] = useState(0);
   const [roi, setROI] = useState(0);
   const [margin, setMargin] = useState(0);
@@ -144,17 +151,29 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
 
   // Fees State (Group 4)
   const [referralFee, setReferralFee] = useState<number>(0);
-  const [rawReferralFee, setRawReferralFee] = useState<string | null>(null);
-  const [inboundShippingFee, setInboundShippingFee] = useState<number>(0);
-  const [rawInboundShippingFee, setRawInboundShippingFee] = useState<string | null>(null);
-  const [storageFee, setStorageFee] = useState<number>(0);
-  const [rawStorageFee, setRawStorageFee] = useState<string | null>(null);
-  const [prepFee, setPrepFee] = useState<number>(0);
-  const [rawPrepFee, setRawPrepFee] = useState<string | null>(null);
-  const [additionalFees, setAdditionalFees] = useState<number>(0);
-  const [rawAdditionalFees, setRawAdditionalFees] = useState<string | null>(null);
   const [wfsFee, setWfsFee] = useState<number>(0);
+  const [inboundShippingFee, setInboundShippingFee] = useState<number>(0);
+  const [storageFee, setStorageFee] = useState<number>(0);
+  const [prepFee, setPrepFee] = useState<number>(0);
+  const [additionalFees, setAdditionalFees] = useState<number>(0);
+
+  // Raw input states for fees
+  const [rawReferralFee, setRawReferralFee] = useState<string | null>(null);
   const [rawWfsFee, setRawWfsFee] = useState<string | null>(null);
+  const [rawInboundShippingFee, setRawInboundShippingFee] = useState<string | null>(null);
+  const [rawStorageFee, setRawStorageFee] = useState<string | null>(null);
+  const [rawPrepFee, setRawPrepFee] = useState<string | null>(null);
+  const [rawAdditionalFees, setRawAdditionalFees] = useState<string | null>(null);
+
+  // Desired metrics for goal tracking
+  const [desiredMetrics, setDesiredMetrics] = useState({
+    minProfit: 0,
+    minMargin: 0,
+    minROI: 0
+  });
+
+  // Refs for initialization tracking
+  const hasInitializedProductCost = useRef(false);
 
   // Dynamically calculate values needed for WFS fee and other dimensions.
   const cubicFeet = calculateCubicFeet(shippingLength, shippingWidth, shippingHeight);
@@ -184,16 +203,6 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
     isHazardousMaterial: productData?.flags?.isHazardousMaterial || false,
     retailPrice: productData?.pricing?.currentPrice || 0,
   };
-
-  // Mutable reference for initialization checks
-  const hasInitializedProductCost = useRef(false);
-
-  // Add this near the top with other state declarations
-  const [desiredMetrics, setDesiredMetrics] = useState({
-    minProfit: 0,
-    minMargin: 0,
-    minROI: 0
-  });
 
   // Add this with other useEffects
   useEffect(() => {

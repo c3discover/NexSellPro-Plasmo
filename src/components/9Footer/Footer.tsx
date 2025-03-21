@@ -1,5 +1,12 @@
+/**
+ * @fileoverview Footer component with newsletter subscription and social links
+ * @author NexSellPro
+ * @created 2024-03-07
+ * @lastModified 2024-03-21
+ */
+
 ////////////////////////////////////////////////
-// Imports
+// Imports:
 ////////////////////////////////////////////////
 import React, { useState, useEffect } from "react";
 import { version } from '../../../package.json';
@@ -7,19 +14,20 @@ import { FaFacebook, FaTwitter, FaLinkedin, FaInstagram } from 'react-icons/fa';
 import emailjs from '@emailjs/browser';
 
 ////////////////////////////////////////////////
-// Constants and Variables
+// Constants and Variables:
 ////////////////////////////////////////////////
+// Regular expression for validating email format
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Social Media Links - Update these when accounts are created
+// Social media platform URLs (placeholder until accounts are created)
 const SOCIAL_LINKS = {
-  facebook: "#",  // Update when Facebook account is created
-  twitter: "#",   // Update when Twitter account is created
-  linkedin: "#",  // Update when LinkedIn account is created
-  instagram: "#"  // Update when Instagram account is created
+  facebook: "#",
+  twitter: "#",
+  linkedin: "#",
+  instagram: "#"
 };
 
-// EmailJS configuration from environment variables
+// EmailJS service configuration
 const EMAILJS_CONFIG = {
   serviceId: process.env.PLASMO_PUBLIC_EMAILJS_SERVICE_ID || "",
   adminTemplateId: process.env.PLASMO_PUBLIC_EMAILJS_ADMIN_TEMPLATE_ID || "",
@@ -28,21 +36,45 @@ const EMAILJS_CONFIG = {
 };
 
 ////////////////////////////////////////////////
-// Component
+// Types and Interfaces:
+////////////////////////////////////////////////
+// Type for subscription status states
+type SubscriptionStatus = 'idle' | 'loading' | 'success' | 'error';
+
+////////////////////////////////////////////////
+// Props Interface:
+////////////////////////////////////////////////
+// No props needed for this component
+
+////////////////////////////////////////////////
+// Component:
 ////////////////////////////////////////////////
 export const Footer = () => {
+
+////////////////////////////////////////////////
+// State and Hooks:
+////////////////////////////////////////////////
+  // State for email input and subscription process
   const [email, setEmail] = useState("");
-  const [subscribeStatus, setSubscribeStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [subscribeStatus, setSubscribeStatus] = useState<SubscriptionStatus>('idle');
   const [errorMessage, setErrorMessage] = useState("");
   const [hasConsented, setHasConsented] = useState(false);
 
-  // Initialize EmailJS
+  // Initialize EmailJS on component mount
   useEffect(() => {
     if (EMAILJS_CONFIG.publicKey) {
       emailjs.init(EMAILJS_CONFIG.publicKey);
     }
   }, []);
 
+////////////////////////////////////////////////
+// Chrome API Handlers:
+////////////////////////////////////////////////
+// No Chrome API handlers needed for this component
+
+////////////////////////////////////////////////
+// Event Handlers:
+////////////////////////////////////////////////
   const handleSubscribe = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -118,6 +150,19 @@ export const Footer = () => {
     }
   };
 
+////////////////////////////////////////////////
+// Helper Functions:
+////////////////////////////////////////////////
+// No helper functions needed for this component
+
+////////////////////////////////////////////////
+// Styles:
+////////////////////////////////////////////////
+// Styles are handled via Tailwind CSS classes in the JSX
+
+////////////////////////////////////////////////
+// JSX:
+////////////////////////////////////////////////
   return (
     <div
       id="footer"
@@ -236,6 +281,7 @@ export const Footer = () => {
           </label>
         </div>
 
+        {/* Status Messages */}
         {errorMessage && (
           <p className="text-red-400 text-xs mt-1">{errorMessage}</p>
         )}
@@ -244,7 +290,7 @@ export const Footer = () => {
         )}
       </form>
 
-      {/* Legal and Copyright Information */}
+      {/* Copyright Information */}
       <p className="text-xs font-light italic mt-4">
         &copy; {new Date().getFullYear()} C3 Discover LLC. All Rights Reserved.
       </p>
@@ -253,6 +299,6 @@ export const Footer = () => {
 };
 
 ////////////////////////////////////////////////
-// Export Statement
+// Export Statement:
 ////////////////////////////////////////////////
 export default Footer;

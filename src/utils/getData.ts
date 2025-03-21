@@ -45,12 +45,46 @@ const DEFAULT_OPTIONS: RequestInit = {
   credentials: 'include'
 };
 
+/**
+ * Cache and cooldown configuration
+ */
+const CACHE_CONFIG = {
+  DATA_FETCH: {
+    BASE_COOLDOWN: 2000,      // 2 seconds between fetches
+    MAX_COOLDOWN: 5000,       // Maximum cooldown time
+    RESET_AFTER: 30000,       // Reset cooldown after 30 seconds of no fetches
+    MAX_RETRIES: 3,           // Maximum number of quick retries
+    RETRY_DELAY: 300         // Delay between retries in ms
+  }
+};
+
 // Cache for data
 let lastData: any = null;
 let lastDataTimestamp = 0;
-const DATA_COOLDOWN = 1000; // 1 second cooldown
-const MAX_RETRIES = 5;
-const RETRY_DELAY = 300; // ms
+let consecutiveFetches = 0;
+let lastFetchTime = 0;
+
+/**
+ * Calculate current cooldown based on fetch patterns
+ */
+const calculateCooldown = () => {
+  const now = Date.now();
+  const timeSinceLastFetch = now - lastFetchTime;
+
+  // Reset consecutive fetches if enough time has passed
+  if (timeSinceLastFetch > CACHE_CONFIG.DATA_FETCH.RESET_AFTER) {
+    consecutiveFetches = 0;
+    return CACHE_CONFIG.DATA_FETCH.BASE_COOLDOWN;
+  }
+
+  // Implement progressive backoff
+  const cooldown = Math.min(
+    CACHE_CONFIG.DATA_FETCH.BASE_COOLDOWN * Math.pow(1.5, consecutiveFetches),
+    CACHE_CONFIG.DATA_FETCH.MAX_COOLDOWN
+  );
+
+  return cooldown;
+};
 
 ////////////////////////////////////////////////
 // Types and Interfaces:
@@ -150,12 +184,12 @@ function getDataDiv() {
   let dataDiv = null;
   let retryCount = 0;
 
-  while (!dataDiv && retryCount < MAX_RETRIES) {
+  while (!dataDiv && retryCount < CACHE_CONFIG.DATA_FETCH.MAX_RETRIES) {
     dataDiv = document.getElementById("__NEXT_DATA__");
     if (!dataDiv) {
       setTimeout(() => {
         dataDiv = document.getElementById("__NEXT_DATA__");
-      }, RETRY_DELAY);
+      }, CACHE_CONFIG.DATA_FETCH.RETRY_DELAY);
       retryCount++;
     }
   }
@@ -441,8 +475,8 @@ function getDataWithRetry(retryCount: number): any {
   try {
     const dataDiv = document.getElementById("__NEXT_DATA__");
     if (!dataDiv) {
-      if (retryCount < MAX_RETRIES) {
-        setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+      if (retryCount < CACHE_CONFIG.DATA_FETCH.MAX_RETRIES) {
+        setTimeout(() => getDataWithRetry(retryCount + 1), CACHE_CONFIG.DATA_FETCH.RETRY_DELAY);
         return null;
       } else {
         console.error("Data div not found after maximum retries.");
@@ -453,8 +487,8 @@ function getDataWithRetry(retryCount: number): any {
     try {
       const rawData = JSON.parse(dataDiv.innerText);
       if (!rawData?.props?.pageProps?.initialData?.data) {
-        if (retryCount < MAX_RETRIES) {
-          setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+        if (retryCount < CACHE_CONFIG.DATA_FETCH.MAX_RETRIES) {
+          setTimeout(() => getDataWithRetry(retryCount + 1), CACHE_CONFIG.DATA_FETCH.RETRY_DELAY);
           return null;
         } else {
           console.error("Incomplete data structure after maximum retries.");
@@ -466,8 +500,8 @@ function getDataWithRetry(retryCount: number): any {
       
       // Check if we have valid product data
       if (!product) {
-        if (retryCount < MAX_RETRIES) {
-          setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+        if (retryCount < CACHE_CONFIG.DATA_FETCH.MAX_RETRIES) {
+          setTimeout(() => getDataWithRetry(retryCount + 1), CACHE_CONFIG.DATA_FETCH.RETRY_DELAY);
           return null;
         } else {
           console.error("No product data found after maximum retries.");
@@ -487,8 +521,8 @@ function getDataWithRetry(retryCount: number): any {
       return lastData;
     } catch (parseError) {
       console.error('Error parsing data:', parseError);
-      if (retryCount < MAX_RETRIES) {
-        setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+      if (retryCount < CACHE_CONFIG.DATA_FETCH.MAX_RETRIES) {
+        setTimeout(() => getDataWithRetry(retryCount + 1), CACHE_CONFIG.DATA_FETCH.RETRY_DELAY);
         return null;
       } else {
         console.error("Failed to parse data after maximum retries.");
@@ -497,8 +531,8 @@ function getDataWithRetry(retryCount: number): any {
     }
   } catch (error) {
     console.error('Error in getData:', error);
-    if (retryCount < MAX_RETRIES) {
-      setTimeout(() => getDataWithRetry(retryCount + 1), RETRY_DELAY);
+    if (retryCount < CACHE_CONFIG.DATA_FETCH.MAX_RETRIES) {
+      setTimeout(() => getDataWithRetry(retryCount + 1), CACHE_CONFIG.DATA_FETCH.RETRY_DELAY);
       return null;
     } else {
       console.error("Failed to get data after maximum retries.");
@@ -512,14 +546,27 @@ function getDataWithRetry(retryCount: number): any {
  * @returns Processed data
  */
 export default function getData() {
-  // Return cached data if it's recent enough
   const now = Date.now();
-  if (lastData && now - lastDataTimestamp < DATA_COOLDOWN) {
+  const currentCooldown = calculateCooldown();
+  
+  // Return cached data if within cooldown
+  if (lastData && now - lastDataTimestamp < currentCooldown) {
     return lastData;
   }
 
+  // Update fetch tracking
+  lastFetchTime = now;
+  consecutiveFetches++;
+
   // Try to get data with retries
-  return getDataWithRetry(0);
+  const result = getDataWithRetry(0);
+  
+  if (result) {
+    lastData = result;
+    lastDataTimestamp = now;
+  }
+
+  return result;
 }
 
 /**

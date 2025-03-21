@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Settings modal component for managing user preferences and metrics
+ * @author NexSellPro
+ * @created 2024-03-21
+ * @lastModified 2024-03-21
+ */
+
 /////////////////////////////////////////////////
 // Imports and Type Definitions
 /////////////////////////////////////////////////
@@ -424,7 +431,7 @@ export const SettingsModal: React.FC<{
             ✕
           </button>
         </div>
-        </div>
+      </div>
 
       {/* Baseline Metrics Explanation */}
       <div className="bg-cyan-50 border border-cyan-200 p-2 rounded-lg mb-3">
@@ -432,7 +439,7 @@ export const SettingsModal: React.FC<{
         <p className="text-xs text-cyan-700">
           Set your requirements for product analysis. Products meeting these criteria will be highlighted as potential opportunities.
         </p>
-        </div>
+      </div>
 
       {/* Settings Form - More Condensed */}
       <div className="space-y-3">

@@ -1,24 +1,73 @@
+/**
+ * @fileoverview Subscription modal component that displays premium tier options
+ * @author NexSellPro
+ * @created 2024-03-21
+ * @lastModified 2024-03-21
+ */
+
+////////////////////////////////////////////////
+// Imports:
+////////////////////////////////////////////////
 import React, { useState } from 'react';
 import { SUBSCRIPTION_TIERS } from '../../utils/subscription';
 import type { SubscriptionTier } from '../../utils/subscription';
 import subscriptionService from '../../utils/subscription';
 
+////////////////////////////////////////////////
+// Constants and Variables:
+////////////////////////////////////////////////
+// Constants are imported from subscription utils
+
+////////////////////////////////////////////////
+// Types and Interfaces:
+////////////////////////////////////////////////
 interface SubscriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+////////////////////////////////////////////////
+// Props Interface:
+////////////////////////////////////////////////
+// Props interface defined above in Types and Interfaces section
+
+////////////////////////////////////////////////
+// Component:
+////////////////////////////////////////////////
 export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   isOpen,
   onClose
 }) => {
+  ////////////////////////////////////////////////
+  // State and Hooks:
+  ////////////////////////////////////////////////
+  // Track the current subscription tier of the user
   const [currentTier] = useState<SubscriptionTier>(SUBSCRIPTION_TIERS.free);
 
+  ////////////////////////////////////////////////
+  // Event Handlers:
+  ////////////////////////////////////////////////
+  // No specific event handlers needed - using inline handlers
+
+  ////////////////////////////////////////////////
+  // Helper Functions:
+  ////////////////////////////////////////////////
+  // Early return if modal is not open
   if (!isOpen) return null;
 
+  ////////////////////////////////////////////////
+  // Styles:
+  ////////////////////////////////////////////////
+  // Styles are handled through Tailwind classes
+
+  ////////////////////////////////////////////////
+  // JSX:
+  ////////////////////////////////////////////////
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      {/* Modal Container */}
       <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4">
+        {/* Modal Header */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-800">Premium Features - Coming Soon!</h2>
           <button
@@ -29,6 +78,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           </button>
         </div>
 
+        {/* Beta Testing Message */}
         <div className="text-center mb-6">
           <p className="text-cyan-600 font-semibold text-lg">
             We're currently in beta testing. Premium features will be available soon!
@@ -38,6 +88,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           </p>
         </div>
 
+        {/* Subscription Tiers Grid */}
         <div className="grid md:grid-cols-3 gap-6">
           {Object.entries(SUBSCRIPTION_TIERS).map(([key, tier]) => (
             <div
@@ -57,6 +108,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 )}
               </div>
               
+              {/* Feature List */}
               <ul className="space-y-3 mb-6">
                 {tier.features.map((feature, index) => (
                   <li key={index} className="flex items-start text-sm">
@@ -66,6 +118,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
                 ))}
               </ul>
 
+              {/* Action Button */}
               <div className="mt-auto">
                 <button
                   disabled={true}
@@ -82,6 +135,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
           ))}
         </div>
 
+        {/* Footer Contact Information */}
         <div className="mt-6 text-center text-sm text-gray-600">
           <p className="font-semibold">Beta Testing Phase</p>
           <p className="mt-2">
@@ -99,4 +153,7 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({
   );
 };
 
+////////////////////////////////////////////////
+// Export Statement:
+////////////////////////////////////////////////
 export default SubscriptionModal; 

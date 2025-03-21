@@ -1,49 +1,124 @@
-/// <reference types="chrome"/>
+/**
+ * @fileoverview Chrome Extension Background Service Worker for NexSellPro
+ * @author NexSellPro
+ * @created 2024-03-07
+ * @lastModified 2024-03-21
+ */
 
-// Background Service Worker Script
 ////////////////////////////////////////////////
+// Imports:
+////////////////////////////////////////////////
+/// <reference types="chrome"/>
+// This special comment tells TypeScript to include Chrome extension types
 
-// Listen for extension installation or updates.
-chrome.runtime.onInstalled.addListener(() => {
+////////////////////////////////////////////////
+// Constants and Variables:
+////////////////////////////////////////////////
+// Target domain for URL monitoring
+const WALMART_DOMAIN = 'https://www.walmart.com/';
+
+////////////////////////////////////////////////
+// Types and Interfaces:
+////////////////////////////////////////////////
+// Message type for URL change notifications
+interface UrlChangeMessage {
+  type: 'URL_CHANGED';
+  url: string;
+}
+
+// Message type for seller offers data
+interface SellerOffersMessage {
+  type: 'ALL_OFFERS_DATA';
+  data: any;
+}
+
+// Combined message types
+type ExtensionMessage = UrlChangeMessage | SellerOffersMessage;
+
+////////////////////////////////////////////////
+// Enums:
+////////////////////////////////////////////////
+// No enums needed for this service worker
+
+////////////////////////////////////////////////
+// Configuration:
+////////////////////////////////////////////////
+// Web request filter configuration
+const webRequestFilter = {
+  urls: ["*://*.walmart.com/*"]
+};
+
+////////////////////////////////////////////////
+// Helper Functions:
+////////////////////////////////////////////////
+// Installation handler
+const handleInstallation = () => {
   console.log("NexSellPro extension installed.");
-});
+};
 
-// Listen for messages from other parts of the extension (e.g., content scripts).
-chrome.runtime.onMessage.addListener((message: any, sender, sendResponse) => {
+// Message handler
+const handleMessage = (message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
   sendResponse({ status: "received" });
-});
+};
 
-// Listen for tab updates
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.url && tab.url?.startsWith('https://www.walmart.com/')) {
+// Tab update handler
+const handleTabUpdate = (tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => {
+  if (changeInfo.url && tab.url?.startsWith(WALMART_DOMAIN)) {
     chrome.tabs.sendMessage(tabId, {
       type: 'URL_CHANGED',
       url: changeInfo.url
     });
   }
-});
+};
 
-// Listen for navigation events
-chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
-  if (details.url.startsWith('https://www.walmart.com/')) {
+// Navigation handler
+const handleNavigation = (details: chrome.webNavigation.WebNavigationTransitionCallbackDetails) => {
+  if (details.url.startsWith(WALMART_DOMAIN)) {
     chrome.tabs.sendMessage(details.tabId, {
       type: 'URL_CHANGED',
       url: details.url
     });
   }
-});
+};
 
+// Network request handler
+const handleWebRequest = (details: chrome.webRequest.WebResponseCacheDetails) => {
+  if (details.url.includes("GetAllSellerOffers")) {
+    fetch(details.url)
+      .then((response) => response.json())
+      .then((data) => {
+        // Send the seller data to the content script
+        chrome.tabs.sendMessage(details.tabId!, { 
+          type: "ALL_OFFERS_DATA", 
+          data 
+        });
+      })
+      .catch((error) => console.error("Error fetching alloffers data:", error));
+  }
+};
+
+////////////////////////////////////////////////
+// Event Listeners:
+////////////////////////////////////////////////
+// Listen for extension installation or updates
+chrome.runtime.onInstalled.addListener(handleInstallation);
+
+// Listen for messages from other parts of the extension
+chrome.runtime.onMessage.addListener(handleMessage);
+
+// Listen for tab URL changes
+chrome.tabs.onUpdated.addListener(handleTabUpdate);
+
+// Listen for navigation state changes (e.g., single-page app navigation)
+chrome.webNavigation.onHistoryStateUpdated.addListener(handleNavigation);
+
+// Listen for network requests to capture seller data
 chrome.webRequest.onCompleted.addListener(
-  (details) => {
-    if (details.url.includes("GetAllSellerOffers")) {
-      fetch(details.url)
-        .then((response) => response.json())
-        .then((data) => {
-          // Send the data to the content script
-          chrome.tabs.sendMessage(details.tabId!, { type: "ALL_OFFERS_DATA", data });
-        })
-        .catch((error) => console.error("Error fetching alloffers data:", error));
-    }
-  },
-  { urls: ["*://*.walmart.com/*"] }
+  handleWebRequest,
+  webRequestFilter
 );
+
+////////////////////////////////////////////////
+// Export Statement:
+////////////////////////////////////////////////
+// No exports needed for background service worker

@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Analysis component for displaying product metrics and seller information
+ * @author NexSellPro
+ * @created 2024-03-21
+ * @lastModified 2024-03-21
+ */
+
 /////////////////////////////////////////////////
 // Imports:
 /////////////////////////////////////////////////
@@ -149,9 +156,9 @@ export const Analysis: React.FC<AnalysisProps> = ({ areSectionsOpen }) => {
   };
 
   /**
- * Apply formatting to the overall rating element based on the settings.
- * @returns {string} The CSS classes to apply for styling the overall rating element.
- */
+   * Apply formatting to the overall rating element based on the settings.
+   * @returns {string} The CSS classes to apply for styling the overall rating element.
+   */
   const applyOverallRatingHighlight = (): string => {
     // Get overall rating from product details
     const overallRating =
@@ -174,7 +181,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ areSectionsOpen }) => {
       ? CLASS_SECTION_CONTENT_GREEN // Green for meeting or exceeding threshold
       : CLASS_SECTION_CONTENT_RED;  // Red for below threshold
   };
-
 
   /**
    * Apply formatting to the WFS sellers element based on the settings.
@@ -203,7 +209,6 @@ export const Analysis: React.FC<AnalysisProps> = ({ areSectionsOpen }) => {
       ? CLASS_SECTION_CONTENT_GREEN // Green if below or equal to max threshold
       : CLASS_SECTION_CONTENT_RED;  // Red if above the max threshold
   };
-
 
   /////////////////////////////////////////////////////
   // JSX:

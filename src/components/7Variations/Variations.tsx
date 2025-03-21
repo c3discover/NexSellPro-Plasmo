@@ -1,3 +1,10 @@
+/**
+ * @fileoverview Component for displaying product variations in a table format
+ * @author NexSellPro
+ * @created 2024-03-07
+ * @lastModified 2024-03-07
+ */
+
 ////////////////////////////////////////////////
 // Imports:
 ////////////////////////////////////////////////
@@ -9,16 +16,19 @@ import getData from "../../utils/getData";
 ////////////////////////////////////////////////
 // Constants and Variables:
 ////////////////////////////////////////////////
+// Message shown while variations data is loading
 const LOADING_MESSAGE = "Loading variations...";
 
 ////////////////////////////////////////////////
 // Types and Interfaces:
 ////////////////////////////////////////////////
+// Props interface for the Variations component
 interface VariationsProps {
-  areSectionsOpen: boolean;
+  areSectionsOpen: boolean;  // Controls if the section is expanded/collapsed
   variantsMap: any; // TODO: Replace with proper type when available
 }
 
+// Structure for variant information
 interface VariantInfo {
   name: string;
   usItemId: string;
@@ -32,6 +42,7 @@ interface VariantInfo {
   };
 }
 
+// Structure for variant data fetched from product pages
 interface VariantData {
   image: string;
   title: string;
@@ -53,41 +64,64 @@ interface VariantData {
   };
 }
 
+// Type for mapping variant IDs to their data
 type VariantDataMap = Record<string, VariantData>;
 type VariantsMap = Record<string, VariantInfo>;
+
+// Sorting options type
+type SortField = 'in_stock' | 'price' | string; // string for dynamic variant attributes
+
+interface SortConfig {
+  field: SortField;
+  direction: 'asc' | 'desc';
+}
+
+////////////////////////////////////////////////
+// Props Interface:
+////////////////////////////////////////////////
+// Using VariationsProps defined above
 
 ////////////////////////////////////////////////
 // Component:
 ////////////////////////////////////////////////
 export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variantsMap }) => {
 
-  ////////////////////////////////////////////////
-  // State and Hooks:
-  ////////////////////////////////////////////////
+////////////////////////////////////////////////
+// State and Hooks:
+////////////////////////////////////////////////
+  // Controls section expansion/collapse
   const [isOpen, setIsOpen] = useState(areSectionsOpen);
+  // Stores the product data including variations
   const [productData, setProductData] = useState<UsedProductData | null>(null);
+  // Controls variant table visibility
   const [isVariantTableExpanded, setIsVariantTableExpanded] = useState(true);
+  // Stores sorted variant IDs for consistent display order
   const [sortedVariantIds, setSortedVariantIds] = useState<string[]>([]);
+  // Stores fetched data for each variant
   const [variantData, setVariantData] = useState<VariantDataMap>({});
 
-  // Section open/close effect
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'in_stock', direction: 'asc' });
+  const [availableAttributes, setAvailableAttributes] = useState<string[]>([]);
+
+  // Effect to sync section open state with prop
   useEffect(() => {
     setIsOpen(areSectionsOpen);
   }, [areSectionsOpen]);
 
-  // Main data fetching effect
+  // Effect to fetch and process variation data
   useEffect(() => {
     const fetchData = async () => {
       const data = await getUsedData();
       if (data) {
         setProductData(data);
         if (data.variants.variantsMap) {
-          // Step 1: Identify the current variant based on productID
+          // Find current variant based on productID
           const currentVariantId = Object.keys(data.variants.variantsMap).find(
             (variantId) => data.variants.variantsMap[variantId].usItemId === data.basic.productID
           );
 
-          // Step 2: Filter and sort variants
+          // Sort variants with in-stock items first
           const filteredVariantIds = Object.keys(data.variants.variantsMap)
             .filter(variantId => variantId !== currentVariantId)
             .sort((a, b) => {
@@ -100,7 +134,7 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
               return 0;
             });
 
-          // Step 3: Add current variant to front if it exists
+          // Put current variant at the start of the list
           const sortedIds = currentVariantId 
             ? [currentVariantId, ...filteredVariantIds]
             : filteredVariantIds;
@@ -113,21 +147,48 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
     fetchData();
   }, []);
 
-  ////////////////////////////////////////////////
-  // Chrome API Handlers:
-  ////////////////////////////////////////////////
-  // No Chrome API handlers needed for this component
+  // Effect to extract available attributes
+  useEffect(() => {
+    if (productData?.variants?.variantsMap) {
+      const firstVariant = Object.values(productData.variants.variantsMap)[0];
+      if (firstVariant?.variants) {
+        const attributes = firstVariant.variants
+          .map(attr => attr.split('-')[0])
+          .filter((value, index, self) => self.indexOf(value) === index)
+          .map(attr => attr.split('_')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ')
+          );
+        setAvailableAttributes(attributes);
+      }
+    }
+  }, [productData]);
 
-  ////////////////////////////////////////////////
-  // Event Handlers:
-  ////////////////////////////////////////////////
+////////////////////////////////////////////////
+// Chrome API Handlers:
+////////////////////////////////////////////////
+// No Chrome API handlers needed for this component
+
+////////////////////////////////////////////////
+// Event Handlers:
+////////////////////////////////////////////////
+  // Toggle section expansion
   const toggleOpen = () => setIsOpen(!isOpen);
+  // Toggle variant table visibility
   const toggleVariantTable = () => setIsVariantTableExpanded(!isVariantTableExpanded);
 
-  ////////////////////////////////////////////////
-  // Helper Functions:
-  ////////////////////////////////////////////////
-  // Function to fetch all variant data
+  // Handle sort change
+  const handleSortChange = (field: SortField) => {
+    setSortConfig(prev => ({
+      field,
+      direction: prev.field === field ? (prev.direction === 'asc' ? 'desc' : 'asc') : 'asc'
+    }));
+  };
+
+////////////////////////////////////////////////
+// Helper Functions:
+////////////////////////////////////////////////
+  // Fetches data for all variants
   const fetchAllVariantData = async (variantIds: string[], variantsMap: VariantsMap) => {
     const fetchedData: VariantDataMap = {};
     await Promise.all(
@@ -142,7 +203,7 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
     setVariantData(fetchedData);
   };
 
-  // Function to fetch variant data using the product's `usItemId`
+  // Fetches data for a single variant using its Walmart item ID
   async function fetchVariantData(usItemID: string) {
     const url = `https://www.walmart.com/ip/${usItemID}`;
     try {
@@ -170,7 +231,7 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
     }
   }
 
-  // Function to extract and format attribute data from a variant
+  // Extracts and formats attribute data from a variant
   const extractAttribute = (variantId: string, variantsMap: VariantsMap) => {
     const variant = variantsMap[variantId];
     if (!variant || !variant.variants) return "";
@@ -179,9 +240,63 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
       .join(", ");
   };
 
-  ////////////////////////////////////////////////
-  // JSX:
-  ////////////////////////////////////////////////
+  // Sort variants based on current configuration
+  const getSortedVariants = (variants: string[]) => {
+    const currentVariantId = variants[0]; // Store current variant
+    const otherVariants = variants.slice(1); // Get other variants
+
+    return [
+      currentVariantId,
+      ...otherVariants.sort((a, b) => {
+        const variantA = productData?.variants?.variantsMap?.[a];
+        const variantB = productData?.variants?.variantsMap?.[b];
+
+        if (!variantA || !variantB) return 0;
+
+        let comparison = 0;
+        
+        switch (sortConfig.field) {
+          case 'in_stock':
+            const isInStockA = variantA.availabilityStatus === "IN_STOCK";
+            const isInStockB = variantB.availabilityStatus === "IN_STOCK";
+            comparison = isInStockA === isInStockB ? 0 : isInStockA ? -1 : 1;
+            break;
+
+          case 'price':
+            const priceA = variantA.priceInfo?.currentPrice?.price ?? 0;
+            const priceB = variantB.priceInfo?.currentPrice?.price ?? 0;
+            comparison = priceA - priceB;
+            break;
+
+          default:
+            // Handle variant attribute sorting
+            const attrA = variantA.variants?.find(attr => 
+              attr.split('-')[0].split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ') === sortConfig.field
+            )?.split('-')[1] ?? '';
+            const attrB = variantB.variants?.find(attr => 
+              attr.split('-')[0].split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ') === sortConfig.field
+            )?.split('-')[1] ?? '';
+            comparison = attrA.localeCompare(attrB);
+        }
+
+        return sortConfig.direction === 'asc' ? comparison : -comparison;
+      })
+    ];
+  };
+
+////////////////////////////////////////////////
+// Styles:
+////////////////////////////////////////////////
+// Styles are handled via Tailwind CSS classes in the JSX
+
+////////////////////////////////////////////////
+// JSX:
+////////////////////////////////////////////////
+  // Show loading state if data isn't ready
   if (!productData) {
     return <div>{LOADING_MESSAGE}</div>;
   }
@@ -209,6 +324,71 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
             </div>
           ) : (
             <>
+              {/* Sorting Controls */}
+              <div className="w-full px-4 py-2 flex flex-wrap gap-2 items-center bg-gray-100 rounded-md mx-2 my-1">
+                <span className="text-xs font-semibold text-gray-700">Sort by:</span>
+                <div className="flex flex-wrap gap-2">
+                  {/* Stock Status Radio */}
+                  <label className="inline-flex items-center">
+                    <input
+                      type="radio"
+                      className="form-radio h-3 w-3 text-blue-600"
+                      checked={sortConfig.field === 'in_stock'}
+                      onChange={() => handleSortChange('in_stock')}
+                    />
+                    <span className="ml-1 text-xs">Stock Status</span>
+                    {sortConfig.field === 'in_stock' && (
+                      <button 
+                        onClick={() => setSortConfig(prev => ({ ...prev, direction: prev.direction === 'asc' ? 'desc' : 'asc' }))}
+                        className="ml-1 text-xs"
+                      >
+                        {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                      </button>
+                    )}
+                  </label>
+
+                  {/* Price Radio */}
+                  <label className="inline-flex items-center">
+                    <input
+                      type="radio"
+                      className="form-radio h-3 w-3 text-blue-600"
+                      checked={sortConfig.field === 'price'}
+                      onChange={() => handleSortChange('price')}
+                    />
+                    <span className="ml-1 text-xs">Price</span>
+                    {sortConfig.field === 'price' && (
+                      <button 
+                        onClick={() => setSortConfig(prev => ({ ...prev, direction: prev.direction === 'asc' ? 'desc' : 'asc' }))}
+                        className="ml-1 text-xs"
+                      >
+                        {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                      </button>
+                    )}
+                  </label>
+
+                  {/* Dynamic Attribute Radios */}
+                  {availableAttributes.map((attr) => (
+                    <label key={attr} className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        className="form-radio h-3 w-3 text-blue-600"
+                        checked={sortConfig.field === attr}
+                        onChange={() => handleSortChange(attr)}
+                      />
+                      <span className="ml-1 text-xs">{attr}</span>
+                      {sortConfig.field === attr && (
+                        <button 
+                          onClick={() => setSortConfig(prev => ({ ...prev, direction: prev.direction === 'asc' ? 'desc' : 'asc' }))}
+                          className="ml-1 text-xs"
+                        >
+                          {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                        </button>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               {/* Variant Information Section */}
               <div className="w-full p-2 pb-4 flex justify-between items-center">
                 {/* ===== Variant Count Box ===== */}
@@ -270,12 +450,23 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
                           Variant ID
                         </td>
                         {isVariantTableExpanded &&
-                          Object.keys(productData?.variants?.variantsMap || {}).map((variantId) => (
+                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
                             <th
                               key={variantId}
-                              className="px-2 py-1 text-2xs bg-[#d7d7d7] tracking-wider border-2 border-black text-center"
+                              className={`px-2 py-1 text-2xs tracking-wider border-2 border-black text-center ${
+                                index === 0 
+                                  ? 'bg-amber-50' 
+                                  : 'bg-[#d7d7d7]'
+                              }`}
                             >
-                              {variantId}
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span>{variantId}</span>
+                                {index === 0 && (
+                                  <span className="text-[9px] font-medium bg-amber-200 px-1.5 rounded">
+                                    current
+                                  </span>
+                                )}
+                              </div>
                             </th>
                           ))}
                       </tr>
@@ -289,19 +480,23 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
                           Image
                         </td>
                         {isVariantTableExpanded &&
-                          sortedVariantIds.map((variantId) => (
+                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
                             <td
                               key={variantId}
-                              className="px-2 py-1 text-2xs border-2 border-black text-center"
+                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
+                                index === 0 ? 'bg-amber-50' : ''
+                              }`}
                             >
                               {variantData[variantId]?.image ? (
                                 <img
                                   src={variantData[variantId].image}
                                   alt={`Image for ${variantId}`}
-                                  className="w-16 h-16 object-contain mx-auto" // Added mx-auto to center image
+                                  className={`w-16 h-16 object-contain mx-auto ${
+                                    index === 0 ? 'ring-2 ring-amber-200 rounded-md' : ''
+                                  }`}
                                 />
                               ) : (
-                                "-" // Show a dash if no image is available
+                                "-"
                               )}
                             </td>
                           ))}
@@ -313,10 +508,12 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
                           Title
                         </td>
                         {isVariantTableExpanded &&
-                          sortedVariantIds.map((variantId) => (
+                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
                             <td
                               key={variantId}
-                              className="px-2 py-1 text-2xs border-2 border-black text-center"
+                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
+                                index === 0 ? 'bg-amber-50' : ''
+                              }`}
                             >
                               {/* Check if variant title if available on product page*/}
                               {variantData[variantId]?.title || "-"}
@@ -330,10 +527,12 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
                           Attributes
                         </td>
                         {isVariantTableExpanded &&
-                          sortedVariantIds.map((variantId) => (
+                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
                             <td
                               key={variantId}
-                              className="px-2 py-1 text-2xs border-2 border-black text-center"
+                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
+                                index === 0 ? 'bg-amber-50' : ''
+                              }`}
                             >
                               {/* Render attributes if available, otherwise show "-" */}
                               {productData?.variants?.variantsMap?.[variantId]?.variants ? (
@@ -359,10 +558,12 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
                           Price
                         </td>
                         {isVariantTableExpanded &&
-                          sortedVariantIds.map((variantId) => (
+                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
                             <td
                               key={variantId}
-                              className="px-2 py-1 text-2xs border-2 border-black text-center"
+                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
+                                index === 0 ? 'bg-amber-50' : ''
+                              }`}
                             >
                               {/* Check if productData and price info is available */}
                               {productData?.variants?.variantsMap?.[variantId]?.priceInfo?.currentPrice?.price
@@ -379,10 +580,12 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
                           Sellers
                         </td>
                         {isVariantTableExpanded &&
-                          sortedVariantIds.map((variantId) => (
+                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
                             <td
                               key={variantId}
-                              className="px-2 py-1 text-2xs border-2 border-black text-center"
+                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
+                                index === 0 ? 'bg-amber-50' : ''
+                              }`}
                             >
                               {/* Check if sellers info is available on product page */}
                               {variantData[variantId]?.sellers || 0}
@@ -396,10 +599,12 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
                           WPID
                         </td>
                         {isVariantTableExpanded &&
-                          sortedVariantIds.map((variantId) => (
+                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
                             <td
                               key={variantId}
-                              className="px-2 py-1 text-2xs border-2 border-black text-center"
+                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
+                                index === 0 ? 'bg-amber-50' : ''
+                              }`}
                             >
                               {/* Check if productData and usItemId are available */}
                               {productData?.variants?.variantsMap?.[variantId]?.usItemId
@@ -416,10 +621,12 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
                           UPC
                         </td>
                         {isVariantTableExpanded &&
-                          sortedVariantIds.map((variantId) => (
+                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
                             <td
                               key={variantId}
-                              className="px-2 py-1 text-2xs border-2 border-black text-center"
+                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
+                                index === 0 ? 'bg-amber-50' : ''
+                              }`}
                             >
                               {/* Check if upc are available on product page */}
                               {variantData[variantId]?.upc || "-"}
@@ -433,10 +640,12 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
                           In Stock
                         </td>
                         {isVariantTableExpanded &&
-                          sortedVariantIds.map((variantId) => (
+                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
                             <td
                               key={variantId}
-                              className="px-2 py-1 text-2xs border-2 border-black text-center"
+                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
+                                index === 0 ? 'bg-amber-50' : ''
+                              }`}
                             >
                               {/* Use productData to access availability status */}
                               {productData?.variants?.variantsMap?.[variantId]?.availabilityStatus === "IN_STOCK"
@@ -456,7 +665,7 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
       )}
     </div>
   );
-}
+};
 
 ////////////////////////////////////////////////
 // Export Statement:

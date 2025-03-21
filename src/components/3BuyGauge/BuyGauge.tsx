@@ -1,13 +1,23 @@
+/**
+ * @fileoverview Main Buy Gauge component that displays a product's buy recommendation score
+ * @author NexSellPro
+ * @created 2024-03-14
+ * @lastModified 2024-03-21
+ */
+
 ////////////////////////////////////////////////
 // Imports:
 ////////////////////////////////////////////////
 import React, { useState, useEffect } from "react";
-import { BuyGaugeProps, MetricScore, MetricScores, ProductMetrics, GaugeSettings } from "./types";
+import { BuyGaugeProps, MetricScore, MetricScores, ProductMetrics, GaugeSettings, METRIC_ICONS } from "./types";
 import MetricsBreakdown from "./MetricsBreakdown";
+import CompactGauge from "./CompactGauge";
+import MetricDot from "./MetricDot";
 
 ////////////////////////////////////////////////
 // Types and Interfaces:
 ////////////////////////////////////////////////
+// Defines the structure of a gauge level indicator
 interface GaugeLevel {
   score: number;
   label: string;
@@ -17,47 +27,64 @@ interface GaugeLevel {
 ////////////////////////////////////////////////
 // Constants:
 ////////////////////////////////////////////////
+// Defines the different levels of buy recommendations
 const GAUGE_LEVELS: GaugeLevel[] = [
   { score: 10, label: "Prime Opportunity", color: "#22c55e" },
   { score: 9, label: "Strong Buy", color: "#22c55e" },
   { score: 8, label: "Confident Buy", color: "#22c55e" },
   { score: 7, label: "Good Buy", color: "#22c55e" },
   { score: 6, label: "Promising", color: "#eab308" },
-  { score: 5, label: "Moderate", color: "#eab308" },
+  { score: 5, label: "Questionable", color: "#eab308" },
   { score: 4, label: "Cautious", color: "#eab308" },
   { score: 3, label: "Risky", color: "#eab308" },
   { score: 2, label: "Not Recommended", color: "#ef4444" },
   { score: 1, label: "Avoid", color: "#ef4444" }
 ];
 
+// Weights for each metric in the final score calculation
 const METRIC_WEIGHTS = {
-  profit: 0.20,
-  margin: 0.20,
-  roi: 0.15,
-  totalRatings: 0.125,
-  ratingsLast30Days: 0.125,
-  numSellers: 0.10,
-  numWfsSellers: 0.10
+  profit: 0.25,          // 25% weight
+  margin: 0.15,          // 15% weight
+  roi: 0.15,             // 15% weight
+  totalRatings: 0.10,   // 10% weight
+  ratingsLast30Days: 0.15, // 20% weight
+  numSellers: 0.05,      // 5% weight
+  numWfsSellers: 0.15    // 15% weight
 };
 
+// Maximum multiplier for each metric to achieve max score (1.0)
+const METRIC_MULTIPLIERS = {
+  profit: 3.0,           // 3x baseline for max score
+  margin: 2.0,           // 2x baseline for max score
+  roi: 2.5,             // 2.5x baseline for max score
+  totalRatings: 10.0,     // 5x baseline for max score
+  ratingsLast30Days: 5.5, // 3x baseline for max score
+  numSellers: 0.5,       // 1x baseline (inverse metric)
+  numWfsSellers: 0.5     // 1x baseline (inverse metric)
+};
+
+// Thresholds for detecting unusual metric values
 const UNUSUAL_THRESHOLDS = {
-  profit: 5,
+  profit: 10,
   margin: 5,
   roi: 5,
-  totalRatings: 20,
+  totalRatings: 50,
   ratingsLast30Days: 10,
-  numSellers: 4,
-  numWfsSellers: 4
+  numSellers: 5,
+  numWfsSellers: 5
 };
 
-// Main categories for the gauge
+// Main categories displayed on the gauge
 const MAIN_CATEGORIES = [
   { label: "BUY", color: "#22c55e", position: 150 },
   { label: "QUESTIONABLE", color: "#eab308", position: 90 },
   { label: "SKIP", color: "#ef4444", position: 30 }
 ];
 
-// SVG arc drawing helper
+////////////////////////////////////////////////
+// Helper Functions:
+////////////////////////////////////////////////
+// Converts polar coordinates to cartesian for SVG drawing
 const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
   const angleInRadians = ((angleInDegrees + 180) * Math.PI / 180.0);
   return {
@@ -66,6 +93,7 @@ const polarToCartesian = (centerX: number, centerY: number, radius: number, angl
   };
 };
 
+// Generates SVG arc path for gauge
 const describeArc = (x: number, y: number, radius: number, startAngle: number, endAngle: number) => {
   const start = polarToCartesian(x, y, radius, endAngle);
   const end = polarToCartesian(x, y, radius, startAngle);
@@ -76,6 +104,7 @@ const describeArc = (x: number, y: number, radius: number, startAngle: number, e
   ].join(" ");
 };
 
+// Default values for product metrics
 const DEFAULT_PRODUCT_DATA: ProductMetrics = {
   profit: 0,
   margin: 0,
@@ -86,6 +115,7 @@ const DEFAULT_PRODUCT_DATA: ProductMetrics = {
   numWfsSellers: 0
 };
 
+// Default gauge settings
 const DEFAULT_SETTINGS: GaugeSettings = {
   minProfit: undefined,
   minMargin: undefined,
@@ -96,14 +126,13 @@ const DEFAULT_SETTINGS: GaugeSettings = {
   maxWfsSellers: undefined
 };
 
-////////////////////////////////////////////////
-// Utility Functions:
-////////////////////////////////////////////////
+// Calculates individual metric scores
 const calculateMetricScore = (
   value: number,
   baseline: number | undefined,
   isInversed: boolean = false
 ): MetricScore => {
+  // If no baseline is set, return a warning score
   if (!baseline) {
     return {
       value,
@@ -117,13 +146,35 @@ const calculateMetricScore = (
     };
   }
 
+  // Calculate ratio and normalize it
   const ratio = value / baseline;
-  const normalizedRatio = isInversed ? (ratio > 1 ? 1/ratio : ratio) : ratio;
   
-  // Calculate score (0-1 range)
-  let score = Math.min(normalizedRatio, 2) / 2; // Cap at 2x baseline for max score
+  // Get the appropriate multiplier for this metric type
+  const metricKey = Object.keys(METRIC_MULTIPLIERS).find(
+    key => METRIC_WEIGHTS[key as keyof typeof METRIC_WEIGHTS] !== undefined
+  ) as keyof typeof METRIC_MULTIPLIERS;
+  const maxMultiplier = METRIC_MULTIPLIERS[metricKey];
   
-  // Determine status
+  let score: number;
+  if (isInversed) {
+    // For inverse metrics (like sellers):
+    // - If value > baseline, score should be failing (< 0.5)
+    // - If value = baseline, score should be 0.5 (minimum passing)
+    // - If value < baseline, score should scale up to 1.0
+    if (value > baseline) {
+      // Failing score for exceeding baseline
+      score = Math.max(0, 0.5 - (value - baseline) / baseline * 0.5);
+    } else {
+      // Scale from 0.5 to 1.0 as value goes from baseline to 0
+      score = 0.5 + (1 - value / baseline) * 0.5;
+    }
+  } else {
+    // Regular metrics use the normal calculation
+    const normalizedRatio = ratio;
+    score = Math.min(normalizedRatio, maxMultiplier) / maxMultiplier;
+  }
+  
+  // Determine status based on ratio
   let status: 'red' | 'yellow' | 'green';
   if (isInversed) {
     status = ratio > 1.1 ? 'red' : ratio < 0.9 ? 'green' : 'yellow';
@@ -132,24 +183,15 @@ const calculateMetricScore = (
   }
 
   // Check for unusual values
-  const metricKey = Object.keys(UNUSUAL_THRESHOLDS).find(
-    key => UNUSUAL_THRESHOLDS[key as keyof typeof UNUSUAL_THRESHOLDS] === baseline
-  ) as keyof typeof UNUSUAL_THRESHOLDS;
-
-  const warning = ratio >= UNUSUAL_THRESHOLDS[metricKey] ? {
+  const unusualWarning = ratio >= UNUSUAL_THRESHOLDS[metricKey as keyof typeof UNUSUAL_THRESHOLDS] ? {
     type: 'unusual' as const,
     message: `Value is ${ratio.toFixed(1)}x higher than baseline`
   } : undefined;
 
-  return {
-    value,
-    baseline,
-    score,
-    status,
-    warning
-  };
+  return { value, baseline, score, status, warning: unusualWarning };
 };
 
+// Calculates the overall buy score
 const calculateBuyScore = (
   productData: ProductMetrics,
   settings: GaugeSettings
@@ -185,13 +227,10 @@ const calculateBuyScore = (
     }
   });
 
-  // Convert to 1-10 scale
+  // Convert to 1-10 scale and ensure it's within bounds
   const finalScore = Math.max(1, Math.min(10, Math.round(weightedScore * 10)));
 
-  return {
-    score: finalScore,
-    metrics: metrics
-  };
+  return { score: finalScore, metrics: metrics };
 };
 
 ////////////////////////////////////////////////
@@ -200,30 +239,122 @@ const calculateBuyScore = (
 export const BuyGauge: React.FC<BuyGaugeProps> = ({ 
   areSectionsOpen, 
   productData = DEFAULT_PRODUCT_DATA, 
-  settings = DEFAULT_SETTINGS 
+  settings = DEFAULT_SETTINGS
 }) => {
+  ////////////////////////////////////////////////
+  // State and Hooks:
+  ////////////////////////////////////////////////
   const [isOpen, setIsOpen] = useState(areSectionsOpen);
+  const [viewMode, setViewMode] = useState<'compact' | 'full'>('compact');
 
+  ////////////////////////////////////////////////
+  // Effects:
+  ////////////////////////////////////////////////
   useEffect(() => {
     setIsOpen(areSectionsOpen);
   }, [areSectionsOpen]);
 
-  // Calculate the actual buy score
+  ////////////////////////////////////////////////
+  // Calculations:
+  ////////////////////////////////////////////////
   const { score, metrics } = calculateBuyScore(productData, settings);
-   
-  // Calculate rotation (1-10 scale to 0-180 degrees)
-  const calculateRotation = (score: number) => {
-    return ((score - 1) * 20) - 90; // Maps 1-10 to 0-180 degrees
+  const currentLevel = GAUGE_LEVELS.find(level => level.score === Math.round(score)) || GAUGE_LEVELS[0];
+  
+  const rotation = ((score - 1) * 20) - 90; // Maps 1-10 to 0-180 degrees
+
+  ////////////////////////////////////////////////
+  // Helper Functions:
+  ////////////////////////////////////////////////
+  const hasConfiguredSettings = () => {
+    return Object.values(settings).some(value => value !== undefined);
   };
 
-  const rotation = calculateRotation(score);
-  const currentLevel = GAUGE_LEVELS.find(level => level.score === Math.round(score)) || GAUGE_LEVELS[0];
+  ////////////////////////////////////////////////
+  // Render Methods:
+  ////////////////////////////////////////////////
+  const renderCompactView = () => (
+    <div className="bg-white rounded-lg shadow-sm p-3">
+      {/* Header with Score - Centered */}
+      <div className="flex flex-col items-center mb-4">
+        <div className="flex items-center gap-3">
+          <CompactGauge score={score} hasSettings={hasConfiguredSettings()} />
+          <div>
+            <div className="font-semibold" style={{ color: currentLevel.color }}>
+              {hasConfiguredSettings() ? currentLevel.label : "Configure Settings"}
+            </div>
+            <div className="text-xs text-gray-500">
+              {hasConfiguredSettings() ? "Buy Score" : "Use settings cog to configure baseline metrics"}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Metric Dots Grid - Centered with increased spacing */}
+      <div className="flex justify-center mb-3">
+        <div className="grid grid-cols-4 gap-6 px-4">
+          {Object.entries(metrics).map(([key, metric]) => (
+            <div key={key} className="flex justify-center items-center">
+              <MetricDot
+                icon={METRIC_ICONS[key as keyof typeof METRIC_ICONS]}
+                metricKey={key}
+                metric={metric}
+                size="sm"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* View Toggle Button */}
+      <button 
+        onClick={() => setViewMode('full')}
+        className="w-full mt-2 pt-2 border-t border-gray-200 text-gray-500 hover:text-gray-700 text-sm text-center"
+      >
+        Show Detailed View ▼
+      </button>
+    </div>
+  );
+
+  const renderFullView = () => (
+    <div className="bg-white rounded-lg shadow-sm p-3">
+      {/* Header with Score */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <CompactGauge score={score} />
+          <div>
+            <div className="font-semibold" style={{ color: currentLevel.color }}>
+              {currentLevel.label}
+            </div>
+            <div className="text-xs text-gray-500">
+              Buy Score
+            </div>
+          </div>
+        </div>
+      </div>
+
+     
+
+      {/* Metrics Breakdown */}
+      <div className="w-full">
+        <MetricsBreakdown metrics={metrics as unknown as MetricScores} />
+      </div>
+
+      {/* View Toggle Button */}
+      <button 
+        onClick={() => setViewMode('compact')}
+        className="w-full mt-2 pt-2 border-t border-gray-200 text-gray-500 hover:text-gray-700 text-sm text-center"
+      >
+        Show Compact View ▲
+      </button>
+    </div>
+  );
 
   return (
     <div
       id="Buy Gauge"
       className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}
     >
+      {/* Main Header */}
       <h1
         className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-t-lg shadow-xl"
         onClick={() => setIsOpen(!isOpen)}
@@ -231,102 +362,15 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({
         {isOpen ? "🔽  Buy Gauge" : "▶️  Buy Gauge"}
       </h1>
 
-      <div className={`flex flex-col items-center ${isOpen ? "block" : "hidden"}`}>
-        {/* Dark container for gauge and label */}
-        <div className="bg-[#3a3f47] rounded-lg p-2 my-4 w-[60%] mx-auto">
-          {/* Gauge Section */}
-          <div className="w-[100px] h-[60px] relative mb-2 mx-auto">
-            <svg viewBox="0 0 200 120" className="w-full h-full">
-              <defs>
-                <linearGradient id="metallic" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" style={{ stopColor: '#666666' }} />
-                  <stop offset="50%" style={{ stopColor: '#999999' }} />
-                  <stop offset="100%" style={{ stopColor: '#666666' }} />
-                </linearGradient>
-              </defs>
-
-              {/* Outer metallic ring */}
-              <path
-                d={describeArc(100, 100, 75, 0, 180)}
-                fill="none"
-                stroke="url(#metallic)"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-
-              {/* Tick Marks */}
-              {[1, 3, 5, 7, 9].map((value) => {
-                const angle = (value - 1) * 20;
-                const point1 = polarToCartesian(100, 100, 70, angle);
-                const point2 = polarToCartesian(100, 100, 60, angle);
-                const labelPoint = polarToCartesian(100, 100, 45, angle);
-                
-                return (
-                  <g key={value}>
-                    <line
-                      x1={point1.x}
-                      y1={point1.y}
-                      x2={point2.x}
-                      y2={point2.y}
-                      stroke="#666666"
-                      strokeWidth="2"
-                    />
-                    <text
-                      x={labelPoint.x}
-                      y={labelPoint.y}
-                      textAnchor="middle"
-                      fill="#999999"
-                      fontSize="8"
-                      fontWeight="bold"
-                      dominantBaseline="middle"
-                    >
-                      {value}
-                    </text>
-                  </g>
-                );
-              })}
-
-              {/* Needle */}
-              <g transform={`rotate(${rotation}, 100, 100)`}>
-                <line
-                  x1="100"
-                  y1="100"
-                  x2="100"
-                  y2="35"
-                  stroke="#ffffff"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                />
-                <circle
-                  cx="100"
-                  cy="100"
-                  r="6"
-                  fill="url(#metallic)"
-                  stroke="#ffffff"
-                  strokeWidth="1"
-                />
-              </g>
-            </svg>
-          </div>
-
-          {/* Score Display */}
-          <div className="text-center">
-            <div className="text-lg font-bold mb-1" style={{ color: currentLevel.color }}>
-              {currentLevel.label}
-            </div>
-            <div className="text-sm text-gray-300">
-              Score: {score}/10
-            </div>
-          </div>
-        </div>
-
-        {/* Metrics Breakdown */}
-        <div className="w-[90%] mx-auto">
-          <MetricsBreakdown metrics={metrics as unknown as MetricScores} />
-        </div>
+      {/* Content Area */}
+      <div className={`p-2 ${isOpen ? "block" : "hidden"}`}>
+        {viewMode === 'compact' ? renderCompactView() : renderFullView()}
       </div>
     </div>
   );
 };
 
+////////////////////////////////////////////////
+// Export Statement:
+////////////////////////////////////////////////
 export default BuyGauge;
