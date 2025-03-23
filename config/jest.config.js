@@ -11,7 +11,7 @@ module.exports = {
     // Handle image imports
     '\\.(jpg|jpeg|png|gif|webp|svg)$': '<rootDir>/__mocks__/fileMock.js',
   },
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  setupFilesAfterEnv: ['<rootDir>/config/jest.setup.mjs'],
   testPathIgnorePatterns: ['<rootDir>/node_modules/', '<rootDir>/.plasmo/'],
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {

@@ -117,18 +117,24 @@ chrome.runtime.onMessage.addListener(handleMessage);
 chrome.tabs.onUpdated.addListener(handleTabUpdate);
 
 // Listen for navigation state changes (e.g., single-page app navigation)
-chrome.webNavigation.onHistoryStateUpdated.addListener(handleNavigation);
+if (chrome.webNavigation) {
+    chrome.webNavigation.onHistoryStateUpdated.addListener(handleNavigation);
+}
 
 // Listen for completed navigation
-chrome.webNavigation.onCompleted.addListener(handleNavigation);
+if (chrome.webNavigation) {
+    chrome.webNavigation.onCompleted.addListener(handleNavigation);
+}
 
 // Listen for network requests to capture seller data
-chrome.webRequest.onCompleted.addListener(
-  handleWebRequest,
-  webRequestFilter
-);
+if (chrome.webRequest) {
+    chrome.webRequest.onCompleted.addListener(
+        handleWebRequest,
+        webRequestFilter
+    );
+}
 
 ////////////////////////////////////////////////
 // Export Statement:
 ////////////////////////////////////////////////
-// No exports needed for background service worker
+// No exports needed for background service worker 

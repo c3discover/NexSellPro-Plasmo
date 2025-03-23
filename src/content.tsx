@@ -94,75 +94,79 @@ const ContentUI = () => {
   });
 
   ////////////////////////////////////////////////
-  // Chrome API Handlers:
+  // Message Handlers:
   ////////////////////////////////////////////////
-  // URL monitoring effect
-  useEffect(() => {
-    let lastUrl = window.location.href;
-
-    // Function to check URL changes and update data
-    const checkForUrlChange = () => {
-      const newUrl = window.location.href;
-      
-      if (newUrl !== lastUrl) {
-        console.log('URL changed:', newUrl);
-        lastUrl = newUrl;
+  const handleMessage = (message: any) => {
+    if (message.type === 'URL_CHANGED') {
+      const newUrl = message.url;
+      if (newUrl !== currentUrl) {
         setCurrentUrl(newUrl);
         
-        // Clear product details immediately on URL change
-        setProductDetails(null);
-        
-        // Only fetch new data if we're on a product page
         if (newUrl.includes("/ip/")) {
           const data = getData();
           if (data) {
             setProductDetails(data);
           }
         } else {
+          setProductDetails(null);
           document.body.classList.remove("plasmo-google-sidebar-show");
         }
       }
-    };
+    }
+    return true; // Keep the message channel open
+  };
 
-    // Create a MutationObserver to watch for DOM changes
-    const observer = new MutationObserver(() => {
-      requestAnimationFrame(checkForUrlChange);
-    });
-
-    // Observe changes to the document body
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      attributes: true
-    });
-
-    // Listen for URL changes from background script
+  ////////////////////////////////////////////////
+  // Chrome API Handlers:
+  ////////////////////////////////////////////////
+  // URL monitoring effect
+  useEffect(() => {
     const handleMessage = (message: any) => {
       if (message.type === 'URL_CHANGED') {
-        checkForUrlChange();
+        const newUrl = message.url;
+        if (newUrl !== currentUrl) {
+          setCurrentUrl(newUrl);
+          
+          if (newUrl.includes("/ip/")) {
+            const data = getData();
+            if (data) {
+              setProductDetails(data);
+            }
+          } else {
+            setProductDetails(null);
+            document.body.classList.remove("plasmo-google-sidebar-show");
+          }
+        }
       }
+      return true; // Keep the message channel open
     };
 
     try {
+      // Add message listener
       chrome.runtime.onMessage.addListener(handleMessage);
-    } catch (error) {
-      console.error("Error setting up message listener:", error);
-    }
 
-    // Initial check
-    checkForUrlChange();
+      // Initial check
+      const currentLocation = window.location.href;
+      if (currentLocation.includes("/ip/")) {
+        const data = getData();
+        if (data) {
+          setProductDetails(data);
+        }
+      }
+    } catch (error) {
+      console.error("Error in content script setup:", error);
+    }
 
     // Cleanup function
     return () => {
-      observer.disconnect();
       try {
         chrome.runtime.onMessage.removeListener(handleMessage);
+        document.body.classList.remove("plasmo-google-sidebar-show");
       } catch (error) {
-        console.error("Error removing message listener:", error);
+        console.error("Error in content script cleanup:", error);
       }
-      document.body.classList.remove("plasmo-google-sidebar-show");
     };
-  }, []);
+  }, [currentUrl]);
 
   ////////////////////////////////////////////////
   // Event Handlers:
@@ -175,22 +179,6 @@ const ContentUI = () => {
   ////////////////////////////////////////////////
   // Helper Functions:
   ////////////////////////////////////////////////
-  // Effect to update product details when URL changes
-  useEffect(() => {
-    const isProductPage = currentUrl.includes("/ip/");
-    
-    if (isProductPage) {
-      const data = getData();
-      if (data) {
-        setProductDetails(data);
-      } else {
-        setProductDetails(null);
-      }
-    } else {
-      setProductDetails(null);
-    }
-  }, [currentUrl]);
-
   // Effect to handle sidebar visibility
   useEffect(() => {
     const isProductPage = currentUrl.includes("/ip/");

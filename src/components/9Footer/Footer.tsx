@@ -186,7 +186,7 @@ export const Footer = () => {
           Send Feedback
         </a>
         <a 
-          href="https://github.com/c3discover/nexsellpro/blob/main/PRIVACY.md" 
+          href="https://github.com/c3discover/nexsellpro/blob/main/docs/PRIVACY.md" 
           target="_blank" 
           rel="noopener noreferrer" 
           className="text-xs underline hover:text-cyan-400"
@@ -271,7 +271,7 @@ export const Footer = () => {
           <label htmlFor="privacy-consent" className="text-xs">
             I agree to receive emails and accept the{' '}
             <a
-              href="https://github.com/c3discover/nexsellpro/blob/main/PRIVACY.md"
+              href="https://github.com/c3discover/nexsellpro/blob/main/docs/PRIVACY.md"
               target="_blank"
               rel="noopener noreferrer"
               className="underline hover:text-cyan-400"
