@@ -26,6 +26,9 @@ const CACHE_EXPIRATION = 5 * 60 * 1000;
 let lastData: ProductDetails | null = null;
 let lastDataTimestamp = 0;
 
+// Cache for product data
+const productCache = new Map<string, any>();
+
 ////////////////////////////////////////////////
 // Types and Interfaces:
 ////////////////////////////////////////////////
@@ -133,46 +136,45 @@ export function processProductDetails(product: any, idml: any, reviews: any): Pr
 }
 
 /**
- * Gets product details from the page
- * @returns The product details or null if not found
+ * Get product details from the page and cache them
  */
-export const getProductDetailsFromPage = withErrorHandling(
-  async (): Promise<ProductDetails | null> => {
-    const dataDiv = getDataDiv();
-    if (!dataDiv) return null;
-
-    const productDetails: ProductDetails = {
-      id: dataDiv.getAttribute('data-product-id') || '',
-      name: dataDiv.getAttribute('data-product-name') || '',
-      price: parseFloat(dataDiv.getAttribute('data-product-price') || '0'),
-      category: dataDiv.getAttribute('data-product-category') || '',
-      brand: dataDiv.getAttribute('data-product-brand') || '',
-      rating: parseFloat(dataDiv.getAttribute('data-product-rating') || '0'),
-      reviewCount: parseInt(dataDiv.getAttribute('data-review-count') || '0', 10),
-      inStock: dataDiv.getAttribute('data-in-stock') === 'true',
-      specifications: {}
-    };
-
-    // Get specifications asynchronously
-    const specs = await getProductSpecifications(productDetails.id);
-    productDetails.specifications = specs;
-
-    // Update the cache
-    lastData = productDetails;
-    lastDataTimestamp = Date.now();
-
-    return productDetails;
-  },
-  (error) => {
-    logError({
-      message: 'Error getting product details',
-      severity: ErrorSeverity.WARNING,
-      component: 'productService',
-      error: error as Error
-    });
-    return null;
+export const getProductDetailsFromPage = async (url: string): Promise<any> => {
+  // Check cache first
+  if (productCache.has(url)) {
+    return productCache.get(url);
   }
-);
+
+  try {
+    // Get product data from page
+    const data = await getProductData(url);
+    
+    // Cache the data
+    productCache.set(url, data);
+    
+    return data;
+  } catch (error) {
+    console.error('Error getting product details:', error);
+    throw error;
+  }
+};
+
+/**
+ * Clear cache for a specific URL or all cache if no URL provided
+ */
+export const clearProductCache = (url?: string) => {
+  if (url) {
+    productCache.delete(url);
+  } else {
+    productCache.clear();
+  }
+};
+
+/**
+ * Check if current page is a product page
+ */
+export const isProductPage = (url: string): boolean => {
+  return url.includes('/ip/') || url.includes('/product/');
+};
 
 /**
  * Get product specifications with memoization
@@ -227,12 +229,4 @@ export const getProductDataWithCache = memoize(getProductData, {
   maxSize: 50,
   keyFn: (args: any[]) => args[0],
   expiry: 5 * 60 * 1000 // 5 minutes
-});
-
-/**
- * Checks if the current page is a product page
- * @returns True if the current page is a product page
- */
-export function isProductPage(): boolean {
-  return window.location.href.includes("/ip/");
-} 
+}); 

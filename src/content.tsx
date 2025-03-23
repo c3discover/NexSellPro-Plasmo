@@ -29,6 +29,7 @@ import { ProductInfo } from "~components/5ProductInfo/ProductInfo";
 import { TopHeader } from "~components/1Header/TopHeader";
 import { Variations } from "~components/7Variations/Variations";
 import getData from "~utils/getData";
+import { clearProductCache } from "~services/productService";
 
 ////////////////////////////////////////////////
 // Constants and Variables:
@@ -98,19 +99,31 @@ const ContentUI = () => {
   ////////////////////////////////////////////////
   const handleMessage = (message: any) => {
     if (message.type === 'URL_CHANGED') {
-      const newUrl = message.url;
-      if (newUrl !== currentUrl) {
-        setCurrentUrl(newUrl);
+      // Clear existing product details first
+      setProductDetails(null);
+      
+      // Update URL state
+      setCurrentUrl(message.url);
+      
+      // Handle product page state
+      if (message.isProductPage) {
+        // Clear cache before getting new data
+        clearProductCache();
         
-        if (newUrl.includes("/ip/")) {
-          const data = getData();
-          if (data) {
-            setProductDetails(data);
+        // Remove message listener before reload to prevent the error
+        chrome.runtime.onMessage.removeListener(handleMessage);
+        
+        // Delay the reload slightly to allow cleanup
+        setTimeout(() => {
+          if (chrome.runtime && chrome.runtime.reload) {
+            chrome.runtime.reload();
+          } else {
+            window.location.reload();
           }
-        } else {
-          setProductDetails(null);
-          document.body.classList.remove("plasmo-google-sidebar-show");
-        }
+        }, 0);
+      } else {
+        // Clear product details and hide sidebar when not on product page
+        document.body.classList.remove("plasmo-google-sidebar-show");
       }
     }
     return true; // Keep the message channel open
@@ -121,36 +134,17 @@ const ContentUI = () => {
   ////////////////////////////////////////////////
   // URL monitoring effect
   useEffect(() => {
-    const handleMessage = (message: any) => {
-      if (message.type === 'URL_CHANGED') {
-        const newUrl = message.url;
-        if (newUrl !== currentUrl) {
-          setCurrentUrl(newUrl);
-          
-          if (newUrl.includes("/ip/")) {
-            const data = getData();
-            if (data) {
-              setProductDetails(data);
-            }
-          } else {
-            setProductDetails(null);
-            document.body.classList.remove("plasmo-google-sidebar-show");
-          }
-        }
-      }
-      return true; // Keep the message channel open
-    };
-
     try {
       // Add message listener
       chrome.runtime.onMessage.addListener(handleMessage);
 
-      // Initial check
+      // Initial page check
       const currentLocation = window.location.href;
       if (currentLocation.includes("/ip/")) {
         const data = getData();
         if (data) {
           setProductDetails(data);
+          document.body.classList.add("plasmo-google-sidebar-show");
         }
       }
     } catch (error) {
@@ -162,11 +156,13 @@ const ContentUI = () => {
       try {
         chrome.runtime.onMessage.removeListener(handleMessage);
         document.body.classList.remove("plasmo-google-sidebar-show");
+        // Clear product details on unmount
+        setProductDetails(null);
       } catch (error) {
         console.error("Error in content script cleanup:", error);
       }
     };
-  }, [currentUrl]);
+  }, []); // Empty dependency array since we don't need to recreate the effect
 
   ////////////////////////////////////////////////
   // Event Handlers:

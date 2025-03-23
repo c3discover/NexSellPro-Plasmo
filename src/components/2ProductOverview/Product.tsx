@@ -48,11 +48,15 @@ type LoadingState = typeof LOADING_STATES[keyof typeof LOADING_STATES];
 ////////////////////////////////////////////////
 export const Product = () => {
   ////////////////////////////////////////////////
+  // State Management:
+  ////////////////////////////////////////////////
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [productData, setProductData] = useState<UsedProductData | null>(null);
+
+  ////////////////////////////////////////////////
   // State and Hooks:
   ////////////////////////////////////////////////
-  // State to store the product data fetched from the API
-  const [productData, setProductData] = useState<UsedProductData | null>(null);
-  
   // State to manage the copy button feedback
   const [copied, setCopied] = useState<boolean>(false);
 
@@ -73,33 +77,62 @@ export const Product = () => {
     const checkUrl = () => {
       const newUrl = window.location.href;
       if (newUrl !== currentUrl) {
+        // Clear existing data first
+        setProductData(null);
         setCurrentUrl(newUrl);
+        
+        // Perform a full extension reload
+        if (chrome.runtime && chrome.runtime.reload) {
+          chrome.runtime.reload();
+        } else {
+          window.location.reload();
+        }
       }
     };
 
     // Check URL periodically
     const interval = setInterval(checkUrl, 100);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      // Clear data on cleanup
+      setProductData(null);
+    };
   }, [currentUrl]);
 
   // Effect hook to fetch product data when URL changes
   useEffect(() => {
-    const fetchData = async () => {
+    let isMounted = true;
+
+    const loadProductData = async () => {
+      if (!currentUrl) return;
+
+      setIsLoading(true);
+      setError(null);
+
       try {
-        setLoadingState(LOADING_STATES.LOADING);
+        // Clear existing data before fetching new data
+        setProductData(null);
         const data = await getUsedData();
-        if (data) {
+        if (isMounted) {
           setProductData(data);
-          setLoadingState(LOADING_STATES.SUCCESS);
+          setIsLoading(false);
         }
-      } catch (error) {
-        console.error('Error fetching product data:', error);
-        setLoadingState(LOADING_STATES.ERROR);
+      } catch (err) {
+        if (isMounted) {
+          setError(err instanceof Error ? err.message : 'Failed to load product data');
+          setIsLoading(false);
+        }
       }
     };
 
-    fetchData();
-  }, [currentUrl]); // Re-fetch when URL changes
+    loadProductData();
+
+    return () => {
+      isMounted = false;
+      // Clear data on cleanup
+      setProductData(null);
+    };
+  }, [currentUrl]);
 
   ////////////////////////////////////////////////
   // Event Handlers:
@@ -178,7 +211,7 @@ export const Product = () => {
   // JSX:
   ////////////////////////////////////////////////
   // Handle different loading states
-  if (loadingState === LOADING_STATES.LOADING || loadingState === LOADING_STATES.INITIAL) {
+  if (isLoading) {
     return (
       <div className="p-4 w-full text-center">
         <div className="mx-auto w-8 h-8 rounded-full border-b-2 border-gray-900 animate-spin"></div>
@@ -186,7 +219,7 @@ export const Product = () => {
     );
   }
 
-  if (loadingState === LOADING_STATES.ERROR) {
+  if (error) {
     return (
       <div className="p-4 w-full text-center text-red-500">
         Error loading product data. Please try again later.
