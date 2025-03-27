@@ -210,6 +210,34 @@ export const Analysis: React.FC<AnalysisProps> = ({ areSectionsOpen }) => {
       : CLASS_SECTION_CONTENT_RED;  // Red if above the max threshold
   };
 
+  /**
+   * Apply formatting to the total stock element based on the settings.
+   * @returns {string} The CSS classes to apply for styling the total stock element.
+   */
+  const applyTotalStockHighlight = (): string => {
+    // Get total stock from all sellers
+    const totalStock = productData ? (
+      [...(productData.sellers.mainSeller ? [productData.sellers.mainSeller] : []),
+       ...(productData.sellers.otherSellers || [])]
+      .reduce((total, seller) => total + (seller.availableQuantity || 0), 0)
+    ) : 0;
+
+    // Get maximum stock from settings
+    const storedSettings = JSON.parse(localStorage.getItem(LOCAL_STORAGE_METRICS_KEY) || "{}");
+    const maxStock =
+      typeof storedSettings.maxStock === "string"
+        ? parseFloat(storedSettings.maxStock)
+        : storedSettings.maxStock || null;
+
+    // Determine CSS classes based on the threshold
+    if (maxStock === null || maxStock === 0) {
+      return CLASS_DEFAULT_CONTENT; // Default formatting
+    }
+    return totalStock <= maxStock
+      ? CLASS_SECTION_CONTENT_GREEN // Green for meeting or below threshold
+      : CLASS_SECTION_CONTENT_RED;  // Red for above threshold
+  };
+
   /////////////////////////////////////////////////////
   // JSX:
   /////////////////////////////////////////////////////
@@ -337,60 +365,24 @@ export const Analysis: React.FC<AnalysisProps> = ({ areSectionsOpen }) => {
 
         {/* Top Stock Section: Stock Information */}
         <div className="w-full p-2 flex justify-between items-center">
-
           {/* Total Stock */}
           <div className="w-full p-1">
             <p className={CLASS_SECTION_HEADER}>
               Total Stock
             </p>
-            <p className={CLASS_DEFAULT_CONTENT}>
-              {productData?.inventory.stock || "-"}
+            <p className={applyTotalStockHighlight()}>
+              {productData?.inventory.totalStock ?? "-"}
             </p>
           </div>
         </div>
 
-        {/* Stock Details Section */}
-        <div className="w-[95%] mx-auto px-2 pb-4 flex justify-between items-center">
-
-          {/* Shipping Stock */}
-          <div className="w-1/3 p-1">
-            <p className={CLASS_SECTION_HEADER}>
-              Shipping Stock
-            </p>
-            <p className={CLASS_DEFAULT_CONTENT}>
-              {productData?.inventory.fulfillmentOptions?.[0]?.availableQuantity || 0}
-            </p>
-          </div>
-
-          {/* Pickup Stock */}
-          <div className="w-1/3 p-1">
-            <p className={CLASS_SECTION_HEADER}>
-              Pickup Stock
-            </p>
-            <p className={CLASS_DEFAULT_CONTENT}>
-              {productData?.inventory.fulfillmentOptions?.[1]?.availableQuantity || 0}
-            </p>
-          </div>
-
-          {/* Delivery Stock */}
-          <div className="w-1/3 p-1">
-            <p className={CLASS_SECTION_HEADER}>
-              Delivery Stock
-            </p>
-            <p className={CLASS_DEFAULT_CONTENT}>
-              {productData?.inventory.fulfillmentOptions?.[2]?.availableQuantity || 0}
-            </p>
-          </div>
-        </div>
-
-
-
+        
         {/* Bottom Seller Section: Seller Table */}
         <div className="w-full">
           <div className="flex justify-end mx-2 mb-1">
             <button
               onClick={toggleTable}
-              className="text-xs font-semibold px-2 py-0.5 bg-gray-200 rounded shadow hover:bg-gray-300"
+              className="text-xs font-semibold px-2 pb-0.5 bg-gray-200 rounded shadow hover:bg-gray-300"
               aria-label="Toggle seller table"
             >
               {isTableExpanded ? "Hide Table" : "Show Table"}

@@ -31,6 +31,7 @@ export interface SellerInfo {
   arrives: string;     // Estimated arrival time
   isProSeller: boolean;  // Whether the seller is a pro seller
   isWFS: boolean;      // Whether the seller uses Walmart Fulfillment Services
+  availableQuantity?: number;  // Add this line
 
   // Optional pricing details
   priceInfo?: {

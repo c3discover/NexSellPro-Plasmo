@@ -61,6 +61,7 @@ interface ProductMetrics {
   ratingsLast30Days: number;
   numSellers: number;
   numWfsSellers: number;
+  totalStock: number;
 }
 
 ////////////////////////////////////////////////
@@ -91,7 +92,8 @@ const ContentUI = () => {
     totalRatings: 0,
     ratingsLast30Days: 0,
     numSellers: 0,
-    numWfsSellers: 0
+    numWfsSellers: 0,
+    totalStock: 0
   });
 
   ////////////////////////////////////////////////
@@ -242,7 +244,8 @@ const ContentUI = () => {
             minTotalRatings: productDetails?.settings?.minTotalRatings,
             minRatings30Days: productDetails?.settings?.minRatings30Days,
             maxSellers: productDetails?.settings?.maxSellers,
-            maxWfsSellers: productDetails?.settings?.maxWfsSellers
+            maxWfsSellers: productDetails?.settings?.maxWfsSellers,
+            maxStock: productDetails?.settings?.maxStock
           }}
         />
         <Pricing 

@@ -11,6 +11,7 @@
 import React from 'react';
 import { MetricScore, METRIC_LABELS } from './types';
 import { BiSolidError } from 'react-icons/bi';
+import { FiDollarSign, FiPercent, FiRotateCw, FiStar, FiClock, FiUsers, FiTruck, FiPackage } from "react-icons/fi";
 
 ////////////////////////////////////////////////
 // Types and Interfaces:
@@ -32,7 +33,8 @@ const VALUE_FORMATTERS: Record<string, (value: number) => string> = {
   totalRatings: (value) => value.toLocaleString(),
   ratingsLast30Days: (value) => value.toLocaleString(),
   numSellers: String,
-  numWfsSellers: String
+  numWfsSellers: String,
+  totalStock: String
 };
 
 const sizeClasses = {
@@ -103,6 +105,33 @@ const MetricDot: React.FC<MetricDotProps> = ({
     return value > baseline ? '+' : '-';
   };
 
+  const getMetricIcon = (metric: string) => {
+    return icon; // Use the emoji icon passed as prop
+  };
+
+  const getMetricLabel = (metric: string): string => {
+    switch (metric) {
+      case 'profit':
+        return 'Profit';
+      case 'margin':
+        return 'Margin';
+      case 'roi':
+        return 'ROI';
+      case 'totalRatings':
+        return 'Total Ratings';
+      case 'ratingsLast30Days':
+        return 'Recent Ratings';
+      case 'numSellers':
+        return 'Sellers';
+      case 'numWfsSellers':
+        return 'WFS Sellers';
+      case 'totalStock':
+        return 'Stock';
+      default:
+        return metric;
+    }
+  };
+
   ////////////////////////////////////////////////
   // Render Methods:
   ////////////////////////////////////////////////
@@ -130,7 +159,7 @@ const MetricDot: React.FC<MetricDotProps> = ({
           z-10 
           ${sizeClasses[size].icon}
         `}>
-          {icon}
+          {getMetricIcon(metricKey)}
         </span>
         
         {/* Status Indicator */}
@@ -170,7 +199,7 @@ const MetricDot: React.FC<MetricDotProps> = ({
           shadow-lg
         ">
           <div className="font-semibold">
-            {METRIC_LABELS[metricKey as keyof typeof METRIC_LABELS]}
+            {getMetricLabel(metricKey)}
           </div>
           <div>
             Value: {formatValue(metric.value)}

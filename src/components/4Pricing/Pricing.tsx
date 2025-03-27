@@ -72,8 +72,8 @@ const DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS = STYLES.input.rightPrefix;
 // Types and Interfaces:
 ////////////////////////////////////////////////
 interface PricingProps {
+  product: UsedProductData | null;
   areSectionsOpen: boolean;
-  product?: any; // Adding product prop as optional since it might be null initially
   onMetricsUpdate?: (metrics: {
     profit: number;
     margin: number;
@@ -82,6 +82,7 @@ interface PricingProps {
     ratingsLast30Days: number;
     numSellers: number;
     numWfsSellers: number;
+    totalStock: number;
   }) => void;
 }
 
@@ -604,7 +605,8 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
         return reviewDate >= thirtyDaysAgo;
       }).length || 0,
       numSellers: productData?.inventory?.totalSellers || 0,
-      numWfsSellers: productData?.sellers?.otherSellers?.filter(s => s.isWFS)?.length || 0
+      numWfsSellers: productData?.sellers?.otherSellers?.filter(s => s.isWFS)?.length || 0,
+      totalStock: productData?.inventory?.totalStock || 0
     });
   }, [totalProfit, margin, roi, productData, onMetricsUpdate]);
 

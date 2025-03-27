@@ -522,7 +522,8 @@ const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo[]> => 
           type: determineSellerTypeFromOffer(offer),
           arrives: formatDeliveryDate(offer.shippingOption?.deliveryDate) || 'N/A',
           isProSeller: offer.hasSellerBadge || false,
-          isWFS: offer.wfsEnabled || offer.fulfillmentType === 'FC'
+          isWFS: offer.wfsEnabled || offer.fulfillmentType === 'FC',
+          availableQuantity: offer.fulfillmentOptions?.[0]?.availableQuantity || 0
         }));
 
       // Cache the results

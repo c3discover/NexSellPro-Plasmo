@@ -43,13 +43,14 @@ const GAUGE_LEVELS: GaugeLevel[] = [
 
 // Weights for each metric in the final score calculation
 const METRIC_WEIGHTS = {
-  profit: 0.25,          // 25% weight
+  profit: 0.20,          // 25% weight
   margin: 0.15,          // 15% weight
-  roi: 0.15,             // 15% weight
-  totalRatings: 0.10,   // 10% weight
+  roi: 0.10,             // 15% weight
+  totalRatings: 0.05,   // 10% weight
   ratingsLast30Days: 0.15, // 20% weight
-  numSellers: 0.05,      // 5% weight
-  numWfsSellers: 0.15    // 15% weight
+  numSellers: 0.10,      // 5% weight
+  numWfsSellers: 0.15,    // 15% weight
+  totalStock: 0.10    // 15% weight
 };
 
 // Maximum multiplier for each metric to achieve max score (1.0)
@@ -57,10 +58,11 @@ const METRIC_MULTIPLIERS = {
   profit: 3.0,           // 3x baseline for max score
   margin: 2.0,           // 2x baseline for max score
   roi: 2.5,             // 2.5x baseline for max score
-  totalRatings: 10.0,     // 5x baseline for max score
-  ratingsLast30Days: 5.5, // 3x baseline for max score
+  totalRatings: 10.0,    // 5x baseline for max score
+  ratingsLast30Days: 5.5,// 3x baseline for max score
   numSellers: 0.5,       // 1x baseline (inverse metric)
-  numWfsSellers: 0.5     // 1x baseline (inverse metric)
+  numWfsSellers: 0.5,    // 1x baseline (inverse metric)
+  totalStock: 0.5        // 1x baseline (inverse metric)
 };
 
 // Thresholds for detecting unusual metric values
@@ -71,7 +73,8 @@ const UNUSUAL_THRESHOLDS = {
   totalRatings: 50,
   ratingsLast30Days: 10,
   numSellers: 5,
-  numWfsSellers: 5
+  numWfsSellers: 5,
+  totalStock: 5
 };
 
 // Main categories displayed on the gauge
@@ -112,7 +115,8 @@ const DEFAULT_PRODUCT_DATA: ProductMetrics = {
   totalRatings: 0,
   ratingsLast30Days: 0,
   numSellers: 0,
-  numWfsSellers: 0
+  numWfsSellers: 0,
+  totalStock: 0  // This will come from inventory.totalStock
 };
 
 // Default gauge settings
@@ -123,7 +127,8 @@ const DEFAULT_SETTINGS: GaugeSettings = {
   minTotalRatings: undefined,
   minRatings30Days: undefined,
   maxSellers: undefined,
-  maxWfsSellers: undefined
+  maxWfsSellers: undefined,
+  maxStock: undefined
 };
 
 // Calculates individual metric scores
@@ -204,7 +209,8 @@ const calculateBuyScore = (
     totalRatings: calculateMetricScore(productData.totalRatings, settings.minTotalRatings),
     ratingsLast30Days: calculateMetricScore(productData.ratingsLast30Days, settings.minRatings30Days),
     numSellers: calculateMetricScore(productData.numSellers, settings.maxSellers, true),
-    numWfsSellers: calculateMetricScore(productData.numWfsSellers, settings.maxWfsSellers, true)
+    numWfsSellers: calculateMetricScore(productData.numWfsSellers, settings.maxWfsSellers, true),
+    totalStock: calculateMetricScore(productData.totalStock, settings.maxStock, true)  // Using inventory.totalStock
   };
 
   // Calculate available weights

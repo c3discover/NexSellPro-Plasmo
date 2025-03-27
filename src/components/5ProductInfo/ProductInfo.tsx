@@ -70,6 +70,9 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ areSectionsOpen }) => 
   // Stores the product data fetched from the API
   const [productData, setProductData] = useState<UsedProductData | null>(null);
 
+  // State to control if the seller table is expanded or collapsed
+  const [isTableExpanded, setIsTableExpanded] = useState(true);
+
   // Add error state
   const [error, setError] = useState<string | null>(null);
 
@@ -104,6 +107,14 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ areSectionsOpen }) => 
   // Toggle the expanded/collapsed state of the component
   const toggleOpen = () => setIsOpen(!isOpen);
 
+    /**
+   * Event handler to expand or collapse the seller data table.
+   */
+    const toggleTable = (): void => {
+      setIsTableExpanded((prev) => !prev);
+    };
+
+    
   // Handle copying text to clipboard and show feedback
   const handleCopy = (value: string, index: number) => {
     navigator.clipboard.writeText(value);
@@ -211,23 +222,17 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ areSectionsOpen }) => 
   return (
     <div
       id="ProductInfo"
-      role="region"
-      aria-label="Product Information"
-      className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${
-        isOpen ? "h-auto opacity-100" : "h-12"
-      }`}
+      className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}
     >
       {/* Header Section with expand/collapse functionality */}
       <h1
-        role="button"
-        aria-expanded={isOpen}
-        tabIndex={0}
-        onKeyPress={(e) => e.key === 'Enter' && toggleOpen()}
-        className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
+   className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
+   onClick={toggleOpen}
       >
         {isOpen ? "🔽  Product Information" : "▶️  Product Information"}
       </h1>
 
+      {/* Main Content Section */}
       <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>
         {/* Product Identifiers Section */}
         <p className="font-extrabold text-base text-center bg-[#d7d7d7] w-full p-2">

@@ -21,7 +21,8 @@ export const METRIC_ICONS = {
   totalRatings: '⭐',
   ratingsLast30Days: '🌟',
   numSellers: '👥',
-  numWfsSellers: '🏢'
+  numWfsSellers: '🏢',
+  totalStock: '📦'
 } as const;
 
 // Maps metric keys to their display names
@@ -32,7 +33,8 @@ export const METRIC_LABELS = {
   totalRatings: 'Total Ratings',
   ratingsLast30Days: '30-Day Ratings',
   numSellers: 'Sellers',
-  numWfsSellers: 'WFS Sellers'
+  numWfsSellers: 'WFS Sellers',
+  totalStock: 'Stock'
 } as const;
 
 ////////////////////////////////////////////////
@@ -59,6 +61,7 @@ export interface MetricScores {
   ratingsLast30Days: MetricScore;
   numSellers: MetricScore;
   numWfsSellers: MetricScore;
+  totalStock: MetricScore;
 }
 
 // Defines the appearance of a gauge level
@@ -92,6 +95,7 @@ export interface MetricWeights {
   ratingsLast30Days: number;
   numSellers: number;
   numWfsSellers: number;
+  totalStock: number;
 }
 
 // Raw metric data for a product
@@ -103,6 +107,7 @@ export interface ProductMetrics {
   ratingsLast30Days: number;
   numSellers: number;
   numWfsSellers: number;
+  totalStock: number;
 }
 
 // Configuration settings for the gauge
@@ -114,6 +119,7 @@ export interface GaugeSettings {
   minRatings30Days?: number;
   maxSellers?: number;
   maxWfsSellers?: number;
+  maxStock?: number;
 }
 
 // Props for the BuyGauge component
@@ -145,4 +151,16 @@ export type MetricKey = keyof MetricIconType;
 ////////////////////////////////////////////////
 // Export Statement:
 ////////////////////////////////////////////////
-// All exports are inline with their definitions 
+// All exports are inline with their definitions
+
+// Update the default weights
+export const DEFAULT_WEIGHTS: MetricWeights = {
+  profit: 0.20,        // 20%
+  margin: 0.15,        // 15%
+  roi: 0.10,          // 10%
+  totalRatings: 0.05,  // 5%
+  ratingsLast30Days: 0.15, // 15%
+  numSellers: 0.10,    // 10%
+  numWfsSellers: 0.15, // 15%
+  totalStock: 0.10     // 10%
+}; 

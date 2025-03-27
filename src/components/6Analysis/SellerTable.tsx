@@ -230,6 +230,9 @@ export const SellerTable: React.FC = () => {
                             TYPE
                         </th>
                         <th className={"py-1 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black"}>
+                            QTY
+                        </th>
+                        <th className={"py-1 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black"}>
                             ARRIVES
                         </th>
                     </tr>
@@ -255,6 +258,9 @@ export const SellerTable: React.FC = () => {
                                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getTypeStyle(getSellerType(seller, productData?.basic.brand))}`}>
                                         {getSellerType(seller, productData?.basic.brand)}
                                     </span>
+                                </td>
+                                <td className="py-1 text-xs text-center border-x border-black">
+                                    {seller.availableQuantity || "-"}
                                 </td>
                                 <td className="py-1 text-xs text-center border-x border-black">
                                     {seller.arrives || "-"}

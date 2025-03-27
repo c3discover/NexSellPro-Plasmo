@@ -139,6 +139,7 @@ interface ProductDetails {
     minRatings30Days?: number;
     maxSellers?: number;
     maxWfsSellers?: number;
+    maxStock?: number;
   };
   totalProfit: number;
   margin: number;
@@ -300,7 +301,8 @@ export function getProductDetails(product: any, idml: any, reviews: any): Produc
       minTotalRatings: parseFloat(settings.minTotalRatings) || undefined,
       minRatings30Days: parseFloat(settings.minRatings30Days) || undefined,
       maxSellers: parseFloat(settings.maxSellers) || undefined,
-      maxWfsSellers: parseFloat(settings.maxWfsSellers) || undefined
+      maxWfsSellers: parseFloat(settings.maxWfsSellers) || undefined,
+      maxStock: parseFloat(settings.maxStock) || undefined
     },
     
     // Add calculated metrics

@@ -37,6 +37,7 @@ export const SettingsModal: React.FC<{
     minRatings30Days: string;
     maxSellers: string;
     maxWfsSellers: string;
+    maxStock: string;
     inboundShippingCost: string;
     sfShippingCost: string;
     storageLength: string;
@@ -53,6 +54,7 @@ export const SettingsModal: React.FC<{
     minRatings30Days: "0",
     maxSellers: "0",
     maxWfsSellers: "0",
+    maxStock: "0",
     inboundShippingCost: "0.00",
     sfShippingCost: "0.00",
     storageLength: "1",
@@ -178,6 +180,7 @@ export const SettingsModal: React.FC<{
       minRatings30Days: "0",
       maxSellers: "0",
       maxWfsSellers: "0",
+      maxStock: "0",
       inboundShippingCost: "0.00",
       sfShippingCost: "0.00",
       storageLength: "1",
@@ -338,6 +341,7 @@ export const SettingsModal: React.FC<{
       minRatings30Days: "Minimum Ratings (30 days)",
       maxSellers: "Maximum Sellers",
       maxWfsSellers: "Maximum WFS Sellers",
+      maxStock: "Maximum Stock",
       sfShippingCost: "SF Shipping Cost",
       inboundShippingCost: "WFS Inbound Shipping Cost",
       // Add other special cases here if needed
@@ -567,25 +571,28 @@ export const SettingsModal: React.FC<{
               );
             })}
 
-            {/* Fourth Row: Overall Rating (single column) */}
-            <div className="flex flex-col">
-              <label className="text-[11px] text-gray-600 mb-0.5">
-                {formatLabel('minOverallRating')}
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  name="minOverallRating"
-                  value={rawMetrics['minOverallRating'] ?? desiredMetrics.minOverallRating}
-                  onChange={handleDesiredMetricsChange}
-                  onBlur={() => handleBlur('minOverallRating')}
-                  className={getInputClassName('minOverallRating', 'p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full')}
-                />
-              </div>
-            </div>
+            {/* Fourth Row: Overall Rating and Max Stock */}
+            {['minOverallRating', 'maxStock'].map((key) => {
+              const value = desiredMetrics[key as keyof typeof desiredMetrics];
+              return (
+                <div key={key} className="flex flex-col">
+                  <label className="text-[11px] text-gray-600 mb-0.5">
+                    {formatLabel(key)}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      name={key}
+                      value={rawMetrics[key] ?? value}
+                      onChange={handleDesiredMetricsChange}
+                      onBlur={() => handleBlur(key)}
+                      className={getInputClassName(key, 'p-1 text-xs border border-gray-300 rounded-lg focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full')}
+                    />
+                  </div>
+                </div>
+              );
+            })}
 
-            {/* Empty div for spacing */}
-            <div></div>
 
             {/* Fifth Row: Sellers and WFS Sellers */}
             {['maxSellers', 'maxWfsSellers'].map((key) => {

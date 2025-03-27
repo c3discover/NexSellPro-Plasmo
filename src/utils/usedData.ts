@@ -71,9 +71,9 @@ export interface ProductCategories {
 
 // Product stock information
 export interface ProductInventory {
-  stock: number;
   totalSellers: number;
   fulfillmentOptions: { type: string; availableQuantity: number }[];
+  totalStock: number;  // Total available quantity across all sellers
 }
 
 // Product review information
@@ -103,6 +103,7 @@ export interface ProductSellers {
     priceInfo?: any;
     fulfillmentStatus?: string;
     arrivalDate?: string;
+    availableQuantity?: number;
   } | null;
   otherSellers: SellerInfo[];
   totalSellers: number;
@@ -201,9 +202,9 @@ export async function getUsedData(): Promise<UsedProductData | null> {
             categories: rawProductData.categories
           },
           inventory: {
-            stock: rawProductData.stock,
             totalSellers: rawProductData.totalSellers,
-            fulfillmentOptions: rawProductData.fulfillmentOptions
+            fulfillmentOptions: rawProductData.fulfillmentOptions,
+            totalStock: 0  // Initialize to 0, will be updated with actual value later
           },
           reviews: {
             overallRating: rawProductData.overallRating,
@@ -227,6 +228,14 @@ export async function getUsedData(): Promise<UsedProductData | null> {
             isHazardousMaterial: false
           }
         };
+
+        // Calculate total stock from all sellers
+        const totalStock = sellerData.reduce((sum, seller) => {
+          return sum + (seller.availableQuantity || 0);
+        }, 0);
+
+        // Add total stock to inventory data
+        usedData.inventory.totalStock = totalStock;
 
         // Log the used data in a collapsible group
         console.groupCollapsed('%c[Used Extension Data]', LOG_STYLES.EXTENSION_DATA);

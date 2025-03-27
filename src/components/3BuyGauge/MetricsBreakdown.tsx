@@ -24,6 +24,7 @@ interface MetricsBreakdownProps {
     ratingsLast30Days: MetricScore;
     numSellers: MetricScore;
     numWfsSellers: MetricScore;
+    totalStock: MetricScore;
   };
 }
 
@@ -191,6 +192,10 @@ const MetricsBreakdown: React.FC<MetricsBreakdownProps> = ({ metrics }) => {
       <MetricRow 
         label="WFS Sellers" 
         metric={metrics.numWfsSellers}
+      />
+      <MetricRow 
+        label="Stock" 
+        metric={metrics.totalStock}
       />
     </div>
   );
