@@ -18,10 +18,9 @@ import SuccessGif from "data-base64:../../../assets/greenTick.gif";
 ////////////////////////////////////////////////
 // Array of button labels for the export options
 const EXPORT_OPTIONS = [
-  "Create Listing on Walmart",
-  "Export All",
   "Export (Based on settings)",
-  "Export to Software"
+  "Export All",
+  "Create Listing on Walmart"
 ];
 
 // Animation duration in milliseconds
@@ -53,7 +52,10 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
   
   // Tracks which buttons have been clicked for showing success animation
   // Array of booleans corresponding to each export option button
-  const [isClicked, setIsClicked] = useState<boolean[]>([false, false, false, false]);
+  const [isClicked, setIsClicked] = useState<boolean[]>([false, false, false]);
+
+  // Add new state for the info message
+  const [showWalmartMessage, setShowWalmartMessage] = useState(false);
 
   // Effect to sync the section's open state with the global sections state
   useEffect(() => {
@@ -85,6 +87,17 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
 
   // Toggles the section's expanded/collapsed state
   const toggleOpen = () => setIsOpen(!isOpen);
+
+  // Add handler for Walmart button click
+  const handleWalmartClick = () => {
+    console.log('Walmart button clicked');
+    setShowWalmartMessage(true);
+    console.log('Message state set to true');
+    setTimeout(() => {
+      console.log('Timeout triggered, setting message to false');
+      setShowWalmartMessage(false);
+    }, 3000);
+  };
 
 ////////////////////////////////////////////////
 // Helper Functions:
@@ -123,21 +136,39 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
       <div className={`flex flex-col items-center gap-3 p-4 ${isOpen ? "block" : "hidden"}`}>
         {/* Map over export options to create buttons */}
         {EXPORT_OPTIONS.map((label, index) => (
-          <button
-            key={index}
-            className="bg-white border-4 border-black rounded-lg text-black py-2 px-4 w-full transition-all duration-300 transform hover:scale-105 flex items-center justify-center"
-            onClick={() => handleButtonClick(index)}
-          >
-            {/* Show success animation when clicked, otherwise show normal button state */}
-            {isClicked[index] ? (
-              <img src={SuccessGif} alt="Success" className="w-6 h-6" />
-            ) : (
-              <>
-                <img src={importIcon} alt="Import Icon" width={20} className="mr-2" />
-                {label}
-              </>
+          <div key={index} className="w-full">
+            <button
+              className={`bg-white border-4 border-black rounded-lg text-black py-2 px-4 w-full transition-all duration-300 transform hover:scale-105 flex items-center justify-center ${
+                label === "Create Listing on Walmart" 
+                  ? "opacity-50 cursor-not-allowed hover:scale-100" 
+                  : ""
+              }`}
+              onClick={() => {
+                console.log('Button clicked:', label);
+                if (label === "Create Listing on Walmart") {
+                  handleWalmartClick();
+                } else {
+                  handleButtonClick(index);
+                }
+              }}
+            >
+              {/* Show success animation when clicked, otherwise show normal button state */}
+              {isClicked[index] ? (
+                <img src={SuccessGif} alt="Success" className="w-6 h-6" />
+              ) : (
+                <>
+                  <img src={importIcon} alt="Import Icon" width={20} className="mr-2" />
+                  {label}
+                </>
+              )}
+            </button>
+            {/* Show message for Walmart button */}
+            {showWalmartMessage && label === "Create Listing on Walmart" && (
+              <div className="mt-2 p-2 bg-cyan-50 border border-cyan-200 rounded-lg text-xs text-cyan-800">
+                This feature will be available when you connect your Walmart API credentials. Coming soon to NexSellPro!
+              </div>
             )}
-          </button>
+          </div>
         ))}
       </div>
     </div>

@@ -246,6 +246,8 @@ export async function getUsedData(): Promise<UsedProductData | null> {
         console.log('Categories:', usedData.categories);
         console.log('Inventory:', usedData.inventory);
         console.log('Reviews:', usedData.reviews);
+        console.log('Variants:', usedData.variants);
+        console.log('Badges:', usedData.badges);
         console.log('Sellers:', usedData.sellers);
         console.log('Flags:', usedData.flags);
         console.groupEnd();

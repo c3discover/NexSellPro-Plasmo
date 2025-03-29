@@ -44,7 +44,7 @@ const CHART_COLORS = {
 const DEFAULT_CONTRACT_CATEGORY = "Everything Else (Most Items)";
 const DEFAULT_SEASON = "Jan-Sep";
 const DEFAULT_STORAGE_LENGTH = 1;
-const DEFAULT_INBOUND_RATE = 0.5;
+const DEFAULT_INBOUND_RATE = 0.0;
 
 // CSS Classes - Keep for consistent styling
 const STYLES = {
@@ -115,13 +115,19 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
         setSalePrice(data.pricing.currentPrice || 0);
         const initialProductCost = calculateStartingProductCost(data.pricing.currentPrice || 0);
         setProductCost(initialProductCost);
+
+        // Set shipping dimensions from product data
+        setShippingLength(parseFloat(data.dimensions.shippingLength || "0"));
+        setShippingWidth(parseFloat(data.dimensions.shippingWidth || "0"));
+        setShippingHeight(parseFloat(data.dimensions.shippingHeight || "0"));
+        setWeight(parseFloat(data.dimensions.weight || "0"));
       }
     };
     fetchData();
   }, []);
 
   // General State (Group 1)
-  const [contractCategory, setContractCategory] = useState<string>(DEFAULT_CONTRACT_CATEGORY);
+  const [contractCategory, setContractCategory] = useState<string>("Everything Else (Most Items)");
   const [season, setSeason] = useState<string>(DEFAULT_SEASON);
   const [storageLength, setStorageLength] = useState<number>(DEFAULT_STORAGE_LENGTH);
   const [inboundShippingRate, setInboundShippingRate] = useState<number>(DEFAULT_INBOUND_RATE);
@@ -200,7 +206,7 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
     width: shippingWidth,
     height: shippingHeight,
     isWalmartFulfilled,
-    isApparel: productData?.flags?.isApparel || false,
+    isApparel: contractCategory === "Apparel & Accessories",
     isHazardousMaterial: productData?.flags?.isHazardousMaterial || false,
     retailPrice: productData?.pricing?.currentPrice || 0,
   };
@@ -218,61 +224,170 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
   // Add new state for tracking edited fields
   const [editedFields, setEditedFields] = useState<Set<string>>(new Set());
 
-  // Load saved values from localStorage on mount
+  // Update input handlers to mark fields as edited
+  const handleInputChange = (value: string, setter: (value: string | null) => void, field: string) => {
+    setter(value);
+    setEditedFields(prev => new Set([...prev, field]));
+  };
+
+  // Update handleInputBlur to handle fee fields
+  const handleInputBlur = (rawValue: string | null, setter: (value: number) => void, field: string) => {
+    if (rawValue !== null) {
+      const numValue = parseFloat(rawValue) || 0;
+      let formattedValue;
+      
+      // Group 2: Pricing (2 decimals)
+      if (['productCost', 'salePrice'].includes(field)) {
+        formattedValue = numValue.toFixed(2);
+        setter(parseFloat(formattedValue));
+        
+        if (field === 'productCost') setRawProductCost(formattedValue);
+        if (field === 'salePrice') setRawSalePrice(formattedValue);
+
+        // Save to pricing localStorage
+        if (productData?.basic?.productID) {
+          const storageKey = `pricing_${productData.basic.productID}`;
+          const savedPricing = JSON.parse(localStorage.getItem(storageKey) || "{}");
+          savedPricing[field] = formattedValue;
+          localStorage.setItem(storageKey, JSON.stringify(savedPricing));
+        }
+      }
+      // Group 3: Shipping Dimensions (2 decimals for dimensions, 1 for weight)
+      else if (['shippingLength', 'shippingWidth', 'shippingHeight', 'weight'].includes(field)) {
+        formattedValue = field === 'weight' ? numValue.toFixed(1) : numValue.toFixed(2);
+        setter(parseFloat(formattedValue));
+        
+        if (field === 'shippingLength') setRawLength(formattedValue);
+        if (field === 'shippingWidth') setRawWidth(formattedValue);
+        if (field === 'shippingHeight') setRawHeight(formattedValue);
+        if (field === 'weight') setRawWeight(formattedValue);
+
+        // Save to dimensions localStorage
+        if (productData?.basic?.productID) {
+          const storageKey = `shippingDimensions_${productData.basic.productID}`;
+          const savedDimensions = JSON.parse(localStorage.getItem(storageKey) || "{}");
+          
+          if (field === 'shippingLength') savedDimensions.length = formattedValue;
+          if (field === 'shippingWidth') savedDimensions.width = formattedValue;
+          if (field === 'shippingHeight') savedDimensions.height = formattedValue;
+          if (field === 'weight') savedDimensions.weight = formattedValue;
+          
+          localStorage.setItem(storageKey, JSON.stringify(savedDimensions));
+        }
+      }
+      // Group 4: Fees (2 decimals)
+      else if (['referralFee', 'wfsFee', 'inboundShippingFee', 'storageFee', 'prepFee', 'additionalFees'].includes(field)) {
+        formattedValue = numValue.toFixed(2);
+        setter(parseFloat(formattedValue));
+        
+        if (field === 'referralFee') setRawReferralFee(formattedValue);
+        if (field === 'wfsFee') setRawWfsFee(formattedValue);
+        if (field === 'inboundShippingFee') setRawInboundShippingFee(formattedValue);
+        if (field === 'storageFee') setRawStorageFee(formattedValue);
+        if (field === 'prepFee') setRawPrepFee(formattedValue);
+        if (field === 'additionalFees') setRawAdditionalFees(formattedValue);
+
+        // Save to pricing localStorage
+        if (productData?.basic?.productID) {
+          const storageKey = `pricing_${productData.basic.productID}`;
+          const savedPricing = JSON.parse(localStorage.getItem(storageKey) || "{}");
+          savedPricing[field] = formattedValue;
+          localStorage.setItem(storageKey, JSON.stringify(savedPricing));
+        }
+      }
+
+      // If we formatted a value, mark the field as edited
+      if (formattedValue) {
+        setEditedFields(prev => new Set([...prev, field]));
+      }
+    }
+  };
+
+  // Update the useEffect that loads saved values to handle fees
   useEffect(() => {
     try {
       if (productData?.basic?.productID) {
-        const storageKey = `pricing_${productData.basic.productID}`;
-        const savedPricing = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        const pricingKey = `pricing_${productData.basic.productID}`;
+        const dimensionsKey = `shippingDimensions_${productData.basic.productID}`;
+        const savedPricing = JSON.parse(localStorage.getItem(pricingKey) || "{}");
+        const savedDimensions = JSON.parse(localStorage.getItem(dimensionsKey) || "{}");
+        const editedFieldsSet = new Set<string>();
         
-        if (Object.keys(savedPricing).length > 0) {
-          // Load all saved values
-          if (savedPricing.productCost) setProductCost(parseFloat(savedPricing.productCost));
-          if (savedPricing.salePrice) setSalePrice(parseFloat(savedPricing.salePrice));
-          if (savedPricing.referralFee) setReferralFee(parseFloat(savedPricing.referralFee));
-          if (savedPricing.wfsFee) setWfsFee(parseFloat(savedPricing.wfsFee));
-          if (savedPricing.inboundShippingFee) setInboundShippingFee(parseFloat(savedPricing.inboundShippingFee));
-          if (savedPricing.storageFee) setStorageFee(parseFloat(savedPricing.storageFee));
-          if (savedPricing.prepFee) setPrepFee(parseFloat(savedPricing.prepFee));
-          if (savedPricing.additionalFees) setAdditionalFees(parseFloat(savedPricing.additionalFees));
-          
-          // Mark fields as edited
-          setEditedFields(new Set(Object.keys(savedPricing)));
+        // Load pricing values
+        if (savedPricing.productCost) {
+          setProductCost(parseFloat(savedPricing.productCost));
+          setRawProductCost(savedPricing.productCost);
+          editedFieldsSet.add('productCost');
+        }
+        if (savedPricing.salePrice) {
+          setSalePrice(parseFloat(savedPricing.salePrice));
+          setRawSalePrice(savedPricing.salePrice);
+          editedFieldsSet.add('salePrice');
+        }
+
+        // Load shipping dimensions
+        if (savedDimensions.length) {
+          setShippingLength(parseFloat(savedDimensions.length));
+          setRawLength(savedDimensions.length);
+          editedFieldsSet.add('shippingLength');
+        }
+        if (savedDimensions.width) {
+          setShippingWidth(parseFloat(savedDimensions.width));
+          setRawWidth(savedDimensions.width);
+          editedFieldsSet.add('shippingWidth');
+        }
+        if (savedDimensions.height) {
+          setShippingHeight(parseFloat(savedDimensions.height));
+          setRawHeight(savedDimensions.height);
+          editedFieldsSet.add('shippingHeight');
+        }
+        if (savedDimensions.weight) {
+          setWeight(parseFloat(savedDimensions.weight));
+          setRawWeight(savedDimensions.weight);
+          editedFieldsSet.add('weight');
+        }
+
+        // Load fee values from localStorage
+        if (savedPricing.referralFee) {
+          setReferralFee(parseFloat(savedPricing.referralFee));
+          setRawReferralFee(savedPricing.referralFee);
+          editedFieldsSet.add('referralFee');
+        }
+        if (savedPricing.wfsFee) {
+          setWfsFee(parseFloat(savedPricing.wfsFee));
+          setRawWfsFee(savedPricing.wfsFee);
+          editedFieldsSet.add('wfsFee');
+        }
+        if (savedPricing.inboundShippingFee) {
+          setInboundShippingFee(parseFloat(savedPricing.inboundShippingFee));
+          setRawInboundShippingFee(savedPricing.inboundShippingFee);
+          editedFieldsSet.add('inboundShippingFee');
+        }
+        if (savedPricing.storageFee) {
+          setStorageFee(parseFloat(savedPricing.storageFee));
+          setRawStorageFee(savedPricing.storageFee);
+          editedFieldsSet.add('storageFee');
+        }
+        if (savedPricing.prepFee) {
+          setPrepFee(parseFloat(savedPricing.prepFee));
+          setRawPrepFee(savedPricing.prepFee);
+          editedFieldsSet.add('prepFee');
+        }
+        if (savedPricing.additionalFees) {
+          setAdditionalFees(parseFloat(savedPricing.additionalFees));
+          setRawAdditionalFees(savedPricing.additionalFees);
+          editedFieldsSet.add('additionalFees');
+        }
+
+        // Only update editedFields if we found any
+        if (editedFieldsSet.size > 0) {
+          setEditedFields(prev => new Set([...prev, ...editedFieldsSet]));
         }
       }
     } catch (error) {
-      console.error("Error loading pricing data:", error);
+      console.error("Error loading saved data:", error);
     }
   }, [productData?.basic?.productID]);
-
-  // Save values to localStorage when they change
-  useEffect(() => {
-    if (productData?.basic?.productID && editedFields.size > 0) {
-      const storageKey = `pricing_${productData.basic.productID}`;
-      const pricingData = {
-        productCost: productCost.toFixed(2),
-        salePrice: salePrice.toFixed(2),
-        referralFee: referralFee.toFixed(2),
-        wfsFee: wfsFee.toFixed(2),
-        inboundShippingFee: inboundShippingFee.toFixed(2),
-        storageFee: storageFee.toFixed(2),
-        prepFee: prepFee.toFixed(2),
-        additionalFees: additionalFees.toFixed(2)
-      };
-      localStorage.setItem(storageKey, JSON.stringify(pricingData));
-    }
-  }, [
-    productData?.basic?.productID,
-    productCost,
-    salePrice,
-    referralFee,
-    wfsFee,
-    inboundShippingFee,
-    storageFee,
-    prepFee,
-    additionalFees,
-    editedFields
-  ]);
 
   // Helper function to get input className
   const getInputClassName = (fieldName: string, baseClassName: string) => {
@@ -281,21 +396,37 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
 
   // Reset functions
   const resetPricing = () => {
-    const initialProductCost = calculateStartingProductCost(salePrice);
+    const initialProductCost = calculateStartingProductCost(productData?.pricing?.currentPrice || 0);
     setProductCost(initialProductCost);
     setSalePrice(productData?.pricing?.currentPrice || 0);
     setRawProductCost(null);
     setRawSalePrice(null);
     
-    // Remove from localStorage and clear edited state
+    // Only remove pricing data from localStorage
     if (productData?.basic?.productID) {
       const storageKey = `pricing_${productData.basic.productID}`;
-      localStorage.removeItem(storageKey);
+      const savedPricing = JSON.parse(localStorage.getItem(storageKey) || "{}");
+      delete savedPricing.productCost;
+      delete savedPricing.salePrice;
+      if (Object.keys(savedPricing).length > 0) {
+        localStorage.setItem(storageKey, JSON.stringify(savedPricing));
+      } else {
+        localStorage.removeItem(storageKey);
+      }
     }
-    setEditedFields(new Set());
+    
+    // Only remove these two fields from editedFields
+    setEditedFields(prev => {
+      const newEdited = new Set(prev);
+      newEdited.delete('productCost');
+      newEdited.delete('salePrice');
+      return newEdited;
+    });
   };
 
+  // Update resetFees to only handle the six fee values
   const resetFees = () => {
+    // Reset all fee values to their calculated defaults
     if (isWalmartFulfilled) {
       setWfsFee(calculateWFSFee(productForWFSFee));
       setInboundShippingFee(finalShippingWeightForInbound * inboundShippingRate);
@@ -305,46 +436,46 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
       setInboundShippingFee(0);
       setStorageFee(0);
     }
+    setReferralFee(calculateReferralFee(salePrice, contractCategory));
     setPrepFee(0);
     setAdditionalFees(0);
+
+    // Reset all raw fee values
+    setRawReferralFee(null);
     setRawWfsFee(null);
     setRawInboundShippingFee(null);
     setRawStorageFee(null);
     setRawPrepFee(null);
     setRawAdditionalFees(null);
 
-    // Remove from localStorage and clear edited state for fees
+    // Remove fee data from localStorage
     if (productData?.basic?.productID) {
       const storageKey = `pricing_${productData.basic.productID}`;
       const savedPricing = JSON.parse(localStorage.getItem(storageKey) || "{}");
+      
+      // Remove only fee fields
+      delete savedPricing.referralFee;
       delete savedPricing.wfsFee;
       delete savedPricing.inboundShippingFee;
       delete savedPricing.storageFee;
       delete savedPricing.prepFee;
       delete savedPricing.additionalFees;
-      localStorage.setItem(storageKey, JSON.stringify(savedPricing));
+      
+      if (Object.keys(savedPricing).length > 0) {
+        localStorage.setItem(storageKey, JSON.stringify(savedPricing));
+      } else {
+        localStorage.removeItem(storageKey);
+      }
     }
-    
+
+    // Remove only fee fields from editedFields
     setEditedFields(prev => {
       const newEdited = new Set(prev);
-      ['wfsFee', 'inboundShippingFee', 'storageFee', 'prepFee', 'additionalFees'].forEach(field => {
+      ['referralFee', 'wfsFee', 'inboundShippingFee', 'storageFee', 'prepFee', 'additionalFees'].forEach(field => {
         newEdited.delete(field);
       });
       return newEdited;
     });
-  };
-
-  // Update input handlers to mark fields as edited
-  const handleInputChange = (value: string, setter: (value: string | null) => void, field: string) => {
-    setter(value);
-    setEditedFields(prev => new Set([...prev, field]));
-  };
-
-  const handleInputBlur = (rawValue: string | null, setter: (value: number) => void, field: string) => {
-    if (rawValue !== null) {
-      const formattedValue = parseFloat(rawValue).toFixed(2);
-      setter(parseFloat(formattedValue));
-    }
   };
 
   ////////////////////////////////////////////////
@@ -472,91 +603,6 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
     localStorage.setItem("isWalmartFulfilled", isWalmartFulfilled.toString());
   }, [isWalmartFulfilled]);
 
-  // Load shipping dimensions from product data first, fallback to product-specific localStorage
-  useEffect(() => {
-    if (productData?.basic?.productID) {
-      const storageKey = `shippingDimensions_${productData.basic.productID}`;
-      const storedDimensions = JSON.parse(localStorage.getItem(storageKey) || "null");
-      
-      if (productData?.dimensions) {
-        // Log the dimensions data for debugging
-        
-        // Parse dimensions, ensuring we handle both string and number types
-        const newLength = parseFloat(productData.dimensions.shippingLength?.toString() || "0");
-        const newWidth = parseFloat(productData.dimensions.shippingWidth?.toString() || "0");
-        const newHeight = parseFloat(productData.dimensions.shippingHeight?.toString() || "0");
-        const newWeight = parseFloat(productData.dimensions.weight?.toString() || "0");
-
-
-        // If we have valid product dimensions, use them on first load
-        if (!storedDimensions && (newLength > 0 || newWidth > 0 || newHeight > 0 || newWeight > 0)) {
-          setShippingLength(newLength);
-          setShippingWidth(newWidth);
-          setShippingHeight(newHeight);
-          setWeight(newWeight);
-        } 
-        // If we have stored dimensions for this specific product, use those
-        else if (storedDimensions) {
-          setShippingLength(parseFloat(storedDimensions.length) || 0);
-          setShippingWidth(parseFloat(storedDimensions.width) || 0);
-          setShippingHeight(parseFloat(storedDimensions.height) || 0);
-          setWeight(parseFloat(storedDimensions.weight) || 0);
-        }
-      }
-    }
-  }, [productData]);
-
-  // Save shipping dimensions to localStorage when they are manually changed
-  useEffect(() => {
-    if (productData?.basic?.productID && 
-        (hasEdited.shippingLength || hasEdited.shippingWidth || hasEdited.shippingHeight || hasEdited.weight)) {
-      const storageKey = `shippingDimensions_${productData.basic.productID}`;
-      localStorage.setItem(storageKey, JSON.stringify({
-        length: shippingLength,
-        width: shippingWidth,
-        height: shippingHeight,
-        weight: weight
-      }));
-    }
-  }, [shippingLength, shippingWidth, shippingHeight, weight, hasEdited, productData?.basic?.productID]);
-
-  // Reset function - only uses product data or zeros
-  const resetShippingDimensions = () => {
-    const dimensions = productData?.dimensions || {
-      shippingLength: "0",
-      shippingWidth: "0",
-      shippingHeight: "0",
-      weight: "0"
-    };
-
-    // Reset to product data values or zeros
-    setShippingLength(parseFloat(dimensions.shippingLength?.toString() || "0"));
-    setShippingWidth(parseFloat(dimensions.shippingWidth?.toString() || "0"));
-    setShippingHeight(parseFloat(dimensions.shippingHeight?.toString() || "0"));
-    setWeight(parseFloat(dimensions.weight?.toString() || "0"));
-
-    // Reset raw values
-    setRawLength(null);
-    setRawWidth(null);
-    setRawHeight(null);
-    setRawWeight(null);
-
-    // Reset edit flags
-    setHasEdited((prev) => ({
-      ...prev,
-      shippingLength: false,
-      shippingWidth: false,
-      shippingHeight: false,
-      weight: false,
-    }));
-
-    // Remove from localStorage if it exists
-    if (productData?.basic?.productID) {
-      const storageKey = `shippingDimensions_${productData.basic.productID}`;
-      localStorage.removeItem(storageKey);
-    }
-  };
-
   // Load user settings for season, storage length, and inbound rate.
   useEffect(() => {
     const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
@@ -610,6 +656,42 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
     });
   }, [totalProfit, margin, roi, productData, onMetricsUpdate]);
 
+  // Add new useEffect for contract category
+  useEffect(() => {
+    if (productData?.categories?.mainCategory) {
+      const mainCategory = productData.categories.mainCategory;
+      console.log('Setting contract category based on main category:', mainCategory);
+      
+      switch (mainCategory) {
+        case "Clothing":
+          setContractCategory("Apparel & Accessories");
+          break;
+        case "Beauty":
+          setContractCategory("Beauty");
+          break;
+        case "Baby":
+          setContractCategory("Baby");
+          break;
+        case "Health":
+        case "Personal Care":
+          setContractCategory("Health & Personal Care");
+          break;
+        case "Food":
+          setContractCategory("Grocery");
+          break;
+        case "Cell Phones":
+          setContractCategory("Cell Phones");
+          break;
+        case "Camera":
+        case "Photo":
+          setContractCategory("Camera & Photo");
+          break;
+        default:
+          setContractCategory("Everything Else (Most Items)");
+      }
+    }
+  }, [productData?.categories?.mainCategory]);
+
 
   /////////////////////////////////////////////////
   // Helper Functions
@@ -628,6 +710,43 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
     setWfsFee(recalculatedFee);
     setRawWfsFee(null);
     setHasEdited((prev) => ({ ...prev, wfsFee: false }));
+  };
+
+  // Update resetShippingDimensions to only handle these four values
+  const resetShippingDimensions = () => {
+    // Reset to product data values or zeros
+    const dimensions = productData?.dimensions || {
+      shippingLength: "0",
+      shippingWidth: "0",
+      shippingHeight: "0",
+      weight: "0"
+    };
+
+    setShippingLength(parseFloat(dimensions.shippingLength?.toString() || "0"));
+    setShippingWidth(parseFloat(dimensions.shippingWidth?.toString() || "0"));
+    setShippingHeight(parseFloat(dimensions.shippingHeight?.toString() || "0"));
+    setWeight(parseFloat(dimensions.weight?.toString() || "0"));
+
+    // Reset raw values
+    setRawLength(null);
+    setRawWidth(null);
+    setRawHeight(null);
+    setRawWeight(null);
+
+    // Remove from localStorage
+    if (productData?.basic?.productID) {
+      const storageKey = `shippingDimensions_${productData.basic.productID}`;
+      localStorage.removeItem(storageKey);
+    }
+
+    // Remove only shipping fields from editedFields
+    setEditedFields(prev => {
+      const newEdited = new Set(prev);
+      ['shippingLength', 'shippingWidth', 'shippingHeight', 'weight'].forEach(field => {
+        newEdited.delete(field);
+      });
+      return newEdited;
+    });
   };
 
 
@@ -774,7 +893,7 @@ ROI = (Total Profit / Product Cost) × 100
                       type="text"
                       value={rawProductCost !== null ? rawProductCost : productCost.toFixed(2)}
                       onChange={(e) => handleInputChange(e.target.value, setRawProductCost, 'productCost')}
-                      onBlur={() => handleInputBlur(rawProductCost, setProductCost, 'productCost')}
+                      onBlur={(e) => handleInputBlur(e.target.value, setProductCost, 'productCost')}
                       className={getInputClassName('productCost', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
@@ -791,7 +910,7 @@ ROI = (Total Profit / Product Cost) × 100
                       type="text"
                       value={rawSalePrice !== null ? rawSalePrice : salePrice.toFixed(2)}
                       onChange={(e) => handleInputChange(e.target.value, setRawSalePrice, 'salePrice')}
-                      onBlur={() => handleInputBlur(rawSalePrice, setSalePrice, 'salePrice')}
+                      onBlur={(e) => handleInputBlur(e.target.value, setSalePrice, 'salePrice')}
                       className={getInputClassName('salePrice', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
@@ -825,7 +944,7 @@ ROI = (Total Profit / Product Cost) × 100
                       type="text"
                       value={rawLength !== null ? rawLength : typeof shippingLength === 'number' ? shippingLength.toFixed(2) : '0.00'}
                       onChange={(e) => handleInputChange(e.target.value, setRawLength, 'shippingLength')}
-                      onBlur={() => handleInputBlur(rawLength, setShippingLength, 'shippingLength')}
+                      onBlur={(e) => handleInputBlur(e.target.value, setShippingLength, 'shippingLength')}
                       className={getInputClassName('shippingLength', 'py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                     <span className="px-2 py-1 bg-gray-50 border-y border-r border-gray-200 rounded-r text-gray-600 text-xs">in</span>
@@ -842,7 +961,7 @@ ROI = (Total Profit / Product Cost) × 100
                       type="text"
                       value={rawWidth !== null ? rawWidth : typeof shippingWidth === 'number' ? shippingWidth.toFixed(2) : '0.00'}
                       onChange={(e) => handleInputChange(e.target.value, setRawWidth, 'shippingWidth')}
-                      onBlur={() => handleInputBlur(rawWidth, setShippingWidth, 'shippingWidth')}
+                      onBlur={(e) => handleInputBlur(e.target.value, setShippingWidth, 'shippingWidth')}
                       className={getInputClassName('shippingWidth', 'py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                     <span className="px-2 py-1 bg-gray-50 border-y border-r border-gray-200 rounded-r text-gray-600 text-xs">in</span>
@@ -859,7 +978,7 @@ ROI = (Total Profit / Product Cost) × 100
                       type="text"
                       value={rawHeight !== null ? rawHeight : typeof shippingHeight === 'number' ? shippingHeight.toFixed(2) : '0.00'}
                       onChange={(e) => handleInputChange(e.target.value, setRawHeight, 'shippingHeight')}
-                      onBlur={() => handleInputBlur(rawHeight, setShippingHeight, 'shippingHeight')}
+                      onBlur={(e) => handleInputBlur(e.target.value, setShippingHeight, 'shippingHeight')}
                       className={getInputClassName('shippingHeight', 'py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                     <span className="px-2 py-1 bg-gray-50 border-y border-r border-gray-200 rounded-r text-gray-600 text-xs">in</span>
@@ -874,9 +993,9 @@ ROI = (Total Profit / Product Cost) × 100
                   <div className="flex items-center w-full">
                     <input
                       type="text"
-                      value={rawWeight !== null ? rawWeight : typeof weight === 'number' ? weight.toFixed(2) : '0.00'}
+                      value={rawWeight !== null ? rawWeight : typeof weight === 'number' ? weight.toFixed(1) : '0.0'}
                       onChange={(e) => handleInputChange(e.target.value, setRawWeight, 'weight')}
-                      onBlur={() => handleInputBlur(rawWeight, setWeight, 'weight')}
+                      onBlur={(e) => handleInputBlur(e.target.value, setWeight, 'weight')}
                       className={getInputClassName('weight', 'py-1 px-2 w-full border border-gray-200 rounded-l text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                     <span className="px-2 py-1 bg-gray-50 border-y border-r border-gray-200 rounded-r text-gray-600 text-xs">lbs</span>
@@ -912,7 +1031,7 @@ ROI = (Total Profit / Product Cost) × 100
                       type="text"
                       value={rawReferralFee !== null ? rawReferralFee : referralFee.toFixed(2)}
                       onChange={(e) => handleInputChange(e.target.value, setRawReferralFee, 'referralFee')}
-                      onBlur={() => handleInputBlur(rawReferralFee, setReferralFee, 'referralFee')}
+                      onBlur={(e) => handleInputBlur(e.target.value, setReferralFee, 'referralFee')}
                       className={getInputClassName('referralFee', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
@@ -929,7 +1048,7 @@ ROI = (Total Profit / Product Cost) × 100
                       type="text"
                       value={rawWfsFee !== null ? rawWfsFee : wfsFee.toFixed(2)}
                       onChange={(e) => handleInputChange(e.target.value, setRawWfsFee, 'wfsFee')}
-                      onBlur={() => handleInputBlur(rawWfsFee, setWfsFee, 'wfsFee')}
+                      onBlur={(e) => handleInputBlur(e.target.value, setWfsFee, 'wfsFee')}
                       className={getInputClassName('wfsFee', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
@@ -946,7 +1065,7 @@ ROI = (Total Profit / Product Cost) × 100
                       type="text"
                       value={rawInboundShippingFee !== null ? rawInboundShippingFee : inboundShippingFee.toFixed(2)}
                       onChange={(e) => handleInputChange(e.target.value, setRawInboundShippingFee, 'inboundShippingFee')}
-                      onBlur={() => handleInputBlur(rawInboundShippingFee, setInboundShippingFee, 'inboundShippingFee')}
+                      onBlur={(e) => handleInputBlur(e.target.value, setInboundShippingFee, 'inboundShippingFee')}
                       className={getInputClassName('inboundShippingFee', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
@@ -963,7 +1082,7 @@ ROI = (Total Profit / Product Cost) × 100
                       type="text"
                       value={rawStorageFee !== null ? rawStorageFee : storageFee.toFixed(2)}
                       onChange={(e) => handleInputChange(e.target.value, setRawStorageFee, 'storageFee')}
-                      onBlur={() => handleInputBlur(rawStorageFee, setStorageFee, 'storageFee')}
+                      onBlur={(e) => handleInputBlur(e.target.value, setStorageFee, 'storageFee')}
                       className={getInputClassName('storageFee', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
@@ -980,7 +1099,7 @@ ROI = (Total Profit / Product Cost) × 100
                       type="text"
                       value={rawPrepFee !== null ? rawPrepFee : prepFee.toFixed(2)}
                       onChange={(e) => handleInputChange(e.target.value, setRawPrepFee, 'prepFee')}
-                      onBlur={() => handleInputBlur(rawPrepFee, setPrepFee, 'prepFee')}
+                      onBlur={(e) => handleInputBlur(e.target.value, setPrepFee, 'prepFee')}
                       className={getInputClassName('prepFee', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
@@ -997,7 +1116,7 @@ ROI = (Total Profit / Product Cost) × 100
                       type="text"
                       value={rawAdditionalFees !== null ? rawAdditionalFees : additionalFees.toFixed(2)}
                       onChange={(e) => handleInputChange(e.target.value, setRawAdditionalFees, 'additionalFees')}
-                      onBlur={() => handleInputBlur(rawAdditionalFees, setAdditionalFees, 'additionalFees')}
+                      onBlur={(e) => handleInputBlur(e.target.value, setAdditionalFees, 'additionalFees')}
                       className={getInputClassName('additionalFees', 'py-1 px-2 w-full border-y border-r border-gray-200 rounded-r text-right text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500')}
                     />
                   </div>
@@ -1032,50 +1151,90 @@ ROI = (Total Profit / Product Cost) × 100
           </div>
 
           {/* ===== Group 6: Fulfillment Options Section ===== */}
-          <div className="flex space-x-2 my-2 mx-5">
+          <div className="flex gap-2 my-3 mx-4">
             {/* Walmart Fulfilled Button */}
             <div className="flex-1">
               <label
-                className={`flex flex-col items-center justify-center p-1.5 border-2 rounded-lg cursor-pointer transition-all duration-150 ${isWalmartFulfilled
-                  ? 'bg-[#006EDC] text-white shadow-inner-crisp'
-                  : 'bg-gray-200 text-black border-gray-400 shadow-sm hover:bg-gray-300'
-                  }`}
+                className={`group relative flex items-center justify-center p-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+                  isWalmartFulfilled
+                    ? 'bg-gradient-to-br from-[#0071DC] to-[#004F9A] text-white shadow-lg'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                }`}
                 onClick={() => {
                   setIsWalmartFulfilled(true);
                   setHasEdited({});
+                  resetFees();
                 }}
               >
                 <input
                   type="radio"
                   checked={isWalmartFulfilled}
-                  onChange={() => { }}
+                  onChange={() => {}}
                   className="hidden"
                 />
-                <span className="block font-bold text-xs">Walmart</span>
-                <span className="block font-bold text-xs">Fulfilled</span>
+                <div className="flex items-center gap-2">
+                  <div className={`relative w-4 h-4 rounded-sm border-2 transition-colors duration-200 ${
+                    isWalmartFulfilled 
+                      ? 'border-white bg-white' 
+                      : 'border-gray-400'
+                  }`}>
+                    {isWalmartFulfilled && (
+                      <svg className="absolute inset-0 w-full h-full text-[#0071DC]" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="currentColor"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold">Walmart</span>
+                    <span className="text-xs font-semibold">Fulfilled</span>
+                  </div>
+                </div>
+                {isWalmartFulfilled && (
+                  <div className="absolute inset-0 bg-white opacity-10 rounded-lg"></div>
+                )}
               </label>
             </div>
 
             {/* Seller Fulfilled Button */}
             <div className="flex-1">
               <label
-                className={`flex flex-col items-center justify-center p-1.5 border-2 rounded-lg cursor-pointer transition-all duration-150 ${!isWalmartFulfilled
-                  ? 'bg-[#006EDC] text-white shadow-inner-crisp'
-                  : 'bg-gray-200 text-black border-gray-400 shadow-sm hover:bg-gray-300'
-                  }`}
+                className={`group relative flex items-center justify-center p-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+                  !isWalmartFulfilled
+                    ? 'bg-gradient-to-br from-[#0071DC] to-[#004F9A] text-white shadow-lg'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                }`}
                 onClick={() => {
                   setIsWalmartFulfilled(false);
                   setHasEdited({});
+                  resetFees();
                 }}
               >
                 <input
                   type="radio"
                   checked={!isWalmartFulfilled}
-                  onChange={() => { }}
+                  onChange={() => {}}
                   className="hidden"
                 />
-                <span className="block font-bold text-xs">Seller</span>
-                <span className="block font-bold text-xs">Fulfilled</span>
+                <div className="flex items-center gap-2">
+                  <div className={`relative w-4 h-4 rounded-sm border-2 transition-colors duration-200 ${
+                    !isWalmartFulfilled 
+                      ? 'border-white bg-white' 
+                      : 'border-gray-400'
+                  }`}>
+                    {!isWalmartFulfilled && (
+                      <svg className="absolute inset-0 w-full h-full text-[#0071DC]" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z" fill="currentColor"/>
+                      </svg>
+                    )}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs font-semibold">Seller</span>
+                    <span className="text-xs font-semibold">Fulfilled</span>
+                  </div>
+                </div>
+                {!isWalmartFulfilled && (
+                  <div className="absolute inset-0 bg-white opacity-10 rounded-lg"></div>
+                )}
               </label>
             </div>
           </div>
