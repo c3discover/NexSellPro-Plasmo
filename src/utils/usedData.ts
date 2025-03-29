@@ -22,9 +22,11 @@ const FETCH_COOLDOWN = 1000; // 1 second cooldown between fetches
 let dataFetchPromise: Promise<UsedProductData | null> | null = null;
 let lastFetchTimestamp = 0;
 
-// Add logging constants
+// Update logging constants
 const LOG_STYLES = {
   EXTENSION_DATA: 'color: #0ea5e9; font-weight: bold; font-size: 12px',  // Sky blue
+  LOCAL_STORAGE: 'color: #10b981; font-weight: bold; font-size: 12px',   // Emerald green
+  SECTION: 'color: #3b82f6; font-weight: bold; font-size: 11px',         // Blue
 };
 
 ////////////////////////////////////////////////
@@ -250,6 +252,47 @@ export async function getUsedData(): Promise<UsedProductData | null> {
         console.log('Badges:', usedData.badges);
         console.log('Sellers:', usedData.sellers);
         console.log('Flags:', usedData.flags);
+        console.groupEnd();
+
+        // Add localStorage logging
+        console.groupCollapsed('%c[Local Storage Data]', LOG_STYLES.LOCAL_STORAGE);
+        
+        // Log settings data
+        console.group('%cSettings', LOG_STYLES.SECTION);
+        console.log('Desired Metrics:', JSON.parse(localStorage.getItem('desiredMetrics') || '{}'));
+        console.log('Default Fulfillment:', localStorage.getItem('defaultFulfillment'));
+        console.log('Prep Cost Type:', localStorage.getItem('prepCostType'));
+        console.log('Additional Cost Type:', localStorage.getItem('additionalCostType'));
+        console.log('Export Settings:', JSON.parse(localStorage.getItem('exportSettings') || '{}'));
+        console.groupEnd();
+
+        // Log cost data
+        console.group('%cCosts', LOG_STYLES.SECTION);
+        console.log('Prep Cost Per Lb:', localStorage.getItem('prepCostPerLb'));
+        console.log('Prep Cost Each:', localStorage.getItem('prepCostEach'));
+        console.log('Additional Cost Per Lb:', localStorage.getItem('additionalCostPerLb'));
+        console.log('Additional Cost Each:', localStorage.getItem('additionalCostEach'));
+        console.groupEnd();
+
+        // Log pricing calculation data
+        console.group('%cPricing Calculations', LOG_STYLES.SECTION);
+        console.log('Product Cost:', localStorage.getItem('productCost'));
+        console.log('Sale Price:', localStorage.getItem('salePrice'));
+        console.log('Shipping Weight:', localStorage.getItem('shippingWeight'));
+        console.log('Shipping Length:', localStorage.getItem('shippingLength'));
+        console.log('Shipping Width:', localStorage.getItem('shippingWidth'));
+        console.log('Shipping Height:', localStorage.getItem('shippingHeight'));
+        console.log('Fulfillment Type:', localStorage.getItem('fulfillmentType'));
+        console.log('Contract Category:', localStorage.getItem('contractCategory'));
+        console.log('Referral Fee:', localStorage.getItem('referralFee'));
+        console.log('WFS Fee:', localStorage.getItem('wfsFee'));
+        console.log('Storage Fee:', localStorage.getItem('storageFee'));
+        console.log('Total Fees:', localStorage.getItem('totalFees'));
+        console.log('Total Profit:', localStorage.getItem('totalProfit'));
+        console.log('Margin:', localStorage.getItem('margin'));
+        console.log('ROI:', localStorage.getItem('roi'));
+        console.groupEnd();
+
         console.groupEnd();
 
         return usedData;
