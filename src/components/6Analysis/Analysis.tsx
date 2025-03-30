@@ -141,9 +141,13 @@ export const Analysis: React.FC<AnalysisProps> = ({ areSectionsOpen }) => {
    */
   const applyRecentReviewsHighlight = (): string => {
     // Retrieve the minimum 30-day reviews threshold from settings
-    const minRatings30Days = parseFloat(
-      JSON.parse(localStorage.getItem(LOCAL_STORAGE_METRICS_KEY) || "{}")?.minRatings30Days || "0"
-    );
+    const storedSettings = JSON.parse(localStorage.getItem(LOCAL_STORAGE_METRICS_KEY) || "{}");
+    const minRatings30Days = parseFloat(storedSettings.minRatings30Days || "0");
+
+    // If no threshold is set, return default styling
+    if (minRatings30Days === 0) {
+      return CLASS_DEFAULT_CONTENT;
+    }
 
     // Count reviews within the last 30 days
     const recentReviewCount30Days =
@@ -152,7 +156,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ areSectionsOpen }) => {
     // Determine CSS class based on the threshold
     return recentReviewCount30Days >= minRatings30Days
       ? CLASS_SECTION_CONTENT_GREEN // Green for sufficient 30-day reviews
-      : CLASS_DEFAULT_CONTENT; // Default for insufficient 30-day reviews
+      : CLASS_SECTION_CONTENT_RED; // Red for insufficient 30-day reviews
   };
 
   /**
@@ -256,147 +260,105 @@ export const Analysis: React.FC<AnalysisProps> = ({ areSectionsOpen }) => {
 
       {/* Content Wrapper */}
       <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>
+        {/* Main Metrics Grid */}
+        <div className="w-full p-2">
+          <div className="grid grid-cols-3 gap-2">
+            {/* Total Ratings */}
+            <div className="flex flex-col">
+              <p className={CLASS_SECTION_HEADER}>
+                Total Ratings
+              </p>
+              <p className={`${applyTotalRatingsHighlight()}`}>
+                {productData?.reviews.numberOfRatings || "-"}
+              </p>
+            </div>
 
+            {/* Total Reviews */}
+            <div className="flex flex-col">
+              <p className={CLASS_SECTION_HEADER}>
+                Total Reviews
+              </p>
+              <p className={`${applyTotalRatingsHighlight()}`}>
+                {productData?.reviews.numberOfReviews || "-"}
+              </p>
+            </div>
 
-        {/* Top Review Section: Total Reviews and Date of Last Review */}
-        <div className="w-full p-2 flex justify-between items-center">
-
-          {/* Total Ratings */}
-          <div className="w-1/3 p-1">
-            <p className={CLASS_SECTION_HEADER}>
-              Total Ratings
-            </p>
-            <p
-              className={`${applyTotalRatingsHighlight()}`}
-            >
-              {productData?.reviews.numberOfRatings || "-"}
-            </p>
-          </div>
-
-          {/* Total Reviews */}
-          <div className="w-1/3 p-1">
-            <p className={CLASS_SECTION_HEADER}>
-              Total Reviews
-            </p>
-            <p className={`${applyTotalRatingsHighlight()}`}>
-              {productData?.reviews.numberOfReviews || "-"}
-            </p>
-          </div>
-
-          {/* Overall Rating */}
-          <div className="w-1/3 p-1">
-            <p className={CLASS_SECTION_HEADER}>
-              Overall Rating
-            </p>
-            <p className={`${applyOverallRatingHighlight()}`}>
-              {typeof productData?.reviews.overallRating === 'number'
-                ? productData.reviews.overallRating.toFixed(1)
-                : "-"}
-            </p>
-          </div>
-
-
-        </div>
-
-        {/* Top Review Section: New Reviews */}
-        <div className="w-[95%] mx-auto px-2 pb-4 flex justify-between items-center">
-          <div className="w-full p-1">
-            <p className={CLASS_SECTION_HEADER}>
-              Date of Most Recent Reviews
-            </p>
-            <div className={`${applyRecentReviewsHighlight()}`}>
-              {productData?.reviews.reviewDates && productData.reviews.reviewDates.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 mx-10 justify-center">
-                  {productData.reviews.reviewDates
-                    .map(dateString => new Date(dateString)) // Convert strings to Date objects
-                    .sort((a, b) => b.getTime() - a.getTime()) // Sort by time (newest to oldest)
-                    .map((date, index) => {
-                      const daysAgo = getDaysAgo(date.toISOString()); // Get how many days ago the review was
-                      let circleLabel = null;
-                      let circleStyle = {};
-
-                      // Determine which label to show based on how many days ago the review was submitted
-                      if (daysAgo <= 30) {
-                        circleLabel = '30';
-                        circleStyle = { backgroundColor: 'green', color: 'white' };
-                      } else if (daysAgo <= 60) {
-                        circleLabel = '60';
-                        circleStyle = { backgroundColor: 'purple', color: 'white' };
-                      } else if (daysAgo <= 90) {
-                        circleLabel = '90';
-                        circleStyle = { backgroundColor: 'orange', color: 'white' };
-                      } else if (daysAgo <= 365) {
-                        circleLabel = '1y';
-                        circleStyle = { backgroundColor: 'grey', color: 'white' };
-                      } else {
-                        ;
-                      }
-
-                      return (
-                        <div key={index} className="flex items-center justify-center mb-1">
-                          <p>{date.toLocaleDateString()}</p>
-                          {circleLabel && (
-                            <span
-                              style={{
-                                ...circleStyle,
-                                display: 'inline-block',
-                                width: '20px',
-                                height: '20px',
-                                lineHeight: '20px',
-                                fontSize: '10px',
-                                borderRadius: '50%',
-                                textAlign: 'center',
-                                marginLeft: '10px',
-                                fontWeight: 'bold',
-                                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                              }}
-                            >
-                              {circleLabel}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })}
-                </div>
-              ) : "No reviews available"}
+            {/* Overall Rating */}
+            <div className="flex flex-col">
+              <p className={CLASS_SECTION_HEADER}>
+                Overall Rating
+              </p>
+              <p className={`${applyOverallRatingHighlight()}`}>
+                {typeof productData?.reviews.overallRating === 'number'
+                  ? productData.reviews.overallRating.toFixed(1)
+                  : "-"}
+              </p>
             </div>
           </div>
         </div>
 
-        {/* Top Stock Section: Stock Information */}
-        <div className="w-full p-2 flex justify-between items-center">
-          {/* Total Stock */}
-          <div className="w-full p-1">
-            <p className={CLASS_SECTION_HEADER}>
-              Total Stock
-            </p>
-            <p className={applyTotalStockHighlight()}>
-              {productData?.inventory.totalStock ?? "-"}
-            </p>
+        {/* Review Timeline Section */}
+        <div className="w-full px-2 pb-2">
+          <p className={CLASS_SECTION_HEADER}>
+            Review Timeline
+          </p>
+          <div className={`${applyRecentReviewsHighlight()} p-2`}>
+            <div className="grid grid-cols-3 gap-2">
+              {/* 30 Day Reviews */}
+              <div className="flex flex-col items-center">
+                <span className="text-xs font-semibold mb-1">30 Days</span>
+                <span className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm">
+                  {productData?.reviews.reviewDates?.filter(date => getDaysAgo(date) <= 30).length || 0}
+                </span>
+              </div>
+
+              {/* 90 Day Reviews */}
+              <div className="flex flex-col items-center">
+                <span className="text-xs font-semibold mb-1">90 Days</span>
+                <span className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center text-sm">
+                  {productData?.reviews.reviewDates?.filter(date => getDaysAgo(date) <= 90).length || 0}
+                </span>
+              </div>
+
+              {/* 1 Year Reviews */}
+              <div className="flex flex-col items-center">
+                <span className="text-xs font-semibold mb-1">1 Year</span>
+                <span className="w-8 h-8 rounded-full bg-gray-500 text-white flex items-center justify-center text-sm">
+                  {productData?.reviews.reviewDates?.filter(date => getDaysAgo(date) <= 365).length || 0}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        
-        {/* Bottom Seller Section: Seller Table */}
-        <div className="w-full">
-          <div className="flex justify-end mx-2 mb-1">
+        {/* Stock Information */}
+        <div className="w-full px-2 pb-2">
+          <p className={CLASS_SECTION_HEADER}>
+            Total Stock
+          </p>
+          <p className={applyTotalStockHighlight()}>
+            {productData?.inventory.totalStock ?? "-"}
+          </p>
+        </div>
+
+        {/* Seller Table Section */}
+        <div className="w-full px-2 pb-2">
+          <div className="flex justify-end mb-1">
             <button
               onClick={toggleTable}
-              className="text-xs font-semibold px-2 pb-0.5 bg-gray-200 rounded shadow hover:bg-gray-300"
+              className="text-xs font-semibold px-2 py-1 bg-gray-200 rounded shadow hover:bg-gray-300 transition-colors duration-200"
               aria-label="Toggle seller table"
             >
               {isTableExpanded ? "Hide Table" : "Show Table"}
             </button>
           </div>
 
-          {/* ===== Seller Table Section ===== */}
           {isTableExpanded && (
-            <div className="w-full px-2 pb-2">
+            <div className="w-full">
               <SellerTable />
             </div>
           )}
         </div>
-
       </div>
     </div>
   );

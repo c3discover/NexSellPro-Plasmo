@@ -19,9 +19,44 @@
 /* Sidebar Body Adjustments */
 /* ========================= */
 
-body.plasmo-google-sidebar-show,
-body.plasmo-google-sidebar-show * {
+body.plasmo-google-sidebar-show {
   max-width: calc(100vw - var(--plasmo-google-sidebar-width));
+  transition: max-width 0.3s ease-in-out;
+}
+
+body.plasmo-google-sidebar-show .product-image,
+body.plasmo-google-sidebar-show img[alt*="product"],
+body.plasmo-google-sidebar-show .product-gallery,
+body.plasmo-google-sidebar-show .product-media {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  transition: all 0.3s ease-in-out;
+}
+
+body.plasmo-google-sidebar-show .product-container,
+body.plasmo-google-sidebar-show .product-layout {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Ensure proper scaling for product grid items */
+body.plasmo-google-sidebar-show .product-grid-item,
+body.plasmo-google-sidebar-show .product-tile {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+/* Handle responsive containers */
+body.plasmo-google-sidebar-show .container,
+body.plasmo-google-sidebar-show .content-container {
+  width: 100%;
+  max-width: 100%;
+  padding-right: 0;
+  margin-right: 0;
 }
 
 /* ========================= */

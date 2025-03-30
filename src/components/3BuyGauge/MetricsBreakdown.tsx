@@ -10,6 +10,16 @@
 ////////////////////////////////////////////////
 import React from 'react';
 import { MetricScore } from './types';
+import { 
+  FaDollarSign, 
+  FaPercentage, 
+  FaChartLine,
+  FaStar,
+  FaCalendarAlt,
+  FaStore,
+  FaTruck,
+  FaBoxes
+} from 'react-icons/fa';
 
 ////////////////////////////////////////////////
 // Types and Interfaces:
@@ -34,9 +44,10 @@ interface MetricsBreakdownProps {
 // Component to display a single metric row
 const MetricRow: React.FC<{ 
   label: string;
+  icon: React.ReactNode;
   metric: MetricScore;
   formatValue?: (value: number) => string;
-}> = ({ label, metric, formatValue }) => {
+}> = ({ label, icon, metric, formatValue }) => {
   // Convert status to appropriate color
   const getStatusColor = (status: 'red' | 'yellow' | 'green') => {
     switch (status) {
@@ -111,9 +122,12 @@ Difference: ${getDifferenceDisplay()}`}
   };
 
   return (
-    <div className="flex items-center justify-between py-1">
+    <div className="flex items-center justify-between py-1.5">
       {/* Metric label and warning */}
       <div className="flex items-center gap-2">
+        <div className="w-5 h-5 flex items-center justify-center text-gray-600">
+          {icon}
+        </div>
         <span className="text-sm w-28">{label}</span>
         {metric.warning && (
           <div className="relative group">
@@ -154,20 +168,23 @@ Difference: ${getDifferenceDisplay()}`}
 ////////////////////////////////////////////////
 const MetricsBreakdown: React.FC<MetricsBreakdownProps> = ({ metrics }) => {
   return (
-    <div className="w-full bg-[#ffffff] rounded-lg shadow-sm p-3 mb-4">
+    <div className="w-full bg-[#ffffff] rounded-lg shadow-sm p-3 mb-4 space-y-1">
       {/* Financial metrics */}
       <MetricRow 
         label="Profit" 
+        icon={<FaDollarSign />}
         metric={metrics.profit}
         formatValue={(v) => `$${v.toFixed(2)}`}
       />
       <MetricRow 
         label="Margin" 
+        icon={<FaPercentage />}
         metric={metrics.margin}
         formatValue={(v) => `${v.toFixed(0)}%`}
       />
       <MetricRow 
         label="ROI" 
+        icon={<FaChartLine />}
         metric={metrics.roi}
         formatValue={(v) => `${v.toFixed(0)}%`}
       />
@@ -175,11 +192,13 @@ const MetricsBreakdown: React.FC<MetricsBreakdownProps> = ({ metrics }) => {
       {/* Rating metrics */}
       <MetricRow 
         label="Total Ratings" 
+        icon={<FaStar />}
         metric={metrics.totalRatings}
         formatValue={(v) => v.toLocaleString()}
       />
       <MetricRow 
         label="30-Day Ratings" 
+        icon={<FaCalendarAlt />}
         metric={metrics.ratingsLast30Days}
         formatValue={(v) => v.toLocaleString()}
       />
@@ -187,14 +206,17 @@ const MetricsBreakdown: React.FC<MetricsBreakdownProps> = ({ metrics }) => {
       {/* Seller metrics */}
       <MetricRow 
         label="Sellers" 
+        icon={<FaStore />}
         metric={metrics.numSellers}
       />
       <MetricRow 
         label="WFS Sellers" 
+        icon={<FaTruck />}
         metric={metrics.numWfsSellers}
       />
       <MetricRow 
         label="Stock" 
+        icon={<FaBoxes />}
         metric={metrics.totalStock}
       />
     </div>

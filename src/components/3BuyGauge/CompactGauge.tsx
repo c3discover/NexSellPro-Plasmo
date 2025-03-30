@@ -83,23 +83,8 @@ const CompactGauge: React.FC<CompactGaugeProps> = ({ score, size = 'md', hasSett
   ////////////////////////////////////////////////
   // Render Methods:
   ////////////////////////////////////////////////
-  if (!hasSettings) {
-    return (
-      <div className={`relative ${sizeClasses[size]} flex items-center justify-center`}>
-        <span 
-          className="text-amber-500"
-          style={{ 
-            fontSize: size === 'sm' ? '1rem' : size === 'md' ? '1.5rem' : '2rem'
-          }}
-        >
-          ⚠️
-        </span>
-      </div>
-    );
-  }
-
   return (
-    <div className={`relative ${sizeClasses[size]}`}>
+    <div className={`relative ${sizeClasses[size]} flex items-center justify-center`}>
       {/* Background Circle */}
       <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
         <circle
@@ -113,8 +98,8 @@ const CompactGauge: React.FC<CompactGaugeProps> = ({ score, size = 'md', hasSett
         
         {/* Score Arc */}
         <path
-          d={calculatePathData(score)}
-          fill={getColor(score)}
+          d={calculatePathData(hasSettings ? score : 1)}
+          fill={getColor(hasSettings ? score : 1)}
           opacity="0.2"
         />
         
@@ -124,20 +109,31 @@ const CompactGauge: React.FC<CompactGaugeProps> = ({ score, size = 'md', hasSett
           cy="50"
           r="32"
           fill="none"
-          stroke={getColor(score)}
+          stroke={getColor(hasSettings ? score : 1)}
           strokeWidth="4"
-          strokeDasharray={`${(score - 1) / 9 * 201} 201`}
+          strokeDasharray={`${(hasSettings ? score - 1 : 0) / 9 * 201} 201`}
+          className={!hasSettings ? 'opacity-30' : ''}
+          transform="rotate(-90, 50, 50)"
         />
       </svg>
       
       {/* Score Text */}
       <div className="absolute inset-0 flex items-center justify-center">
-        <span 
-          className="text-gray-800 font-semibold"
-          style={{ fontSize: textSizes[size] }}
-        >
-          {score.toFixed(1)}
-        </span>
+        {hasSettings ? (
+          <span 
+            className="text-gray-800 font-semibold"
+            style={{ fontSize: textSizes[size] }}
+          >
+            {score.toFixed(1)}
+          </span>
+        ) : (
+          <span 
+            className="text-gray-400"
+            style={{ fontSize: textSizes[size] }}
+          >
+            N/A
+          </span>
+        )}
       </div>
     </div>
   );

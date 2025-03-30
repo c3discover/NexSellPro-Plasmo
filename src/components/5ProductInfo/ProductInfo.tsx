@@ -224,39 +224,70 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ areSectionsOpen }) => 
       id="ProductInfo"
       className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}
     >
-      {/* Header Section with expand/collapse functionality */}
+      {/* Header Section - Keeping the same */}
       <h1
-   className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
-   onClick={toggleOpen}
+        className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
+        onClick={toggleOpen}
       >
         {isOpen ? "🔽  Product Information" : "▶️  Product Information"}
       </h1>
 
       {/* Main Content Section */}
-      <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>
+      <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"} p-2`}>
         {/* Product Identifiers Section */}
-        <p className="font-extrabold text-base text-center bg-[#d7d7d7] w-full p-2">
-          Product Identifiers
-        </p>
-        <MemoizedProductIdentifiersTable rows={infoRows} onCopy={handleCopy} copiedIndex={copiedIndex} />
-
-        {/* External Data Section (Future Feature) */}
-        <div className="flex flex-col w-full mt-2">
-          <p className="font-extrabold text-base text-center bg-[#d7d7d7] w-full p-2">
-            External Data (Coming Soon with AI)
-          </p>
-          <MemoizedExternalDataTable data={externalData} />
+        <div className="w-full mb-3">
+          <div className="text-[11px] font-medium text-[#3a3f47] mb-1.5">
+            • PRODUCT IDENTIFIERS
+          </div>
+          <div className="space-y-[2px]">
+            {infoRows.map((row, index) => (
+              <div key={index} className="flex items-stretch">
+                <div className="w-[100px] text-[11px] font-medium text-white bg-[#3a3f47] px-2 py-1.5">
+                  {row.label}
+                </div>
+                <div className="flex-1 text-[11px] bg-white px-2 py-1.5 border-y border-r border-gray-300">
+                  {row.value}
+                </div>
+                <button
+                  className="w-[45px] text-[11px] text-white bg-cyan-500 px-2 hover:bg-cyan-600 transition-colors duration-200"
+                  onClick={() => handleCopy(String(row.value), index)}
+                >
+                  {copiedIndex === index ? "✓" : "Copy"}
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Average External Price Section (Future Feature) */}
-        <div className="flex flex-col w-full mt-2">
-          <p className="font-extrabold text-base text-center bg-[#d7d7d7] w-full p-2">
-            Average External Price
-          </p>
-          <div className="flex justify-center mb-2">
-            <div className="text-xs text-center p-3 bg-white text-black border-2 border-black w-auto">
-              Coming Soon
-            </div>
+        {/* External Data Section */}
+        <div className="w-full mb-3">
+          <div className="text-[11px] font-medium text-[#3a3f47] mb-1.5 flex items-center">
+            • EXTERNAL DATA <span className="ml-1 text-[10px] text-gray-500">(COMING SOON WITH AI)</span>
+          </div>
+          <div className="space-y-[2px]">
+            {externalData.map((row, index) => (
+              <div key={index} className="flex items-stretch">
+                <div className="w-[100px] text-[11px] font-medium text-white bg-[#3a3f47] px-2 py-1.5">
+                  {row.store}
+                </div>
+                <div className="flex-1 text-[11px] bg-white px-2 py-1.5 border-y border-r border-gray-300">
+                  {row.link}
+                </div>
+                <div className="w-[60px] text-[11px] bg-white px-2 py-1.5 border-y border-r border-gray-300 text-right">
+                  {row.price}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Average External Price Section */}
+        <div className="w-full">
+          <div className="text-[11px] font-medium text-[#3a3f47] mb-1.5">
+            • AVERAGE EXTERNAL PRICE
+          </div>
+          <div className="text-[11px] bg-white px-2 py-1.5 border border-gray-300">
+            Coming Soon
           </div>
         </div>
       </div>

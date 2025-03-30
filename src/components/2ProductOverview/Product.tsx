@@ -178,22 +178,97 @@ export const Product = () => {
   // Memoized badges renderer
   const renderBadges = useMemo(() => {
     if (!productData?.badges.length) {
-      return <p className="text-sm text-gray-300 italic">No badges available.</p>;
+      return <p className="text-sm text-gray-400 italic text-center">No badges available</p>;
     }
 
     return (
-      <div className="grid grid-cols-2 gap-2 p-1 place-items-center">
+      <div className="flex flex-wrap gap-2 justify-center items-center p-2">
         {productData.badges.map((badge, index) => {
-          const containsNumber = /\d+/.test(badge);
-          const isLastSingleBadge = index === productData.badges.length - 1 && productData.badges.length % 2 !== 0;
+          const badgeText = badge.toLowerCase();
+          let badgeStyle = '';
+          let icon = null;
+
+          // Popular & Trending Badges
+          if (badgeText.includes('best seller')) {
+            badgeStyle = 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white border-amber-600';
+            icon = '⭐';
+          } else if (badgeText.includes('popular pick') || badgeText.includes('in cart')) {
+            badgeStyle = 'bg-gradient-to-r from-purple-500 to-pink-500 text-white border-purple-600';
+            icon = '🔥';
+          } else if (badgeText.includes('trending')) {
+            badgeStyle = 'bg-gradient-to-r from-pink-500 to-rose-500 text-white border-pink-600';
+            icon = '📈';
+          } 
+          // Price-related Badges
+          else if (badgeText.includes('clearance')) {
+            badgeStyle = 'bg-gradient-to-r from-red-500 to-rose-500 text-white border-red-600';
+            icon = '🏷️';
+          } else if (badgeText.includes('rollback')) {
+            badgeStyle = 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-blue-600';
+            icon = '↩️';
+          } else if (badgeText.includes('flash') || badgeText.includes('special buy')) {
+            badgeStyle = 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white border-yellow-600';
+            icon = '⚡';
+          } else if (badgeText.includes('price drop') || badgeText.includes('reduced')) {
+            badgeStyle = 'bg-gradient-to-r from-green-500 to-emerald-500 text-white border-green-600';
+            icon = '📉';
+          }
+          // Review & Quality Badges
+          else if (badgeText.includes('top rated') || badgeText.includes('review')) {
+            badgeStyle = 'bg-gradient-to-r from-indigo-500 to-blue-500 text-white border-indigo-600';
+            icon = '⭐';
+          } else if (badgeText.includes('built for better')) {
+            badgeStyle = 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white border-teal-600';
+            icon = '🌱';
+          }
+          // Stock & Availability Badges
+          else if (badgeText.includes('limited stock') || badgeText.includes('low stock')) {
+            badgeStyle = 'bg-gradient-to-r from-red-600 to-orange-600 text-white border-red-700';
+            icon = '⚠️';
+          } else if (badgeText.includes('new')) {
+            badgeStyle = 'bg-gradient-to-r from-emerald-400 to-teal-500 text-white border-emerald-600';
+            icon = '✨';
+          }
+          // Special Status Badges
+          else if (badgeText.includes('walmart restored')) {
+            badgeStyle = 'bg-gradient-to-r from-sky-500 to-blue-600 text-white border-sky-600';
+            icon = '🔄';
+          } else if (badgeText.includes('only at walmart') || badgeText.includes('exclusive')) {
+            badgeStyle = 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-700';
+            icon = '🎯';
+          } else if (badgeText.includes('as seen')) {
+            badgeStyle = 'bg-gradient-to-r from-violet-500 to-purple-600 text-white border-violet-600';
+            icon = '📺';
+          }
+          // Numeric badges (e.g., "X+ bought")
+          else if (/\d+/.test(badgeText)) {
+            badgeStyle = 'bg-white text-blue-600 border-blue-300';
+            icon = '👥';
+          }
+          // Generic style for unrecognized badges
+          else {
+            badgeStyle = 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 border-gray-300';
+          }
 
           return (
             <div
               key={index}
-              className={`text-xs px-2 py-1 rounded-lg shadow-md 
-                ${containsNumber ? "border border-blue-500 text-blue-500 bg-white" : "bg-blue-100 text-blue-900"}
-                ${isLastSingleBadge ? 'col-span-2 text-center' : ''}`}
+              className={`
+                px-3 py-1.5 
+                rounded-full
+                border
+                font-medium
+                text-xs
+                shadow-sm
+                transition-all
+                duration-200
+                hover:shadow-md
+                hover:scale-105
+                cursor-default
+                ${badgeStyle}
+              `}
             >
+              {icon && <span className="mr-1">{icon}</span>}
               {badge}
             </div>
           );
@@ -390,8 +465,8 @@ export const Product = () => {
         </p>
       </div>
 
-      {/* Product Badges Section */}
-      <div className="text-center p-1 rounded-lg shadow-2xl bg-slate-500">
+      {/* Product Badges Section - Updated container styling */}
+      <div className="w-full p-2 rounded-lg shadow-lg bg-white">
         {renderBadges}
       </div>
     </div>

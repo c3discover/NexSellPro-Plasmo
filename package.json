@@ -16,7 +16,7 @@
     "package": "plasmo package",
     "start": "npm run dev",
     "clean": "rm -rf .plasmo/.build node_modules dist",
-    "clean-root": "del /Q *.png *.woff2 *.css",
+    "clean-root": "rimraf *.png *.woff2 *.css",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
@@ -61,6 +61,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "postcss": "8.4.33",
     "prettier": "3.2.4",
+    "rimraf": "^5.0.5",
     "ts-jest": "^29.2.6",
     "typescript": "^5.0.0"
   },

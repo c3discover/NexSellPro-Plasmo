@@ -3,4 +3,13 @@ build
 .plasmo
 tsconfig.tsbuildinfo
 .env
+*.log
+.DS_Store
+.vscode/
+.idea/
+*.png
+*.woff2
+*.css
+dist/
+coverage/
 

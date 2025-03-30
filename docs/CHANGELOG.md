@@ -33,6 +33,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced data persistence for product-specific settings
 - Updated version numbering to use -dev suffix for development versions
 - Enhanced Settings modal with improved tab organization and navigation
+- Redesigned product badges with modern styling:
+  - Added gradient backgrounds and icons for all standard Walmart badge types
+  - Improved visual hierarchy with color-coded categories
+  - Enhanced badge readability with consistent typography
+  - Added hover effects and smooth transitions
+  - Implemented flexible layout for better responsiveness
+  - Added support for all common Walmart badge types with appropriate styling
 
 ## [0.0.3] - 2024-03-21
 ### Added

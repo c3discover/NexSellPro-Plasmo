@@ -211,10 +211,27 @@ const ContentUI = () => {
     >
       {/* Toggle button for sidebar open/close */}
       <button
-        className="fixed right-[-10px] top-6 p-1 transform rotate-90 bg-[#d7d7d7] text-xl font-semibold rounded-lg shadow-lg transition-transform duration-200 ease-in-out hover:scale-110 hover:shadow-lg border-2 border-gray-500"
+        className="fixed right-[-25px] top-1/2 -translate-y-1/2 p-3 bg-[#3a3f47] text-sm font-medium rounded-l-lg shadow-lg transition-all duration-300 ease-in-out hover:scale-105 hover:shadow-xl border border-black-600 flex items-center justify-center group z-50"
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
       >
-        {isOpen ? "🟢" : "🔴"}
+        <div className="relative w-6 h-6 flex items-center justify-center">
+          <svg 
+            className={`w-7 h-5 text-white transition-transform duration-300 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+            fill="none" 
+            viewBox="0 0 4 24" 
+            stroke="currentColor"
+          >
+            <path 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              strokeWidth={2.5} 
+              d="M9 5l7 7-7 7" 
+            />
+          </svg>
+        </div>
       </button>
 
       {/* Main content of the sidebar */}

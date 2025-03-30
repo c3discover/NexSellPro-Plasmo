@@ -324,21 +324,19 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({
   const renderFullView = () => (
     <div className="bg-white rounded-lg shadow-sm p-3">
       {/* Header with Score */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <CompactGauge score={score} />
+      <div className="flex flex-col items-center mb-4">
+      <div className="flex items-center gap-3">
+          <CompactGauge score={score} hasSettings={hasConfiguredSettings()} />
           <div>
             <div className="font-semibold" style={{ color: currentLevel.color }}>
-              {currentLevel.label}
+              {hasConfiguredSettings() ? currentLevel.label : "Configure Settings"}
             </div>
             <div className="text-xs text-gray-500">
-              Buy Score
+              {hasConfiguredSettings() ? "Buy Score" : "Use settings cog to configure baseline metrics"}
             </div>
           </div>
         </div>
       </div>
-
-     
 
       {/* Metrics Breakdown */}
       <div className="w-full">

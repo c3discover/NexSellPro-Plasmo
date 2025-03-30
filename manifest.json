@@ -1,19 +1,19 @@
 {
     "icons": {
-        "16": "icon16.plasmo.c9fbbb4e.png",
-        "32": "icon32.plasmo.1bb525f0.png",
-        "48": "icon48.plasmo.b88acab9.png",
-        "64": "icon64.plasmo.66d21e94.png",
-        "128": "icon128.plasmo.ef13585c.png"
+        "16": "icon16.png",
+        "32": "icon32.png",
+        "48": "icon48.png",
+        "64": "icon64.png",
+        "128": "icon128.png"
     },
     "manifest_version": 3,
     "action": {
         "default_icon": {
-            "16": "icon16.plasmo.c9fbbb4e.png",
-            "32": "icon32.plasmo.1bb525f0.png",
-            "48": "icon48.plasmo.b88acab9.png",
-            "64": "icon64.plasmo.66d21e94.png",
-            "128": "icon128.plasmo.ef13585c.png"
+            "16": "icon16.png",
+            "32": "icon32.png",
+            "48": "icon48.png",
+            "64": "icon64.png",
+            "128": "icon128.png"
         }
     },
     "version": "0.0.3",
@@ -30,7 +30,7 @@
         "service_worker": "background.js"
     },
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://api.emailjs.com https://www.walmart.com;"
+        "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://api.emailjs.com https://www.walmart.com"
     },
     "content_scripts": [
         {
@@ -38,10 +38,10 @@
                 "https://www.walmart.com/*"
             ],
             "js": [
-                "content.750a2de9.js"
+                "content.js"
             ],
             "css": [
-                "content.9ec4b067.css"
+                "content.css"
             ],
             "run_at": "document_end"
         }
@@ -55,15 +55,7 @@
                 "https://www.walmart.com/*"
             ],
             "resources": [
-                "content.0ffaf8fd.css",
-                "Inter18pt-Regular.0fa779cf.woff2",
-                "Inter18pt-Bold.97dc890b.woff2",
-                "Inter18pt-ExtraLight.54fb6d0c.woff2",
-                "Inter18pt-Thin.ce038a38.woff2",
-                "content.02078d21.jpg",
-                "content.2db0d935.png",
-                "content.0f1fa21c.gif",
-                "content.015b9ca1.png"
+                "assets/*"
             ]
         }
     ]
