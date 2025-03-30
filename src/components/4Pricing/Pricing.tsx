@@ -131,6 +131,7 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
   const [season, setSeason] = useState<string>(DEFAULT_SEASON);
   const [storageLength, setStorageLength] = useState<number>(DEFAULT_STORAGE_LENGTH);
   const [inboundShippingRate, setInboundShippingRate] = useState<number>(DEFAULT_INBOUND_RATE);
+  const [sfShippingRate, setSfShippingRate] = useState<number>(DEFAULT_INBOUND_RATE);
   const [totalProfit, setTotalProfit] = useState(0);
   const [roi, setROI] = useState(0);
   const [margin, setMargin] = useState(0);
@@ -595,28 +596,38 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
 
   // Load and save fulfillment preferences to localStorage.
   useEffect(() => {
-    const savedPreference = localStorage.getItem("isWalmartFulfilled");
-    setIsWalmartFulfilled(savedPreference === "true" || savedPreference === null);
+    const savedFulfillment = localStorage.getItem("defaultFulfillment");
+    if (savedFulfillment) {
+      setIsWalmartFulfilled(savedFulfillment === "Walmart Fulfilled");
+    }
   }, []);
 
   useEffect(() => {
     localStorage.setItem("isWalmartFulfilled", isWalmartFulfilled.toString());
   }, [isWalmartFulfilled]);
 
-  // Load user settings for season, storage length, and inbound rate.
+  // Load user settings for season, storage length, and shipping rates
   useEffect(() => {
     const storedMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
     setSeason(storedMetrics.season || "Jan-Sep");
     setStorageLength(parseInt(storedMetrics.storageLength) || 1);
     setInboundShippingRate(parseFloat(storedMetrics.inboundShippingCost) || 0.5);
+    setSfShippingRate(parseFloat(storedMetrics.sfShippingCost) || 0.5);
   }, []);
 
-  // Dynamically update inbound shipping fee based on weight and rate.
+  // Helper function to calculate shipping based on fulfillment type
+  const calculateShippingFee = (weight: number, isWFS: boolean): number => {
+    const rate = isWFS ? inboundShippingRate : sfShippingRate;
+    return weight * rate;
+  };
+
+  // Dynamically update inbound shipping fee based on weight, rate, and fulfillment type
   useEffect(() => {
     if (!hasEdited.inboundShippingFee) {
-      setInboundShippingFee(calculateInboundShipping(finalShippingWeightForInbound, isWalmartFulfilled));
+      const shippingFee = calculateShippingFee(finalShippingWeightForInbound, isWalmartFulfilled);
+      setInboundShippingFee(shippingFee);
     }
-  }, [finalShippingWeightForInbound, isWalmartFulfilled, hasEdited.inboundShippingFee]);
+  }, [finalShippingWeightForInbound, isWalmartFulfilled, inboundShippingRate, sfShippingRate, hasEdited.inboundShippingFee]);
 
   // Dynamically update storage fee based on product dimensions and season.
   useEffect(() => {
@@ -691,6 +702,17 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
       }
     }
   }, [productData?.categories?.mainCategory]);
+
+  // Add state for fulfillment type
+  const [fulfillmentType, setFulfillmentType] = useState<string>("Walmart Fulfilled");
+
+  // Update useEffect to load fulfillment type from localStorage
+  useEffect(() => {
+    const savedFulfillment = localStorage.getItem("defaultFulfillment");
+    if (savedFulfillment) {
+      setIsWalmartFulfilled(savedFulfillment === "Walmart Fulfilled");
+    }
+  }, []);
 
 
   /////////////////////////////////////////////////

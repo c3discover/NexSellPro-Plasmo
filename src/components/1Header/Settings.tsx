@@ -205,7 +205,7 @@ export const SettingsModal: React.FC<{
   const [editedFields, setEditedFields] = useState<Set<string>>(new Set());
 
   // Add new state for active tab
-  const [activeTab, setActiveTab] = useState('baseline');
+  const [activeTab, setActiveTab] = useState<'baseline' | 'fees' | 'export' | 'integrations'>('baseline');
 
   // Update the initial export settings (remove currentPrice and reorder fields by category)
   const defaultExportFields = [
@@ -297,6 +297,42 @@ export const SettingsModal: React.FC<{
     fields: defaultExportFields
   });
 
+  // Add state for initial values
+  const [initialState, setInitialState] = useState<{
+    desiredMetrics: typeof desiredMetrics;
+    defaultFulfillment: string;
+    prepCostType: string;
+    additionalCostType: string;
+    exportSettings: ExportSettings;
+  } | null>(null);
+
+  // Update the DEFAULT_VALUES constant to include all possible default values
+  const DEFAULT_VALUES = {
+    minProfit: "0.00",
+    minMargin: "0",
+    minROI: "0",
+    minMonthlySales: "Coming Soon...",
+    minTotalRatings: "0",
+    minOverallRating: "0.0",
+    minRatings30Days: "0",
+    maxSellers: "0",
+    maxWfsSellers: "0",
+    maxStock: "0",
+    inboundShippingCost: "0.00",
+    sfShippingCost: "0.00",
+    storageLength: "1",
+    season: "Jan-Sep",
+    prepCost: "0.00",
+    additionalCosts: "0.00",
+    defaultFulfillment: "Walmart Fulfilled",
+    prepCostType: "per lb",
+    additionalCostType: "per lb",
+    prepCostPerLb: 0,
+    prepCostEach: 0,
+    additionalCostPerLb: 0,
+    additionalCostEach: 0
+  };
+
   /////////////////////////////////////////////////////
   // Effect Hooks for Loading and Saving Settings
   /////////////////////////////////////////////////////
@@ -386,13 +422,27 @@ export const SettingsModal: React.FC<{
     }
   }, []);
 
+  // Update useEffect to store initial state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setInitialState({
+        desiredMetrics: { ...desiredMetrics },
+        defaultFulfillment,
+        prepCostType,
+        additionalCostType,
+        exportSettings: { ...exportSettings }
+      });
+    }
+  }, [isOpen]);
+
   /////////////////////////////////////////////////////
   // Handler Functions
   /////////////////////////////////////////////////////
 
-  // Update the handleClearAll function to ensure it uses the current defaultExportFields
+  // Add handler for Clear All
   const handleClearAll = () => {
-    const defaultMetrics = {
+    // Reset all metrics to default
+    setDesiredMetrics({
       minProfit: "0.00",
       minMargin: "0",
       minROI: "0",
@@ -409,31 +459,25 @@ export const SettingsModal: React.FC<{
       season: "Jan-Sep",
       prepCost: "0.00",
       additionalCosts: "0.00"
-    };
+    });
 
-    setDesiredMetrics(defaultMetrics);
+    // Reset default fulfillment
     setDefaultFulfillment("Walmart Fulfilled");
-    setEditedFields(new Set());
-    setRawMetrics({});
 
-    // Clear localStorage
-    localStorage.removeItem("desiredMetrics");
-    localStorage.removeItem("defaultFulfillment");
-    localStorage.removeItem("prepCostType");
-    localStorage.removeItem("prepCostPerLb");
-    localStorage.removeItem("prepCostEach");
-    localStorage.removeItem("additionalCostType");
-    localStorage.removeItem("additionalCostPerLb");
-    localStorage.removeItem("additionalCostEach");
+    // Reset cost types
+    setPrepCostType("per lb");
+    setAdditionalCostType("per lb");
 
-    // Reset export settings to default and save to localStorage
-    const defaultSettings = {
+    // Reset export settings
+    setExportSettings({
       fields: defaultExportFields
-    };
-    setExportSettings(defaultSettings);
-    localStorage.setItem("exportSettings", JSON.stringify(defaultSettings));
+    });
 
-    onSettingsChange();
+    // Clear all bold styling
+    setEditedFields(new Set());
+
+    // Clear all raw metrics
+    setRawMetrics({});
   };
 
   // Handle changes in user-defined metrics with proper formatting
@@ -593,36 +637,97 @@ export const SettingsModal: React.FC<{
     return {};
   };
 
-  // Save all settings and close the modal
-  const handleSaveSettings = () => {
-    // First save the current prep and additional costs based on their types
-    if (prepCostType === "per lb") {
-      localStorage.setItem("prepCostPerLb", prepCostPerLb.toString());
-      localStorage.setItem("prepCostEach", "0");
+  // Update the handleSaveAllAndClose function
+  const handleSaveAllAndClose = () => {
+    // Create a new Set for edited fields
+    const newEditedFields = new Set<string>();
+    const metricsToSave: Record<string, string> = {};
+
+    // Compare each metric against its default value
+    Object.entries(desiredMetrics).forEach(([key, value]) => {
+      const defaultValue = DEFAULT_VALUES[key as keyof typeof DEFAULT_VALUES];
+      if (value !== defaultValue) {
+        newEditedFields.add(key);
+        metricsToSave[key] = value;
+      }
+    });
+
+    // Only save metrics if there are changes
+    if (Object.keys(metricsToSave).length > 0) {
+      localStorage.setItem("desiredMetrics", JSON.stringify(metricsToSave));
     } else {
-      localStorage.setItem("prepCostEach", prepCostEach.toString());
-      localStorage.setItem("prepCostPerLb", "0");
+      localStorage.removeItem("desiredMetrics");
     }
 
-    if (additionalCostType === "per lb") {
-      localStorage.setItem("additionalCostPerLb", additionalCostPerLb.toString());
-      localStorage.setItem("additionalCostEach", "0");
+    // Check fulfillment type
+    if (defaultFulfillment !== DEFAULT_VALUES.defaultFulfillment) {
+      newEditedFields.add('defaultFulfillment');
+      localStorage.setItem("defaultFulfillment", defaultFulfillment);
     } else {
-      localStorage.setItem("additionalCostEach", additionalCostEach.toString());
-      localStorage.setItem("additionalCostPerLb", "0");
+      localStorage.removeItem("defaultFulfillment");
     }
 
-    // Save all settings to localStorage
-    localStorage.setItem("desiredMetrics", JSON.stringify(desiredMetrics));
-    localStorage.setItem("defaultFulfillment", defaultFulfillment);
-    localStorage.setItem("prepCostType", prepCostType);
-    localStorage.setItem("additionalCostType", additionalCostType);
+    // Check prep costs
+    const prepCostChanged = 
+      prepCostType !== DEFAULT_VALUES.prepCostType ||
+      prepCostPerLb !== DEFAULT_VALUES.prepCostPerLb ||
+      prepCostEach !== DEFAULT_VALUES.prepCostEach;
 
-    // Save export settings
-    localStorage.setItem("exportSettings", JSON.stringify(exportSettings));
+    if (prepCostChanged) {
+      newEditedFields.add('prepCost');
+      if (prepCostType !== DEFAULT_VALUES.prepCostType) {
+        localStorage.setItem("prepCostType", prepCostType);
+      }
+      if (prepCostPerLb !== DEFAULT_VALUES.prepCostPerLb) {
+        localStorage.setItem("prepCostPerLb", prepCostPerLb.toString());
+      }
+      if (prepCostEach !== DEFAULT_VALUES.prepCostEach) {
+        localStorage.setItem("prepCostEach", prepCostEach.toString());
+      }
+    } else {
+      localStorage.removeItem("prepCostType");
+      localStorage.removeItem("prepCostPerLb");
+      localStorage.removeItem("prepCostEach");
+    }
 
-    // Notify parent of changes and close modal
+    // Check additional costs
+    const additionalCostChanged = 
+      additionalCostType !== DEFAULT_VALUES.additionalCostType ||
+      additionalCostPerLb !== DEFAULT_VALUES.additionalCostPerLb ||
+      additionalCostEach !== DEFAULT_VALUES.additionalCostEach;
+
+    if (additionalCostChanged) {
+      newEditedFields.add('additionalCosts');
+      if (additionalCostType !== DEFAULT_VALUES.additionalCostType) {
+        localStorage.setItem("additionalCostType", additionalCostType);
+      }
+      if (additionalCostPerLb !== DEFAULT_VALUES.additionalCostPerLb) {
+        localStorage.setItem("additionalCostPerLb", additionalCostPerLb.toString());
+      }
+      if (additionalCostEach !== DEFAULT_VALUES.additionalCostEach) {
+        localStorage.setItem("additionalCostEach", additionalCostEach.toString());
+      }
+    } else {
+      localStorage.removeItem("additionalCostType");
+      localStorage.removeItem("additionalCostPerLb");
+      localStorage.removeItem("additionalCostEach");
+    }
+
+    // Save export settings only if they differ from default
+    const isExportDefault = JSON.stringify(exportSettings) === JSON.stringify({ fields: defaultExportFields });
+    if (!isExportDefault) {
+      localStorage.setItem("exportSettings", JSON.stringify(exportSettings));
+    } else {
+      localStorage.removeItem("exportSettings");
+    }
+
+    // Update edited fields state
+    setEditedFields(newEditedFields);
+
+    // Notify parent of changes
     onSettingsChange();
+
+    // Close the modal
     onClose();
 
     // Refresh the extension
@@ -738,6 +843,82 @@ export const SettingsModal: React.FC<{
     });
   };
 
+  // Add handler for Clear Tab
+  const handleClearTab = () => {
+    // Get the default values for the current tab
+    const defaultValues = {
+      baseline: {
+        minProfit: "0.00",
+        minMargin: "0",
+        minROI: "0",
+        minMonthlySales: "Coming Soon...",
+        minTotalRatings: "0",
+        minOverallRating: "0.0",
+        minRatings30Days: "0",
+        maxSellers: "0",
+        maxWfsSellers: "0",
+        maxStock: "0"
+      },
+      fees: {
+        inboundShippingCost: "0.00",
+        sfShippingCost: "0.00",
+        storageLength: "1",
+        season: "Jan-Sep",
+        prepCost: "0.00",
+        additionalCosts: "0.00"
+      },
+      export: {
+        fields: defaultExportFields
+      }
+    };
+
+    // Reset values for current tab
+    const currentTabDefaults = defaultValues[activeTab as keyof typeof defaultValues];
+    
+    if (activeTab === 'export') {
+      // Handle export settings reset
+      setExportSettings({
+        fields: defaultExportFields
+      });
+    } else {
+      // Handle metrics reset
+      setDesiredMetrics(prev => ({
+        ...prev,
+        ...currentTabDefaults
+      }));
+
+      // Remove bold styling for current tab's fields
+      const currentTabFields = Object.keys(currentTabDefaults);
+      setEditedFields(prev => {
+        const newSet = new Set(prev);
+        currentTabFields.forEach(field => newSet.delete(field));
+        return newSet;
+      });
+
+      // Reset raw metrics for current tab
+      setRawMetrics(prev => {
+        const newMetrics = { ...prev };
+        currentTabFields.forEach(field => delete newMetrics[field]);
+        return newMetrics;
+      });
+    }
+  };
+
+  // Add handler for Cancel
+  const handleCancel = () => {
+    if (initialState) {
+      // Restore all state to initial values
+      setDesiredMetrics({ ...initialState.desiredMetrics });
+      setDefaultFulfillment(initialState.defaultFulfillment);
+      setPrepCostType(initialState.prepCostType);
+      setAdditionalCostType(initialState.additionalCostType);
+      setExportSettings({ ...initialState.exportSettings });
+      setEditedFields(new Set());
+      setRawMetrics({});
+    }
+    onClose();
+  };
+
   /////////////////////////////////////////////////////
   // Conditional Rendering
   /////////////////////////////////////////////////////
@@ -750,50 +931,55 @@ export const SettingsModal: React.FC<{
         {/* Header Section */}
         <div className="flex items-center justify-between p-3 border-b">
           <h2 className="text-lg font-bold text-gray-800">Settings</h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleClearAll}
-              className="px-2 py-0.5 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
-            >
-              Clear All
-            </button>
-            <button
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700 text-lg font-medium"
-            >
-              ✕
-            </button>
-          </div>
+          <button
+            onClick={handleCancel}
+            className="text-gray-500 hover:text-gray-700 text-lg font-medium"
+          >
+            ✕
+          </button>
         </div>
 
         {/* Tab Navigation */}
         <div className="flex border-b">
           <button
             onClick={() => setActiveTab('baseline')}
-            className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1 ${activeTab === 'baseline'
+            className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1 ${
+              activeTab === 'baseline'
                 ? 'bg-cyan-500 text-white border-b-2 border-cyan-600'
                 : 'text-gray-700 hover:bg-gray-100'
-              }`}
+            }`}
           >
             <span>📊</span> Baseline Metrics
           </button>
           <button
             onClick={() => setActiveTab('fees')}
-            className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1 ${activeTab === 'fees'
+            className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1 ${
+              activeTab === 'fees'
                 ? 'bg-cyan-500 text-white border-b-2 border-cyan-600'
                 : 'text-gray-700 hover:bg-gray-100'
-              }`}
+            }`}
           >
             <span>💰</span> Fees
           </button>
           <button
             onClick={() => setActiveTab('export')}
-            className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1 ${activeTab === 'export'
+            className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1 ${
+              activeTab === 'export'
                 ? 'bg-cyan-500 text-white border-b-2 border-cyan-600'
                 : 'text-gray-700 hover:bg-gray-100'
-              }`}
+            }`}
           >
             <span>📤</span> Export Settings
+          </button>
+          <button
+            onClick={() => setActiveTab('integrations')}
+            className={`px-4 py-2 text-xs font-medium transition-colors flex items-center gap-1 ${
+              activeTab === 'integrations'
+                ? 'bg-cyan-500 text-white border-b-2 border-cyan-600'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <span>🔌</span> Integrations
           </button>
         </div>
 
@@ -809,10 +995,12 @@ export const SettingsModal: React.FC<{
                 </p>
               </div>
 
-              {/* Default Fulfillment - 2 Columns */}
+              {/* Default Fulfillment */}
               <div className="grid grid-cols-4 gap-3">
-                <div className="col-span-2 bg-gray-50 p-2 rounded">
-                  <h3 className="text-xs font-medium text-gray-800 mb-1">Default Fulfillment</h3>
+                <div className="col-span-2">
+                  <label className="text-[11px] text-gray-600 mb-0.5">
+                    Default Fulfillment
+                  </label>
                   <select
                     value={defaultFulfillment}
                     onChange={handleFulfillmentChange}
@@ -897,66 +1085,6 @@ export const SettingsModal: React.FC<{
                   </div>
                 ))}
                 <div></div>
-              </div>
-
-              {/* Shipping and Storage */}
-              <div className="grid grid-cols-4 gap-3">
-                {['inboundShippingCost', 'sfShippingCost', 'storageLength', 'season'].map((key) => (
-                  <div key={key} className="flex flex-col">
-                    <label className="text-[11px] text-gray-600 mb-0.5">
-                      {formatLabel(key)}
-                    </label>
-                    <div className="relative">
-                      {(key === 'inboundShippingCost' || key === 'sfShippingCost') && (
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
-                      )}
-                      {key === 'season' ? (
-                        <select
-                          name={key}
-                          value={desiredMetrics[key as keyof typeof desiredMetrics]}
-                          onChange={handleDesiredMetricsChange}
-                          className="w-full p-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white pr-6"
-                        >
-                          <option value="Jan-Sep">Jan-Sep</option>
-                          <option value="Oct-Dec">Oct-Dec</option>
-                        </select>
-                      ) : (
-                        <input
-                          type="text"
-                          name={key}
-                          value={rawMetrics[key] ?? desiredMetrics[key as keyof typeof desiredMetrics]}
-                          onChange={handleDesiredMetricsChange}
-                          onBlur={() => handleBlur(key)}
-                          className={getInputClassName(key, `p-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full ${(key === 'inboundShippingCost' || key === 'sfShippingCost') ? 'pl-5' : ''
-                            }`)}
-                        />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Additional Costs */}
-              <div className="grid grid-cols-4 gap-3">
-                {['prepCost', 'additionalCosts'].map((key) => (
-                  <div key={key} className="flex flex-col">
-                    <label className="text-[11px] text-gray-600 mb-0.5">
-                      {formatLabel(key)}
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-xs">$</span>
-                      <input
-                        type="text"
-                        name={key}
-                        value={rawMetrics[key] ?? desiredMetrics[key as keyof typeof desiredMetrics]}
-                        onChange={handleDesiredMetricsChange}
-                        onBlur={() => handleBlur(key)}
-                        className={getInputClassName(key, 'p-1 pl-5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 w-full')}
-                      />
-                    </div>
-                  </div>
-                ))}
-                <div className="col-span-2"></div>
               </div>
             </div>
           )}
@@ -1118,23 +1246,137 @@ export const SettingsModal: React.FC<{
               </div>
             </div>
           )}
+
+          {activeTab === 'integrations' && (
+            <div className="space-y-4">
+              {/* Integrations Explanation */}
+              <div className="bg-cyan-50 border border-cyan-200 p-2 rounded">
+                <h3 className="font-medium text-cyan-800 text-xs mb-0.5">Integrations</h3>
+                <p className="text-xs text-cyan-700">
+                  Connect your external services to enhance NexSellPro's functionality. Currently supporting Google Sheets integration for data export.
+                </p>
+              </div>
+
+              {/* Google Sheets Section */}
+              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                {/* Integration Header */}
+                <div className="bg-gradient-to-r from-[#0F9D58] to-[#188038] p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="bg-white p-2 rounded-lg shadow-sm">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                          <path d="M19.5 3H4.5C3.67157 3 3 3.67157 3 4.5V19.5C3 20.3284 3.67157 21 4.5 21H19.5C20.3284 21 21 20.3284 21 19.5V4.5C21 3.67157 20.3284 3 19.5 3Z" fill="#0F9D58"/>
+                          <path d="M7 7H17V9H7V7ZM7 11H17V13H7V11ZM7 15H13V17H7V15Z" fill="white"/>
+                        </svg>
+                      </div>
+                      <div>
+                        <h3 className="text-white font-medium">Google Sheets</h3>
+                        <p className="text-[11px] text-green-100">Export your product data seamlessly</p>
+                      </div>
+                    </div>
+                    <span className="px-2 py-1 text-[10px] font-medium bg-yellow-100 text-yellow-800 rounded shadow-sm">
+                      Not Connected
+                    </span>
+                  </div>
+                </div>
+
+                {/* Integration Content */}
+                <div className="p-4 space-y-4">
+                  {/* Features List */}
+                  <div className="grid grid-cols-2 gap-3 mb-4">
+                    <div className="flex items-start gap-2">
+                      <div className="mt-0.5 text-cyan-500">✓</div>
+                      <div>
+                        <h4 className="text-xs font-medium text-gray-900">Automated Export</h4>
+                        <p className="text-[11px] text-gray-500">Export data with one click</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="mt-0.5 text-cyan-500">✓</div>
+                      <div>
+                        <h4 className="text-xs font-medium text-gray-900">Custom Fields</h4>
+                        <p className="text-[11px] text-gray-500">Choose what data to export</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="mt-0.5 text-cyan-500">✓</div>
+                      <div>
+                        <h4 className="text-xs font-medium text-gray-900">Multiple Sheets</h4>
+                        <p className="text-[11px] text-gray-500">Export to different sheets</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2">
+                      <div className="mt-0.5 text-cyan-500">✓</div>
+                      <div>
+                        <h4 className="text-xs font-medium text-gray-900">Secure Access</h4>
+                        <p className="text-[11px] text-gray-500">OAuth 2.0 authentication</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Connection Button */}
+                  <button
+                    className="w-full bg-gradient-to-r from-cyan-500 to-cyan-600 text-white px-4 py-2 rounded-md text-xs font-medium hover:from-cyan-600 hover:to-cyan-700 transition-all duration-200 shadow-sm flex items-center justify-center gap-2 group"
+                    onClick={() => {
+                      // This will be implemented in the next step
+                      console.log('Connect Google Sheets clicked');
+                    }}
+                  >
+                    <div className="bg-white/20 p-1 rounded">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0C5.372 0 0 5.373 0 12s5.372 12 12 12c6.627 0 12-5.373 12-12S18.627 0 12 0zm.14 19.018c-3.868 0-7-3.14-7-7.018c0-3.878 3.132-7.018 7-7.018c1.89 0 3.47.697 4.682 1.829l-1.974 1.978v-.004c-.735-.702-1.667-1.062-2.708-1.062c-2.31 0-4.187 1.956-4.187 4.273c0 2.315 1.877 4.277 4.187 4.277c2.096 0 3.522-1.202 3.816-2.852H12.14v-2.737h6.585c.088.47.135.96.135 1.474c0 4.01-2.677 6.86-6.72 6.86z"/>
+                      </svg>
+                    </div>
+                    Connect with Google
+                    <span className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">→</span>
+                  </button>
+
+                  {/* Additional Info */}
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <p className="text-[11px] text-gray-500">
+                      By connecting, you'll be able to export your product data directly to Google Sheets. You can disconnect at any time.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}
         <div className="p-3 border-t bg-gray-50">
-          <div className="flex gap-2">
-            <button
-              onClick={handleSaveSettings}
-              className="flex-1 py-1.5 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded hover:from-cyan-600 hover:to-cyan-700 transition-all duration-200 shadow-sm font-medium text-xs"
-            >
-              Save Changes
-            </button>
-            <button
-              onClick={onClose}
-              className="px-4 py-1.5 text-gray-600 hover:text-gray-800 transition duration-300 text-xs border border-gray-300 rounded hover:bg-gray-100"
-            >
-              Cancel
-            </button>
+          <div className="flex justify-between items-center">
+            {/* Left Group - Clear Actions */}
+            <div className="flex gap-2">
+              <button
+                onClick={handleClearTab}
+                className="px-4 py-1.5 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-all duration-200 shadow-sm font-medium text-xs flex items-center gap-1.5"
+              >
+                <span>🗑️</span> Clear Tab
+              </button>
+              <button
+                onClick={handleClearAll}
+                className="px-4 py-1.5 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-all duration-200 shadow-sm font-medium text-xs flex items-center gap-1.5"
+              >
+                <span>🗑️🗑️</span> Clear All
+              </button>
+            </div>
+
+            {/* Right Group - Save/Cancel Actions */}
+            <div className="flex gap-2">
+              <button
+                onClick={handleCancel}
+                className="px-4 py-1.5 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-all duration-200 shadow-sm font-medium text-xs flex items-center gap-1.5"
+              >
+                <span>❌</span> Cancel
+              </button>
+              <button
+                onClick={handleSaveAllAndClose}
+                className="px-4 py-1.5 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded hover:from-cyan-600 hover:to-cyan-700 transition-all duration-200 shadow-sm font-medium text-xs flex items-center gap-1.5"
+              >
+                <span>💾</span> Save All & Close
+              </button>
+            </div>
           </div>
         </div>
       </div>

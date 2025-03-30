@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased] - Working on 0.0.4-dev
 
 ### Added
+- New Integrations tab in Settings modal with modern Google Sheets integration UI
 - Auto-set contract category based on product's main category
   - "Clothing" → "Apparel & Accessories"
   - "Beauty" → "Beauty"
@@ -23,12 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - WFS apparel fee ($0.50) now correctly applies when "Apparel & Accessories" is selected
 - Pricing values (product cost, sale price) now persist correctly
 - Values maintain bold styling when edited and returning to page
+- Storage fee visibility now properly tied to fulfillment type selection
+- Shipping rate calculations improved in Pricing component
 
 ### Changed
 - Updated fulfillment option buttons with modern styling and better visual feedback
 - Improved error handling for localStorage operations
 - Enhanced data persistence for product-specific settings
 - Updated version numbering to use -dev suffix for development versions
+- Enhanced Settings modal with improved tab organization and navigation
 
 ## [0.0.3] - 2024-03-21
 ### Added
