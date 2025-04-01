@@ -46,20 +46,29 @@ export const SellerTable: React.FC = () => {
 
     // Effect hook to fetch seller data on component mount
     useEffect(() => {
+        let isMounted = true;
+
         const fetchSellers = async () => {
             try {
                 const data = await getUsedData();
-                if (data) {
+                if (data && isMounted) {
                     setProductData(data);
                 }
-                setIsLoading(false);
             } catch (error) {
                 console.error('Error fetching sellers:', error);
-                setIsLoading(false);
+            } finally {
+                if (isMounted) {
+                    setIsLoading(false);
+                }
             }
         };
 
         fetchSellers();
+
+        // Cleanup function to prevent memory leaks
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     ////////////////////////////////////////////////
@@ -150,126 +159,85 @@ export const SellerTable: React.FC = () => {
     }
 
     return (
-        <div className="w-full rounded-lg border shadow-lg">
+        <div className="w-full rounded-lg overflow-hidden bg-white">
             {/* Quick Stats Section */}
-            <div className="flex justify-between px-4 py-2 bg-gray-50 border-b overflow-visible">
-                
-                {/* Total Sellers */}
-                <div className="text-center pb-2 relative group">
-                    <div className="text-sm font-semibold bg-gray-50">Total Sellers</div>
-                    <div className="relative">
-                        <div className={`mt-1 px-3 py-1 rounded-full text-xs font-medium ${!JSON.parse(localStorage.getItem("desiredMetrics") || "{}")?.maxSellers ? 'cursor-help' : ''} ${applyMaxSellersHighlight()}`}>
-                            {productData?.sellers.totalSellers || 0}
-                        </div>
-                        {!JSON.parse(localStorage.getItem("desiredMetrics") || "{}")?.maxSellers && (
-                            <div className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded shadow-lg z-[100] whitespace-nowrap">
-                                Baseline value not in settings
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-800"></div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* WFS Sellers */}
-                <div className="text-center pb-2">
-                    <div className="text-sm font-semibold bg-gray-50">WFS Sellers</div>
-                    <div className={`mt-1 px-3 py-1 rounded-full text-xs font-medium ${
-                        productData?.sellers.otherSellers.filter(s => s.type === "WFS" || s.type === "WFS-Brand").length === 0
-                        ? CLASS_SECTION_CONTENT_GREEN
-                        : CLASS_SECTION_CONTENT_RED
-                    }`}>
-                        {productData?.sellers.otherSellers.filter(s => s.type === "WFS" || s.type === "WFS-Brand").length || "0"}
-                    </div>
-                </div>
-
-                {/* Walmart Sells */}
-                <div className="text-center pb-2">
-                    <div className="text-sm font-semibold bg-gray-50">Walmart Sells</div>
-                    <div className={`mt-1 px-3 py-1 rounded-full text-xs font-medium ${
-                        productData?.sellers.mainSeller?.sellerName === "Walmart.com"
-                        ? CLASS_SECTION_CONTENT_RED
-                        : CLASS_SECTION_CONTENT_GREEN
-                    }`}>
-                        {productData?.sellers.mainSeller?.sellerName === "Walmart.com" ? "YES" : "NO"}
-                    </div>
-                </div>
-
-                {/* Brand Sells */}
-                <div className="text-center pb-2">
-                    <div className="text-sm font-semibold bg-gray-50">Brand Sells</div>
-                    <div className={`mt-1 px-3 py-1 rounded-full text-xs font-medium ${
-                        productData?.sellers.otherSellers.some(s =>
-                            productData?.basic.brand && s.sellerName &&
-                            productData.basic.brand.toLowerCase().split(' ').some(brandPart =>
-                                s.sellerName.toLowerCase().includes(brandPart)
-                            )
-                        )
-                        ? CLASS_SECTION_CONTENT_RED
-                        : CLASS_SECTION_CONTENT_GREEN
-                    }`}>
-                        {productData?.sellers.otherSellers.some(s =>
-                            productData?.basic.brand && s.sellerName &&
-                            productData.basic.brand.toLowerCase().split(' ').some(brandPart =>
-                                s.sellerName.toLowerCase().includes(brandPart)
-                            )
-                        ) ? "YES" : "NO"}
-                    </div>
-                </div>
+            <div className="overflow-x-auto">
+                <table className="w-full">
+                    <thead>
+                        <tr>
+                            <th className="py-2 px-3 text-[10px] font-medium text-gray-600 bg-gray-50 border-b text-left">
+                                SELLER NAME
+                            </th>
+                            <th className="py-2 px-3 text-[10px] font-medium text-gray-600 bg-gray-50 border-b text-center">
+                                PRICE
+                            </th>
+                            <th className="py-2 px-3 text-[10px] font-medium text-gray-600 bg-gray-50 border-b text-center">
+                                TYPE
+                            </th>
+                            <th className="py-2 px-3 text-[10px] font-medium text-gray-600 bg-gray-50 border-b text-center">
+                                QTY
+                            </th>
+                            <th className="py-2 px-3 text-[10px] font-medium text-gray-600 bg-gray-50 border-b text-center">
+                                ARRIVES
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                        {/* All Sellers (main seller first, then others) */}
+                        {[...(productData?.sellers.mainSeller ? [productData.sellers.mainSeller] : []),
+                        ...(productData?.sellers.otherSellers || [])]
+                            .map((seller, index) => (
+                                <tr key={index} className="hover:bg-gray-50">
+                                    <td className="py-2 px-3 text-[11px] text-left">
+                                        <div className="flex items-center gap-1">
+                                            <span className="font-medium">{seller.sellerName || "-"}</span>
+                                            {seller.isProSeller && (
+                                                <FiCheckCircle className="text-cyan-500 w-3 h-3" title="Pro Seller" />
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="py-2 px-3 text-[11px] text-center font-medium">
+                                        {formatPrice(seller.price)}
+                                    </td>
+                                    <td className="py-2 px-3 text-center">
+                                        <TypeBadge type={getSellerType(seller, productData?.basic.brand)} />
+                                    </td>
+                                    <td className="py-2 px-3 text-[11px] text-center font-medium">
+                                        {seller.availableQuantity || "-"}
+                                    </td>
+                                    <td className="py-2 px-3 text-[11px] text-center text-gray-600">
+                                        {seller.arrives || "-"}
+                                    </td>
+                                </tr>
+                            ))}
+                    </tbody>
+                </table>
             </div>
-
-            <table className="min-w-full border-collapse border border-black">
-                <thead>
-                    <tr>
-                        <th className={"py-1 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black"}>
-                            SELLER NAME
-                        </th>
-                        <th className={"py-1 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black"}>
-                            PRICE
-                        </th>
-                        <th className={"py-1 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black"}>
-                            TYPE
-                        </th>
-                        <th className={"py-1 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black"}>
-                            QTY
-                        </th>
-                        <th className={"py-1 text-xs text-white bg-[#3a3f47] uppercase border-2 border-black"}>
-                            ARRIVES
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {/* All Sellers (main seller first, then others) */}
-                    {[...(productData?.sellers.mainSeller ? [productData.sellers.mainSeller] : []),
-                    ...(productData?.sellers.otherSellers || [])]
-                        .map((seller, index) => (
-                            <tr key={index} className="border-b border-black hover:bg-gray-100">
-                                <td className="py-1 text-xs text-center border-x border-black">
-                                    <div className="flex items-center justify-center space-x-1">
-                                        <span>{seller.sellerName || "-"}</span>
-                                        {seller.isProSeller && (
-                                            <FiCheckCircle className="text-blue-500" title="Pro Seller" />
-                                        )}
-                                    </div>
-                                </td>
-                                <td className="py-1 text-xs text-center border-x border-black">
-                                    {formatPrice(seller.price)}
-                                </td>
-                                <td className="py-1 text-xs text-center border-x border-black">
-                                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getTypeStyle(getSellerType(seller, productData?.basic.brand))}`}>
-                                        {getSellerType(seller, productData?.basic.brand)}
-                                    </span>
-                                </td>
-                                <td className="py-1 text-xs text-center border-x border-black">
-                                    {seller.availableQuantity || "-"}
-                                </td>
-                                <td className="py-1 text-xs text-center border-x border-black">
-                                    {seller.arrives || "-"}
-                                </td>
-                            </tr>
-                        ))}
-                </tbody>
-            </table>
         </div>
+    );
+};
+
+// New TypeBadge component for consistent seller type styling
+const TypeBadge: React.FC<{ type: string }> = ({ type }) => {
+    const getTypeStyle = (type: string) => {
+        switch (type) {
+            case 'WMT':
+                return 'bg-blue-50 text-blue-700 border-blue-200';
+            case 'WFS':
+            case 'WFS-Brand':
+                return 'bg-rose-50 text-rose-700 border-rose-200';
+            case 'SF':
+            case 'SF-Brand':
+                return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            default:
+                return 'bg-gray-50 text-gray-700 border-gray-200';
+        }
+    };
+
+    return (
+        <span className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded-full border ${getTypeStyle(type)}`}>
+            {type}
+        </span>
     );
 };
 

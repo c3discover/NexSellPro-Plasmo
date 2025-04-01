@@ -242,7 +242,7 @@ const ContentUI = () => {
         {/* Expand/Collapse all sections button */}
         <div style={{ display: 'inline-block' }}>
           <button
-            className={`pl-1 py-1 pr-4 bg-[#3a3f47] font-semibold text-white text-start !text-sm rounded-xl drop-shadow-xl`}
+            className={`pl-1 py-1 pr-4 bg-[#3a3f47] font-medium text-white text-start !text-[12px] rounded-xl drop-shadow-xl`}
             style={{ display: 'flex', justifyContent: 'flex-start', border: 'none' }}
             onClick={toggleSections}
           >

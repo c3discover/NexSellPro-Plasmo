@@ -122,18 +122,23 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
   return (
     <div
       id="Listing & Export"
-      className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}
+      className={`bg-[#d7d7d7] m-1 rounded-lg shadow-lg overflow-hidden transition-all duration-300 ${
+        isOpen ? "h-auto opacity-100" : "h-9"
+      }`}
     >
       {/* Section Header with expand/collapse functionality */}
       <h1
-        className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
+        className="font-medium text-[12px] text-black text-start cursor-pointer w-full px-2 py-1 bg-cyan-500 flex items-center justify-between group hover:bg-cyan-600 transition-colors"
         onClick={toggleOpen}
       >
-        {isOpen ? "🔽  Listing & Export (Coming Soon)" : "▶️  Listing & Export (Coming Soon)"}
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm">{isOpen ? "▾" : "▸"}</span>
+          Listing & Export (Coming Soon)
+        </div>
       </h1>
 
       {/* Container for export option buttons */}
-      <div className={`flex flex-col items-center gap-3 p-4 ${isOpen ? "block" : "hidden"}`}>
+      <div className={`flex flex-col items-center gap-3 p-1 ${isOpen ? "block" : "hidden"}`}>
         {/* Map over export options to create buttons */}
         {EXPORT_OPTIONS.map((label, index) => (
           <div key={index} className="w-full">

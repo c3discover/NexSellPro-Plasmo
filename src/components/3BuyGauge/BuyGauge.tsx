@@ -356,18 +356,23 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({
   return (
     <div
       id="Buy Gauge"
-      className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}
+      className={`bg-[#d7d7d7] m-1 rounded-lg shadow-lg overflow-hidden transition-all duration-300 ${
+        isOpen ? "h-auto opacity-100" : "h-9"
+      }`}
     >
       {/* Main Header */}
       <h1
-        className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-t-lg shadow-xl"
+        className="font-medium text-black text-start text-[12px] cursor-pointer w-full px-2.5 py-1 bg-cyan-500 flex items-center justify-between group hover:bg-cyan-600 transition-colors"
         onClick={() => setIsOpen(!isOpen)}
       >
-        {isOpen ? "🔽  Buy Gauge" : "▶️  Buy Gauge"}
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm">{isOpen ? "▾" : "▸"}</span>
+          Buy Gauge
+        </div>
       </h1>
 
       {/* Content Area */}
-      <div className={`p-2 ${isOpen ? "block" : "hidden"}`}>
+      <div className={`${isOpen ? "block" : "hidden"} p-1`}>
         {viewMode === 'compact' ? renderCompactView() : renderFullView()}
       </div>
     </div>

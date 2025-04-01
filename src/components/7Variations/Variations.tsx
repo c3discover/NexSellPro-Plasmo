@@ -104,6 +104,11 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
   const [sortConfig, setSortConfig] = useState<SortConfig>({ field: 'in_stock', direction: 'asc' });
   const [availableAttributes, setAvailableAttributes] = useState<string[]>([]);
 
+  // Cache for variant data
+  const variantCache: { [key: string]: { data: any, timestamp: number } } = {};
+  const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+  const RATE_LIMIT_DELAY = 1000; // 1 second delay between requests
+
   // Effect to sync section open state with prop
   useEffect(() => {
     setIsOpen(areSectionsOpen);
@@ -304,365 +309,300 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
   return (
     <div
       id="Variations"
-      className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}
+      className={`bg-[#d7d7d7] m-1 rounded-lg shadow-lg overflow-hidden transition-all duration-300 ${
+        isOpen ? "h-auto opacity-100" : "h-9"
+      }`}
     >
       {/* Header Section */}
       <h1
-        className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
+        className="font-medium text-black text-start text-[12px] cursor-pointer w-full px-2.5 py-1 bg-cyan-500 flex items-center justify-between group hover:bg-cyan-600 transition-colors"
         onClick={toggleOpen}
       >
-        {isOpen ? "🔽  Variations" : "▶️  Variations"}
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm">{isOpen ? "▾" : "▸"}</span>
+          Variations
+        </div>
       </h1>
 
       {/* Main Content Section */}
-      {isOpen && (
-        <>
-          {sortedVariantIds.length === 0 ? (
-            // Empty State Message
-            <div className="w-full h-[100px] flex justify-center items-center py-4">
-              <p className="text-gray-600 italic text-center">No variations available.</p>
+      <div className={`${isOpen ? "block" : "hidden"} p-1 space-y-2`}>
+        {sortedVariantIds.length === 0 ? (
+          <div className="w-full h-[100px] flex justify-center items-center">
+            <div className="text-gray-600 bg-white p-4 rounded-lg shadow-md text-center">
+              <p className="text-sm font-medium">No variations available</p>
+              <p className="text-xs text-gray-500 mt-1">This product doesn't have any variants</p>
             </div>
-          ) : (
-            <>
-              {/* Sorting Controls */}
-              <div className="w-full px-4 py-2 flex flex-wrap gap-2 items-center bg-gray-100 rounded-md mx-2 my-1">
-                <span className="text-xs font-semibold text-gray-700">Sort by:</span>
-                <div className="flex flex-wrap gap-2">
-                  {/* Stock Status Radio */}
-                  <label className="inline-flex items-center">
-                    <input
-                      type="radio"
-                      className="form-radio h-3 w-3 text-blue-600"
-                      checked={sortConfig.field === 'in_stock'}
-                      onChange={() => handleSortChange('in_stock')}
-                    />
-                    <span className="ml-1 text-xs">Stock Status</span>
-                    {sortConfig.field === 'in_stock' && (
-                      <button 
-                        onClick={() => setSortConfig(prev => ({ ...prev, direction: prev.direction === 'asc' ? 'desc' : 'asc' }))}
-                        className="ml-1 text-xs"
-                      >
-                        {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                      </button>
-                    )}
-                  </label>
+          </div>
+        ) : (
+          <>
+            {/* Variant Summary Cards */}
+            <div className="grid grid-cols-3 gap-2">
+              {/* Total Variants Card */}
+              <div className="text-xs font-medium bg-white text-center p-2 rounded-lg shadow-sm">
+                <div className="text-[10px] text-gray-600 mb-1">Total Variants</div>
+                <div className="text-base font-semibold">
+                  {Object.keys(productData?.variants?.variantsMap || {}).length || "0"}
+                </div>
+              </div>
 
-                  {/* Price Radio */}
-                  <label className="inline-flex items-center">
-                    <input
-                      type="radio"
-                      className="form-radio h-3 w-3 text-blue-600"
-                      checked={sortConfig.field === 'price'}
-                      onChange={() => handleSortChange('price')}
-                    />
-                    <span className="ml-1 text-xs">Price</span>
-                    {sortConfig.field === 'price' && (
-                      <button 
-                        onClick={() => setSortConfig(prev => ({ ...prev, direction: prev.direction === 'asc' ? 'desc' : 'asc' }))}
-                        className="ml-1 text-xs"
-                      >
-                        {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                      </button>
-                    )}
-                  </label>
-
-                  {/* Dynamic Attribute Radios */}
+              {/* Variant Types Card */}
+              <div className="col-span-2 text-xs font-medium bg-white text-center p-2 rounded-lg shadow-sm">
+                <div className="text-[10px] text-gray-600 mb-1">Variant Types</div>
+                <div className="flex flex-wrap gap-1 justify-center">
                   {availableAttributes.map((attr) => (
-                    <label key={attr} className="inline-flex items-center">
-                      <input
-                        type="radio"
-                        className="form-radio h-3 w-3 text-blue-600"
-                        checked={sortConfig.field === attr}
-                        onChange={() => handleSortChange(attr)}
-                      />
-                      <span className="ml-1 text-xs">{attr}</span>
-                      {sortConfig.field === attr && (
-                        <button 
-                          onClick={() => setSortConfig(prev => ({ ...prev, direction: prev.direction === 'asc' ? 'desc' : 'asc' }))}
-                          className="ml-1 text-xs"
-                        >
-                          {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                        </button>
-                      )}
-                    </label>
+                    <span
+                      key={attr}
+                      className="px-1.5 py-0.5 bg-gray-100 rounded-full text-[9px] font-medium text-gray-700"
+                    >
+                      {attr}
+                    </span>
                   ))}
                 </div>
               </div>
+            </div>
 
-              {/* Variant Information Section */}
-              <div className="w-full p-2 pb-4 flex justify-between items-center">
-                {/* ===== Variant Count Box ===== */}
-                <div className="w-1/2 p-1">
-                  <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
-                    Number of Variants
-                  </p>
-                  <p className="text-xs text-black text-center bg-white border-2 border-black p-1 rounded-b-lg shadow-md shadow-black">
-                    {Object.keys(productData?.variants?.variantsMap || {}).length || "-"}
-                  </p>
-                </div>
-
-                {/* ===== Variant Attributes Box ===== */}
-                <div className="w-1/2 p-1">
-                  <p className="bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black">
-                    Variant Attributes
-                  </p>
-                  <div className="text-xs text-black text-center bg-white border-2 border-black p-1 rounded-b-lg shadow-md shadow-black">
-                    {(productData?.variants?.variantsMap &&
-                      Object.values(productData.variants.variantsMap)[0]?.variants
-                      ?.map((attribute: string) => attribute.split('-')[0])
-                      .filter((value, index, self) => self.indexOf(value) === index)
-                      .map((attributeType, index) => (
-                        <p key={index}>
-                          {attributeType
-                            .split('_')
-                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                            .join(' ')}
-                        </p>
-                      ))) || (
-                      <span className="text-gray-600 italic">No variant attributes available.</span>
+            {/* Sort Controls */}
+            <div className="bg-white rounded-lg shadow-md p-2">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-medium text-gray-700">Sort by:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {/* Stock Status Button */}
+                  <button
+                    onClick={() => handleSortChange('in_stock')}
+                    className={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1
+                      ${sortConfig.field === 'in_stock' 
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  >
+                    Stock
+                    {sortConfig.field === 'in_stock' && (
+                      <span className="text-[14px] font-bold ml-0.5 text-blue-700">
+                        {sortConfig.direction === 'asc' ? '⬆' : '⬇'}
+                      </span>
                     )}
-                  </div>
+                  </button>
+
+                  {/* Price Button */}
+                  <button
+                    onClick={() => handleSortChange('price')}
+                    className={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1
+                      ${sortConfig.field === 'price' 
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  >
+                    Price
+                    {sortConfig.field === 'price' && (
+                      <span className="text-[14px] font-bold ml-0.5 text-blue-700">
+                        {sortConfig.direction === 'asc' ? '⬆' : '⬇'}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Attribute Buttons */}
+                  {availableAttributes.map((attr) => (
+                    <button
+                      key={attr}
+                      onClick={() => handleSortChange(attr)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-medium flex items-center gap-1
+                        ${sortConfig.field === attr 
+                          ? 'bg-blue-100 text-blue-700 border border-blue-300' 
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    >
+                      {attr}
+                      {sortConfig.field === attr && (
+                        <span className="text-[14px] font-bold ml-0.5 text-blue-700">
+                          {sortConfig.direction === 'asc' ? '⬆' : '⬇'}
+                        </span>
+                      )}
+                    </button>
+                  ))}
                 </div>
               </div>
+            </div>
 
-              {/* ===== Toggle Button Section ===== */}
-              <div className="flex justify-end mx-2 mb-1">
+            {/* Variants Table Section */}
+            <div className="mx-2">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-xs font-medium text-gray-700">Variant Details</h3>
                 <button
                   onClick={toggleVariantTable}
-                  className="text-xs font-semibold px-2 py-0.5 bg-gray-200 rounded shadow hover:bg-gray-300"
-                  aria-label="Toggle variant table"
+                  className="px-2 py-1 text-[10px] font-medium bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
                 >
-                  {isVariantTableExpanded ? "Hide Table" : "Show Table"}
+                  {isVariantTableExpanded ? "Hide Details" : "Show Details"}
                 </button>
               </div>
 
-              {/* ===== Variant Table Section ===== */}
-              {Object.keys(productData?.variants?.variantsMap || {}).length > 0 && isVariantTableExpanded && (
-                <div className="overflow-auto w-full" style={{ padding: "0 16px", marginTop: "0px", marginBottom: "10px" }}>
-                  <table className="table-auto w-full border-collapse">
-                    {/* ----- Table Header ----- */}
+              {isVariantTableExpanded && (
+                <div className="bg-white rounded-lg shadow-md overflow-x-auto">
+                  <table className="w-full border-collapse">
                     <thead>
-                      <tr>
-                        <td
-                          className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white"
-                          style={{ textAlign: "left" }}
-                        >
-                          Variant ID
-                        </td>
-                        {isVariantTableExpanded &&
-                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
-                            <th
-                              key={variantId}
-                              className={`px-2 py-1 text-2xs tracking-wider border-2 border-black text-center ${
-                                index === 0 
-                                  ? 'bg-amber-50' 
-                                  : 'bg-[#d7d7d7]'
-                              }`}
-                            >
-                              <div className="flex flex-col items-center gap-0.5">
-                                <span>{variantId}</span>
-                                {index === 0 && (
-                                  <span className="text-[9px] font-medium bg-amber-200 px-1.5 rounded">
-                                    current
-                                  </span>
-                                )}
-                              </div>
-                            </th>
-                          ))}
+                      <tr className="bg-[#3a3f47] text-white">
+                        <th className="px-3 py-2 text-left text-[11px] font-medium">Property</th>
+                        {getSortedVariants(sortedVariantIds).map((variantId, index) => (
+                          <th
+                            key={variantId}
+                            className={`px-3 py-2 text-center text-[11px] font-medium
+                              ${index === 0 ? 'bg-amber-500/10' : ''}`}
+                          >
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="truncate max-w-[120px]">{variantId}</span>
+                              {index === 0 && (
+                                <span className="text-[9px] bg-amber-400/20 px-1.5 rounded">
+                                  current
+                                </span>
+                              )}
+                            </div>
+                          </th>
+                        ))}
                       </tr>
                     </thead>
-
-                    {/* ----- Table Body ----- */}
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody>
                       {/* Image Row */}
-                      <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
-                          Image
-                        </td>
-                        {isVariantTableExpanded &&
-                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
-                            <td
-                              key={variantId}
-                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
-                                index === 0 ? 'bg-amber-50' : ''
-                              }`}
-                            >
-                              {variantData[variantId]?.image ? (
+                      <tr className="border-b border-gray-200">
+                        <td className="px-3 py-2 text-[11px] font-medium bg-gray-50">Image</td>
+                        {getSortedVariants(sortedVariantIds).map((variantId, index) => (
+                          <td
+                            key={variantId}
+                            className={`px-3 py-2 text-center ${index === 0 ? 'bg-amber-50' : ''}`}
+                          >
+                            {variantData[variantId]?.image ? (
+                              <div className="relative group">
                                 <img
                                   src={variantData[variantId].image}
-                                  alt={`Image for ${variantId}`}
-                                  className={`w-16 h-16 object-contain mx-auto ${
-                                    index === 0 ? 'ring-2 ring-amber-200 rounded-md' : ''
-                                  }`}
+                                  alt={`Variant ${variantId}`}
+                                  className="w-12 h-12 object-contain mx-auto rounded-md hover:scale-150 transition-transform duration-200"
                                 />
-                              ) : (
-                                "-"
-                              )}
-                            </td>
-                          ))}
+                              </div>
+                            ) : "-"}
+                          </td>
+                        ))}
                       </tr>
 
                       {/* Title Row */}
-                      <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
-                          Title
-                        </td>
-                        {isVariantTableExpanded &&
-                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
-                            <td
-                              key={variantId}
-                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
-                                index === 0 ? 'bg-amber-50' : ''
-                              }`}
-                            >
-                              {/* Check if variant title if available on product page*/}
-                              {variantData[variantId]?.title || "-"}
-                            </td>
-                          ))}
+                      <tr className="border-b border-gray-200">
+                        <td className="px-3 py-2 text-[11px] font-medium bg-gray-50">Title</td>
+                        {getSortedVariants(sortedVariantIds).map((variantId, index) => (
+                          <td
+                            key={variantId}
+                            className={`px-3 py-2 text-[11px] text-center ${index === 0 ? 'bg-amber-50' : ''}`}
+                          >
+                            {variantData[variantId]?.title || "-"}
+                          </td>
+                        ))}
                       </tr>
 
                       {/* Attributes Row */}
-                      <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
-                          Attributes
-                        </td>
-                        {isVariantTableExpanded &&
-                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
-                            <td
-                              key={variantId}
-                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
-                                index === 0 ? 'bg-amber-50' : ''
-                              }`}
-                            >
-                              {/* Render attributes if available, otherwise show "-" */}
-                              {productData?.variants?.variantsMap?.[variantId]?.variants ? (
-                                productData.variants.variantsMap[variantId].variants.map((attribute: string, index: number) => (
-                                  <div key={index}>
-                                    {attribute
-                                      .split('-')[1] // Extract the attribute value after the dash
-                                      .split('_') // Split on underscores
-                                      .map((word) => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize each word
-                                      .join(' ')} {/* Join with spaces for readability */}
-                                  </div>
-                                ))
-                              ) : (
-                                <div>-</div> // Display a dash if there are no attributes
-                              )}
-                            </td>
-                          ))}
+                      <tr className="border-b border-gray-200">
+                        <td className="px-3 py-2 text-[11px] font-medium bg-gray-50">Attributes</td>
+                        {getSortedVariants(sortedVariantIds).map((variantId, index) => (
+                          <td
+                            key={variantId}
+                            className={`px-3 py-2 text-center ${index === 0 ? 'bg-amber-50' : ''}`}
+                          >
+                            <div className="flex flex-col gap-0.5">
+                              {productData?.variants?.variantsMap?.[variantId]?.variants?.map((attribute: string, attrIndex: number) => (
+                                <span
+                                  key={attrIndex}
+                                  className="text-[10px] px-1.5 py-0.5 bg-gray-100 rounded"
+                                >
+                                  {attribute
+                                    .split('-')[1]
+                                    .split('_')
+                                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                    .join(' ')}
+                                </span>
+                              )) || "-"}
+                            </div>
+                          </td>
+                        ))}
                       </tr>
 
                       {/* Price Row */}
-                      <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
-                          Price
-                        </td>
-                        {isVariantTableExpanded &&
-                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
-                            <td
-                              key={variantId}
-                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
-                                index === 0 ? 'bg-amber-50' : ''
-                              }`}
-                            >
-                              {/* Check if productData and price info is available */}
+                      <tr className="border-b border-gray-200">
+                        <td className="px-3 py-2 text-[11px] font-medium bg-gray-50">Price</td>
+                        {getSortedVariants(sortedVariantIds).map((variantId, index) => (
+                          <td
+                            key={variantId}
+                            className={`px-3 py-2 text-[11px] text-center ${index === 0 ? 'bg-amber-50' : ''}`}
+                          >
+                            <span className="font-medium">
                               {productData?.variants?.variantsMap?.[variantId]?.priceInfo?.currentPrice?.price
                                 ? `$${parseFloat(productData?.variants?.variantsMap?.[variantId]?.priceInfo?.currentPrice?.price ?? 0).toFixed(2)}`
-                                : "-"
-                              }
-                            </td>
-                          ))}
+                                : "-"}
+                            </span>
+                          </td>
+                        ))}
                       </tr>
 
                       {/* Sellers Row */}
-                      <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
-                          Sellers
-                        </td>
-                        {isVariantTableExpanded &&
-                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
-                            <td
-                              key={variantId}
-                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
-                                index === 0 ? 'bg-amber-50' : ''
-                              }`}
-                            >
-                              {/* Check if sellers info is available on product page */}
-                              {variantData[variantId]?.sellers || 0}
-                            </td>
-                          ))}
+                      <tr className="border-b border-gray-200">
+                        <td className="px-3 py-2 text-[11px] font-medium bg-gray-50">Sellers</td>
+                        {getSortedVariants(sortedVariantIds).map((variantId, index) => (
+                          <td
+                            key={variantId}
+                            className={`px-3 py-2 text-[11px] text-center ${index === 0 ? 'bg-amber-50' : ''}`}
+                          >
+                            <span className="font-medium">{variantData[variantId]?.sellers || "0"}</span>
+                          </td>
+                        ))}
                       </tr>
 
-                      {/* Walmart Product ID (WPID) Row */}
-                      <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
-                          WPID
-                        </td>
-                        {isVariantTableExpanded &&
-                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
-                            <td
-                              key={variantId}
-                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
-                                index === 0 ? 'bg-amber-50' : ''
-                              }`}
-                            >
-                              {/* Check if productData and usItemId are available */}
-                              {productData?.variants?.variantsMap?.[variantId]?.usItemId
-                                ? productData?.variants?.variantsMap?.[variantId]?.usItemId ?? "-"
-                                : "-"
-                              }
-                            </td>
-                          ))}
+                      {/* WPID Row */}
+                      <tr className="border-b border-gray-200">
+                        <td className="px-3 py-2 text-[11px] font-medium bg-gray-50">WPID</td>
+                        {getSortedVariants(sortedVariantIds).map((variantId, index) => (
+                          <td
+                            key={variantId}
+                            className={`px-3 py-2 text-[11px] text-center ${index === 0 ? 'bg-amber-50' : ''}`}
+                          >
+                            {productData?.variants?.variantsMap?.[variantId]?.usItemId || "-"}
+                          </td>
+                        ))}
                       </tr>
 
                       {/* UPC Row */}
-                      <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
-                          UPC
-                        </td>
-                        {isVariantTableExpanded &&
-                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
-                            <td
-                              key={variantId}
-                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
-                                index === 0 ? 'bg-amber-50' : ''
-                              }`}
-                            >
-                              {/* Check if upc are available on product page */}
-                              {variantData[variantId]?.upc || "-"}
-                            </td>
-                          ))}
+                      <tr className="border-b border-gray-200">
+                        <td className="px-3 py-2 text-[11px] font-medium bg-gray-50">UPC</td>
+                        {getSortedVariants(sortedVariantIds).map((variantId, index) => (
+                          <td
+                            key={variantId}
+                            className={`px-3 py-2 text-[11px] text-center ${index === 0 ? 'bg-amber-50' : ''}`}
+                          >
+                            {variantData[variantId]?.upc || "-"}
+                          </td>
+                        ))}
                       </tr>
 
-                      {/* In Stock Row */}
+                      {/* Stock Status Row */}
                       <tr>
-                        <td className="px-2 py-1 text-2xs font-bold border-2 border-black bg-[#3a3f47] text-white text-left">
-                          In Stock
-                        </td>
-                        {isVariantTableExpanded &&
-                          getSortedVariants(sortedVariantIds).map((variantId, index) => (
-                            <td
-                              key={variantId}
-                              className={`px-2 py-1 text-2xs border-2 border-black text-center ${
-                                index === 0 ? 'bg-amber-50' : ''
-                              }`}
-                            >
-                              {/* Use productData to access availability status */}
-                              {productData?.variants?.variantsMap?.[variantId]?.availabilityStatus === "IN_STOCK"
-                                ? "✔️"
-                                : "❌"}
-                            </td>))}
+                        <td className="px-3 py-2 text-[11px] font-medium bg-gray-50">Stock Status</td>
+                        {getSortedVariants(sortedVariantIds).map((variantId, index) => (
+                          <td
+                            key={variantId}
+                            className={`px-3 py-2 text-center ${index === 0 ? 'bg-amber-50' : ''}`}
+                          >
+                            {productData?.variants?.variantsMap?.[variantId]?.availabilityStatus === "IN_STOCK" ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-green-100 text-green-800">
+                                <span className="mr-1">●</span>
+                                In Stock
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-red-100 text-red-800">
+                                <span className="mr-1">●</span>
+                                Out of Stock
+                              </span>
+                            )}
+                          </td>
+                        ))}
                       </tr>
-
                     </tbody>
-
                   </table>
                 </div>
               )}
-            </>
-          )}
-        </>
-      )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };

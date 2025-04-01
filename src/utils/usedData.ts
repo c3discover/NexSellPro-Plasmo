@@ -22,6 +22,14 @@ const FETCH_COOLDOWN = 1000; // 1 second cooldown between fetches
 let dataFetchPromise: Promise<UsedProductData | null> | null = null;
 let lastFetchTimestamp = 0;
 
+// Cache for used data
+let dataCache: {
+  data: UsedProductData | null;
+  timestamp: number;
+} | null = null;
+
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
 // Update logging constants
 const LOG_STYLES = {
   EXTENSION_DATA: 'color: #0ea5e9; font-weight: bold; font-size: 12px',  // Sky blue
@@ -145,18 +153,13 @@ export interface UsedProductData {
 // Main function to get and organize product data
 export async function getUsedData(): Promise<UsedProductData | null> {
   try {
-    // Return existing promise if there's an ongoing fetch
-    if (dataFetchPromise) {
-      return dataFetchPromise;
+    // Check cache first
+    if (dataCache && Date.now() - dataCache.timestamp < CACHE_DURATION) {
+      console.log('Using cached data');
+      return dataCache.data;
     }
 
-    // Check cooldown period
-    const now = Date.now();
-    if (now - lastFetchTimestamp < FETCH_COOLDOWN) {
-      return null;
-    }
-
-    lastFetchTimestamp = now;
+    // If no cache or expired, fetch new data
     dataFetchPromise = (async () => {
       try {
         // Get raw product data with forceRefresh=true to prevent duplicate logging
@@ -295,19 +298,29 @@ export async function getUsedData(): Promise<UsedProductData | null> {
 
         console.groupEnd();
 
+        // Cache the result before returning
+        dataCache = {
+          data: usedData,
+          timestamp: Date.now()
+        };
+
         return usedData;
       } catch (error) {
+        console.error('Error in getUsedData:', error);
         return null;
-      } finally {
-        dataFetchPromise = null;
       }
     })();
 
-    return dataFetchPromise;
+    return await dataFetchPromise;
   } catch (error) {
     console.error('Error in getUsedData:', error);
     return null;
   }
+}
+
+// Add a function to clear the cache if needed
+export function clearUsedDataCache() {
+  dataCache = null;
 }
 
 ////////////////////////////////////////////////

@@ -20,10 +20,10 @@ import { getDaysAgo, isBrandMatch } from '../../utils/analysisHelpers';
 // Constants and Variables:
 /////////////////////////////////////////////////
 // Define class names as constants to maintain consistency and avoid repeating strings
-const CLASS_SECTION_HEADER = "bg-[#3a3f47] text-xs text-white text-center border-2 border-black p-1 rounded-t-lg shadow-md shadow-black";
-const CLASS_SECTION_CONTENT_GREEN = "text-xs font-bold bg-green-100 text-black-600 border-2 border-green-500 text-center p-1 w-full rounded-b-lg shadow-md shadow-black";
-const CLASS_SECTION_CONTENT_RED = "text-xs font-bold bg-red-200 text-black-600 border-2 border-red-500 text-center p-1 w-full rounded-b-lg shadow-md shadow-black";
-const CLASS_DEFAULT_CONTENT = "text-xs bg-white text-black text-center border-2 border-black p-1 w-full text-center rounded-b-lg shadow-md shadow-black";
+const CLASS_SECTION_HEADER = "bg-[#3a3f47] text-xs text-white text-center p-1.5 rounded-t-lg";
+const CLASS_SECTION_CONTENT_GREEN = "text-xs font-medium bg-white border-l-4 border-l-emerald-500 text-center p-2 rounded-lg shadow-sm";
+const CLASS_SECTION_CONTENT_RED = "text-xs font-medium bg-white border-l-4 border-l-rose-500 text-center p-2 rounded-lg shadow-sm";
+const CLASS_DEFAULT_CONTENT = "text-xs font-medium bg-white text-center p-2 rounded-lg shadow-sm";
 const CLASS_BUTTON_STYLE = "text-black text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl";
 
 // Other important default values
@@ -248,106 +248,157 @@ export const Analysis: React.FC<AnalysisProps> = ({ areSectionsOpen }) => {
   return (
     <div
       id="Analysis"
-      className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}
+      className={`bg-[#d7d7d7] m-1 rounded-lg shadow-lg overflow-hidden transition-all duration-300 ${
+        isOpen ? "h-auto opacity-100" : "h-9"
+      }`}
     >
       {/* Section Header */}
       <h1
-        className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
+        className="font-medium text-black text-start text-[12px] cursor-pointer w-full px-2.5 py-1 bg-cyan-500 flex items-center justify-between group hover:bg-cyan-600 transition-colors"
         onClick={toggleOpen}
       >
-        {isOpen ? "🔽  Analysis" : "▶️  Analysis"}
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm">{isOpen ? "▾" : "▸"}</span>
+          Analysis
+        </div>
       </h1>
 
       {/* Content Wrapper */}
-      <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>
+      <div className={`${isOpen ? "block" : "hidden"} p-2 space-y-3`}>
         {/* Main Metrics Grid */}
-        <div className="w-full p-2">
           <div className="grid grid-cols-3 gap-2">
             {/* Total Ratings */}
-            <div className="flex flex-col">
-              <p className={CLASS_SECTION_HEADER}>
-                Total Ratings
-              </p>
-              <p className={`${applyTotalRatingsHighlight()}`}>
-                {productData?.reviews.numberOfRatings || "-"}
-              </p>
+          <div className={applyTotalRatingsHighlight()}>
+            <div className="text-[10px] text-gray-600 mb-1">Total Ratings</div>
+            <div className="text-base font-semibold">{productData?.reviews.numberOfRatings || "-"}</div>
             </div>
 
             {/* Total Reviews */}
-            <div className="flex flex-col">
-              <p className={CLASS_SECTION_HEADER}>
-                Total Reviews
-              </p>
-              <p className={`${applyTotalRatingsHighlight()}`}>
-                {productData?.reviews.numberOfReviews || "-"}
-              </p>
+          <div className={applyTotalRatingsHighlight()}>
+            <div className="text-[10px] text-gray-600 mb-1">Total Reviews</div>
+            <div className="text-base font-semibold">{productData?.reviews.numberOfReviews || "-"}</div>
             </div>
 
             {/* Overall Rating */}
-            <div className="flex flex-col">
-              <p className={CLASS_SECTION_HEADER}>
-                Overall Rating
-              </p>
-              <p className={`${applyOverallRatingHighlight()}`}>
+          <div className={applyOverallRatingHighlight()}>
+            <div className="text-[10px] text-gray-600 mb-1">Overall Rating</div>
+            <div className="text-base font-semibold">
                 {typeof productData?.reviews.overallRating === 'number'
                   ? productData.reviews.overallRating.toFixed(1)
                   : "-"}
-              </p>
             </div>
           </div>
         </div>
 
         {/* Review Timeline Section */}
-        <div className="w-full px-2 pb-2">
-          <p className={CLASS_SECTION_HEADER}>
-            Review Timeline
-          </p>
-          <div className={`${applyRecentReviewsHighlight()} p-2`}>
-            <div className="grid grid-cols-3 gap-2">
+        <div className={`${applyRecentReviewsHighlight()} p-3`}>
+          <div className="text-[10px] text-gray-600 mb-2">Review Timeline</div>
+          <div className="grid grid-cols-3 gap-4">
               {/* 30 Day Reviews */}
               <div className="flex flex-col items-center">
-                <span className="text-xs font-semibold mb-1">30 Days</span>
-                <span className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-500 text-white flex items-center justify-center text-sm font-medium shadow-sm">
                   {productData?.reviews.reviewDates?.filter(date => getDaysAgo(date) <= 30).length || 0}
-                </span>
+              </div>
+              <div className="mt-1 text-[10px] font-medium text-gray-600">30 Days</div>
               </div>
 
               {/* 90 Day Reviews */}
               <div className="flex flex-col items-center">
-                <span className="text-xs font-semibold mb-1">90 Days</span>
-                <span className="w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center text-sm">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 text-white flex items-center justify-center text-sm font-medium shadow-sm">
                   {productData?.reviews.reviewDates?.filter(date => getDaysAgo(date) <= 90).length || 0}
-                </span>
+              </div>
+              <div className="mt-1 text-[10px] font-medium text-gray-600">90 Days</div>
               </div>
 
               {/* 1 Year Reviews */}
               <div className="flex flex-col items-center">
-                <span className="text-xs font-semibold mb-1">1 Year</span>
-                <span className="w-8 h-8 rounded-full bg-gray-500 text-white flex items-center justify-center text-sm">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 text-white flex items-center justify-center text-sm font-medium shadow-sm">
                   {productData?.reviews.reviewDates?.filter(date => getDaysAgo(date) <= 365).length || 0}
-                </span>
+              </div>
+              <div className="mt-1 text-[10px] font-medium text-gray-600">1 Year</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Total Stock Section */}
+        <div className={applyTotalStockHighlight()}>
+          <div className="text-[10px] text-gray-600 mb-1">Total Stock</div>
+          <div className="text-base font-semibold">{productData?.inventory.totalStock ?? "-"}</div>
+        </div>
+
+        {/* Seller Information Section */}
+        <div className="bg-white rounded-lg p-3">
+          <div className="grid grid-cols-4 gap-2">
+            {/* Total Sellers */}
+            <div className="text-center">
+              <div className="text-[10px] text-gray-600 mb-1">Total Sellers</div>
+              <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                (() => {
+                  const maxSellers = JSON.parse(localStorage.getItem("desiredMetrics") || "{}")?.maxSellers;
+                  if (!maxSellers || maxSellers === 0) return 'bg-gray-50 text-gray-600';
+                  return (productData?.sellers.totalSellers || 0) <= maxSellers
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : 'bg-rose-50 text-rose-700';
+                })()
+              }`}>
+                {productData?.sellers.totalSellers || 0}
+              </div>
+            </div>
+
+            {/* WFS Sellers */}
+            <div className="text-center">
+              <div className="text-[10px] text-gray-600 mb-1">WFS Sellers</div>
+              <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                productData?.sellers.otherSellers.filter(s => s.type === "WFS" || s.type === "WFS-Brand").length === 0
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-rose-50 text-rose-700'
+              }`}>
+                {productData?.sellers.otherSellers.filter(s => s.type === "WFS" || s.type === "WFS-Brand").length || "0"}
+              </div>
+            </div>
+
+            {/* Walmart Sells */}
+            <div className="text-center">
+              <div className="text-[10px] text-gray-600 mb-1">Walmart Sells</div>
+              <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                productData?.sellers.mainSeller?.sellerName === "Walmart.com"
+                ? 'bg-rose-50 text-rose-700'
+                : 'bg-emerald-50 text-emerald-700'
+              }`}>
+                {productData?.sellers.mainSeller?.sellerName === "Walmart.com" ? "YES" : "NO"}
+              </div>
+            </div>
+
+            {/* Brand Sells */}
+            <div className="text-center">
+              <div className="text-[10px] text-gray-600 mb-1">Brand Sells</div>
+              <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                productData?.sellers.otherSellers.some(s =>
+                  productData?.basic.brand && s.sellerName &&
+                  productData.basic.brand.toLowerCase().split(' ').some(brandPart =>
+                    s.sellerName.toLowerCase().includes(brandPart)
+                  )
+                )
+                ? 'bg-rose-50 text-rose-700'
+                : 'bg-emerald-50 text-emerald-700'
+              }`}>
+                {productData?.sellers.otherSellers.some(s =>
+                  productData?.basic.brand && s.sellerName &&
+                  productData.basic.brand.toLowerCase().split(' ').some(brandPart =>
+                    s.sellerName.toLowerCase().includes(brandPart)
+                  )
+                ) ? "YES" : "NO"}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Stock Information */}
-        <div className="w-full px-2 pb-2">
-          <p className={CLASS_SECTION_HEADER}>
-            Total Stock
-          </p>
-          <p className={applyTotalStockHighlight()}>
-            {productData?.inventory.totalStock ?? "-"}
-          </p>
-        </div>
-
         {/* Seller Table Section */}
-        <div className="w-full px-2 pb-2">
+        <div className="w-full">
           <div className="flex justify-end mb-1">
             <button
               onClick={toggleTable}
-              className="text-xs font-semibold px-2 py-1 bg-gray-200 rounded shadow hover:bg-gray-300 transition-colors duration-200"
-              aria-label="Toggle seller table"
+              className="text-xs font-medium px-3 py-1 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors duration-200"
             >
               {isTableExpanded ? "Hide Table" : "Show Table"}
             </button>

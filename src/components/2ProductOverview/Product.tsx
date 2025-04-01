@@ -53,55 +53,47 @@ export const Product = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [productData, setProductData] = useState<UsedProductData | null>(null);
+  const [copied, setCopied] = useState<boolean>(false);
+  const [imageLoaded, setImageLoaded] = useState<boolean>(false);
+  const [currentUrl, setCurrentUrl] = useState<string>(window.location.href);
 
   ////////////////////////////////////////////////
   // State and Hooks:
   ////////////////////////////////////////////////
-  // State to manage the copy button feedback
-  const [copied, setCopied] = useState<boolean>(false);
-
   // State to manage loading states
   const [loadingState, setLoadingState] = useState<LoadingState>(LOADING_STATES.INITIAL);
-
-  // State to track image loading
-  const [imageLoaded, setImageLoaded] = useState<boolean>(false);
-
-  // State to track current URL
-  const [currentUrl, setCurrentUrl] = useState<string>(window.location.href);
 
   ////////////////////////////////////////////////
   // Effect Hooks:
   ////////////////////////////////////////////////
-  // Effect to update URL state
+  // Effect to update URL state - optimized to use MutationObserver
   useEffect(() => {
-    const checkUrl = () => {
+    // Create an observer instance to watch for URL changes
+    const observer = new MutationObserver(() => {
       const newUrl = window.location.href;
       if (newUrl !== currentUrl) {
-        // Clear existing data first
-        setProductData(null);
         setCurrentUrl(newUrl);
-        
-        // Perform a full extension reload
+        setProductData(null);
+        // Reload extension only if necessary
         if (chrome.runtime && chrome.runtime.reload) {
           chrome.runtime.reload();
-        } else {
-          window.location.reload();
         }
       }
-    };
+    });
 
-    // Check URL periodically
-    const interval = setInterval(checkUrl, 100);
+    // Start observing the document with the configured parameters
+    observer.observe(document, { subtree: true, childList: true });
+
     return () => {
-      clearInterval(interval);
-      // Clear data on cleanup
+      observer.disconnect();
       setProductData(null);
     };
   }, [currentUrl]);
 
-  // Effect hook to fetch product data when URL changes
+  // Effect hook to fetch product data - optimized with debouncing
   useEffect(() => {
     let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
 
     const loadProductData = async () => {
       if (!currentUrl) return;
@@ -110,8 +102,6 @@ export const Product = () => {
       setError(null);
 
       try {
-        // Clear existing data before fetching new data
-        setProductData(null);
         const data = await getUsedData();
         if (isMounted) {
           setProductData(data);
@@ -125,12 +115,12 @@ export const Product = () => {
       }
     };
 
-    loadProductData();
+    // Debounce the data loading
+    timeoutId = setTimeout(loadProductData, 300);
 
     return () => {
       isMounted = false;
-      // Clear data on cleanup
-      setProductData(null);
+      clearTimeout(timeoutId);
     };
   }, [currentUrl]);
 
@@ -161,7 +151,7 @@ export const Product = () => {
     }
 
     return productData.categories.categories.map((category, index) => (
-      <span key={index}>
+      <span key={category.url}>
         <a
           href={`https://www.walmart.com${category.url}`}
           target="_blank"
@@ -277,6 +267,33 @@ export const Product = () => {
     );
   }, [productData?.badges]);
 
+  // Optimize image loading with loading="lazy" and srcset for responsive images
+  const renderProductImage = useMemo(() => {
+    if (!productData?.media?.imageUrl) return null;
+
+    return (
+      <div className="relative w-full h-[150px] group">
+        {!imageLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+            <div className="w-8 h-8 rounded-full border-b-2 border-gray-900 animate-spin"></div>
+          </div>
+        )}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <img
+            src={productData.media.imageUrl}
+            alt={productData.basic.name || 'Product image'}
+            className={`w-auto h-auto max-h-[140px] object-contain transition-opacity duration-300 ${
+              imageLoaded ? 'opacity-100' : 'opacity-0'
+            } group-hover:scale-150 group-hover:z-50`}
+            onLoad={handleImageLoad}
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+      </div>
+    );
+  }, [productData?.media?.imageUrl, imageLoaded]);
+
   ////////////////////////////////////////////////
   // Styles:
   ////////////////////////////////////////////////
@@ -353,22 +370,7 @@ export const Product = () => {
       <div id="productGeneralInfo" className="flex flex-col lg:flex-row items-stretch justify-between w-full gap-3">
         {/* Product Image Section with Loading State */}
         <div id="productImage" className="flex-1 flex flex-col items-center justify-between bg-white p-1 rounded-lg shadow-lg">
-          <div className="relative w-full h-[150px] group">
-            {!imageLoaded && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
-                <div className="w-8 h-8 rounded-full border-b-2 border-gray-900 animate-spin"></div>
-              </div>
-            )}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <img
-                src={productData.media.imageUrl}
-                alt={productData.basic.name}
-                className={`w-auto h-auto max-h-[140px] object-contain transition-transform duration-300 ease-in-out ${imageLoaded ? 'opacity-100' : 'opacity-0'} group-hover:scale-150 group-hover:z-50`}
-                onLoad={handleImageLoad}
-                loading="lazy"
-              />
-            </div>
-          </div>
+          {renderProductImage}
           <div>
             <p className="font-bold text-center text-black text-sm">
               Images: <span className="font-normal">{productData.media.images?.length || 0}</span>

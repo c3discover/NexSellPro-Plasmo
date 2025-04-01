@@ -783,19 +783,23 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
   return (
     <div
       id="Pricing"
-      className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}
+      className={`bg-[#d7d7d7] m-1 rounded-lg shadow-lg overflow-hidden transition-all duration-300 ${
+        isOpen ? "h-auto opacity-100" : "h-9"
+      }`}
     >
-
       {/* Header Section */}
       <h1
-        className={STYLES.header}
+        className="font-medium text-black text-start text-[12px] cursor-pointer w-full px-2.5 py-1 bg-cyan-500 flex items-center justify-between group hover:bg-cyan-600 transition-colors"
         onClick={toggleOpen}
       >
-        {isOpen ? "🔽  Pricing" : "▶️  Pricing"}
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm">{isOpen ? "▾" : "▸"}</span>
+          Pricing
+        </div>
       </h1>
 
       {/* Main Content Section */}
-      <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"}`}>
+      <div className={`${isOpen ? "block" : "hidden"} p-1`}>
 
         {/* Pricing Groups */}
         <div id="Pricing" className="p-1 bg-[#d7d7d7] rounded-lg shadow-sm">

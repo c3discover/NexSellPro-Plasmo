@@ -222,35 +222,45 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ areSectionsOpen }) => 
   return (
     <div
       id="ProductInfo"
-      className={`items-center justify-start bg-[#d7d7d7] m-2 rounded-lg shadow-2xl ${isOpen ? "h-auto opacity-100" : "h-12"}`}
+      className={`bg-[#d7d7d7] m-1 rounded-lg shadow-lg overflow-hidden transition-all duration-300 ${
+        isOpen ? "h-auto opacity-100" : "h-9"
+      }`}
     >
-      {/* Header Section - Keeping the same */}
+      {/* Header Section */}
       <h1
-        className="font-semibold text-black text-start !text-base cursor-pointer w-full px-2 py-1 bg-cyan-500 rounded-md shadow-xl"
+        className="font-medium text-black text-start text-[12px] cursor-pointer w-full px-2.5 py-1 bg-cyan-500 flex items-center justify-between group hover:bg-cyan-600 transition-colors"
         onClick={toggleOpen}
       >
-        {isOpen ? "🔽  Product Information" : "▶️  Product Information"}
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm">{isOpen ? "▾" : "▸"}</span>
+          Product Information
+        </div>
       </h1>
 
       {/* Main Content Section */}
-      <div className={`flex flex-wrap ${isOpen ? "block" : "hidden"} p-2`}>
+      <div className={`${isOpen ? "block" : "hidden"} p-1`}>
         {/* Product Identifiers Section */}
-        <div className="w-full mb-3">
-          <div className="text-[11px] font-medium text-[#3a3f47] mb-1.5">
-            • PRODUCT IDENTIFIERS
+        <div className="mb-1">
+          <div className="text-[9px] font-medium text-[#3a3f47] mb-0.5 flex items-center gap-1 pl-0.5">
+            <div className="w-0.5 h-0.5 rounded-full bg-cyan-500 animate-pulse" />
+            PRODUCT IDENTIFIERS
           </div>
-          <div className="space-y-[2px]">
+          <div className="space-y-[1px]">
             {infoRows.map((row, index) => (
-              <div key={index} className="flex items-stretch">
-                <div className="w-[100px] text-[11px] font-medium text-white bg-[#3a3f47] px-2 py-1.5">
+              <div key={index} className="flex items-stretch rounded overflow-hidden hover:shadow-sm transition-shadow">
+                <div className="w-[90px] text-[9px] font-medium text-white bg-[#3a3f47] px-2 py-0.5 flex items-center">
                   {row.label}
                 </div>
-                <div className="flex-1 text-[11px] bg-white px-2 py-1.5 border-y border-r border-gray-300">
+                <div className="flex-1 text-[9px] bg-white px-2 py-0.5 border-y border-r border-gray-200">
                   {row.value}
                 </div>
                 <button
-                  className="w-[45px] text-[11px] text-white bg-cyan-500 px-2 hover:bg-cyan-600 transition-colors duration-200"
                   onClick={() => handleCopy(String(row.value), index)}
+                  className={`w-[40px] text-[9px] text-white transition-colors ${
+                    copiedIndex === index 
+                    ? "bg-green-500" 
+                    : "bg-cyan-500 hover:bg-cyan-600"
+                  }`}
                 >
                   {copiedIndex === index ? "✓" : "Copy"}
                 </button>
@@ -260,20 +270,26 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ areSectionsOpen }) => 
         </div>
 
         {/* External Data Section */}
-        <div className="w-full mb-3">
-          <div className="text-[11px] font-medium text-[#3a3f47] mb-1.5 flex items-center">
-            • EXTERNAL DATA <span className="ml-1 text-[10px] text-gray-500">(COMING SOON WITH AI)</span>
+        <div className="mb-1">
+          <div className="flex items-center justify-between mb-0.5">
+            <div className="text-[9px] font-medium text-[#3a3f47] flex items-center gap-1 pl-0.5">
+              <div className="w-0.5 h-0.5 rounded-full bg-cyan-500 animate-pulse" />
+              EXTERNAL DATA
+            </div>
+            <div className="text-[8px] text-gray-500 bg-gray-200 px-1.5 py-px rounded-full">
+              COMING SOON WITH AI
+            </div>
           </div>
-          <div className="space-y-[2px]">
+          <div className="space-y-[1px]">
             {externalData.map((row, index) => (
-              <div key={index} className="flex items-stretch">
-                <div className="w-[100px] text-[11px] font-medium text-white bg-[#3a3f47] px-2 py-1.5">
+              <div key={index} className="flex items-stretch rounded overflow-hidden hover:shadow-sm transition-shadow">
+                <div className="w-[90px] text-[9px] font-medium text-white bg-[#3a3f47] px-2 py-0.5">
                   {row.store}
                 </div>
-                <div className="flex-1 text-[11px] bg-white px-2 py-1.5 border-y border-r border-gray-300">
+                <div className="flex-1 text-[9px] bg-white px-2 py-0.5 border-y border-r border-gray-200">
                   {row.link}
                 </div>
-                <div className="w-[60px] text-[11px] bg-white px-2 py-1.5 border-y border-r border-gray-300 text-right">
+                <div className="w-[50px] text-[9px] bg-white px-2 py-0.5 border-y border-r border-gray-200 text-right">
                   {row.price}
                 </div>
               </div>
@@ -282,11 +298,12 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ areSectionsOpen }) => 
         </div>
 
         {/* Average External Price Section */}
-        <div className="w-full">
-          <div className="text-[11px] font-medium text-[#3a3f47] mb-1.5">
-            • AVERAGE EXTERNAL PRICE
+        <div>
+          <div className="text-[9px] font-medium text-[#3a3f47] mb-0.5 flex items-center gap-1 pl-0.5">
+            <div className="w-0.5 h-0.5 rounded-full bg-cyan-500 animate-pulse" />
+            AVERAGE EXTERNAL PRICE
           </div>
-          <div className="text-[11px] bg-white px-2 py-1.5 border border-gray-300">
+          <div className="text-[9px] bg-white px-2 py-0.5 rounded border border-gray-200">
             Coming Soon
           </div>
         </div>
