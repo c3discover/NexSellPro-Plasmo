@@ -101,30 +101,31 @@ const ContentUI = () => {
   ////////////////////////////////////////////////
   const handleMessage = (message: any) => {
     if (message.type === 'URL_CHANGED') {
-      // Clear existing product details first
-      setProductDetails(null);
+      console.log('URL changed:', message.url);
       
       // Update URL state
       setCurrentUrl(message.url);
       
       // Handle product page state
       if (message.isProductPage) {
+        console.log('Loading product data for new URL...');
         // Clear cache before getting new data
         clearProductCache();
         
-        // Remove message listener before reload to prevent the error
-        chrome.runtime.onMessage.removeListener(handleMessage);
-        
-        // Delay the reload slightly to allow cleanup
-        setTimeout(() => {
-          if (chrome.runtime && chrome.runtime.reload) {
-            chrome.runtime.reload();
-          } else {
-            window.location.reload();
-          }
-        }, 0);
+        // Get new product data
+        const data = getData();
+        if (data) {
+          console.log('Product data loaded successfully');
+          setProductDetails(data);
+          document.body.classList.add("plasmo-google-sidebar-show");
+        } else {
+          console.log('No product data found');
+          setProductDetails(null);
+          document.body.classList.remove("plasmo-google-sidebar-show");
+        }
       } else {
-        // Clear product details and hide sidebar when not on product page
+        console.log('Not a product page, hiding sidebar');
+        setProductDetails(null);
         document.body.classList.remove("plasmo-google-sidebar-show");
       }
     }
@@ -132,39 +133,69 @@ const ContentUI = () => {
   };
 
   ////////////////////////////////////////////////
-  // Chrome API Handlers:
+  // URL Change Detection:
   ////////////////////////////////////////////////
-  // URL monitoring effect
   useEffect(() => {
-    try {
-      // Add message listener
-      chrome.runtime.onMessage.addListener(handleMessage);
-
-      // Initial page check
-      const currentLocation = window.location.href;
-      if (currentLocation.includes("/ip/")) {
-        const data = getData();
-        if (data) {
-          setProductDetails(data);
-          document.body.classList.add("plasmo-google-sidebar-show");
+    let lastUrl = window.location.href;
+    
+    // Function to check URL changes
+    const checkForUrlChange = () => {
+      const currentUrl = window.location.href;
+      if (currentUrl !== lastUrl) {
+        console.log('URL changed internally:', currentUrl);
+        lastUrl = currentUrl;
+        
+        const isProductPage = currentUrl.includes("/ip/");
+        if (isProductPage) {
+          console.log('Loading product data...');
+          clearProductCache();
+          const data = getData();
+          if (data) {
+            console.log('Product data loaded');
+            setProductDetails(data);
+            document.body.classList.add("plasmo-google-sidebar-show");
+          }
+        } else {
+          console.log('Not a product page');
+          setProductDetails(null);
+          document.body.classList.remove("plasmo-google-sidebar-show");
         }
       }
-    } catch (error) {
-      console.error("Error in content script setup:", error);
+    };
+
+    // Set up observers for URL changes
+    const observer = new MutationObserver(() => {
+      checkForUrlChange();
+    });
+
+    // Observe URL changes
+    observer.observe(document, { subtree: true, childList: true });
+
+    // Check URL changes on history events
+    window.addEventListener('popstate', checkForUrlChange);
+    window.addEventListener('pushState', checkForUrlChange);
+    window.addEventListener('replaceState', checkForUrlChange);
+
+    // Initial page check
+    const currentLocation = window.location.href;
+    if (currentLocation.includes("/ip/")) {
+      console.log('Initial page load - product page detected');
+      const data = getData();
+      if (data) {
+        console.log('Initial product data loaded');
+        setProductDetails(data);
+        document.body.classList.add("plasmo-google-sidebar-show");
+      }
     }
 
     // Cleanup function
     return () => {
-      try {
-        chrome.runtime.onMessage.removeListener(handleMessage);
-        document.body.classList.remove("plasmo-google-sidebar-show");
-        // Clear product details on unmount
-        setProductDetails(null);
-      } catch (error) {
-        console.error("Error in content script cleanup:", error);
-      }
+      observer.disconnect();
+      window.removeEventListener('popstate', checkForUrlChange);
+      window.removeEventListener('pushState', checkForUrlChange);
+      window.removeEventListener('replaceState', checkForUrlChange);
     };
-  }, []); // Empty dependency array since we don't need to recreate the effect
+  }, []); // Empty dependency array since we want this to run once on mount
 
   ////////////////////////////////////////////////
   // Event Handlers:

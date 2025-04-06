@@ -12,6 +12,7 @@
 import React, { useState, useEffect } from "react";
 import { SortableContainer, SortableElement, SortableHandle, SortableElementProps, SortableContainerProps } from 'react-sortable-hoc';
 import { arrayMoveImmutable } from 'array-move';
+import { exportToGoogleSheets, ProductData } from '../../services/googleSheetsService';
 
 /////////////////////////////////////////////////
 // Component Definition
@@ -331,6 +332,129 @@ export const SettingsModal: React.FC<{
     prepCostEach: 0,
     additionalCostPerLb: 0,
     additionalCostEach: 0
+  };
+
+  // Inside the Settings component, add a new state variable for Google connection status
+  const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(false);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
+
+  // Update the useEffect hook to check the initial Google connection status
+  useEffect(() => {
+    const checkGoogleConnection = async () => {
+      try {
+        console.log('Checking Google connection status from Settings component...');
+        
+        // Check if we're in a Chrome extension context
+        if (typeof chrome === 'undefined' || !chrome.runtime) {
+          console.error('Not in a Chrome extension context');
+          return;
+        }
+        
+        const response = await new Promise<{ success: boolean; isConnected: boolean; error?: string }>((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            reject(new Error('Request timed out'));
+          }, 10000); // 10 second timeout
+
+          chrome.runtime.sendMessage({ type: 'GOOGLE_CHECK_CONNECTION' }, (result) => {
+            clearTimeout(timeoutId);
+            if (chrome.runtime.lastError) {
+              console.error('Chrome runtime error:', chrome.runtime.lastError);
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(result || { success: false, isConnected: false, error: 'No response from background script' });
+            }
+          });
+        });
+        
+        console.log('Google connection check response:', response);
+        
+        if (response.success) {
+          setIsGoogleConnected(response.isConnected);
+          console.log('Google connection status updated:', response.isConnected);
+        } else {
+          console.error('Failed to check Google connection:', response.error);
+          // Don't show an alert for connection check failures
+        }
+      } catch (error) {
+        console.error('Error checking Google connection:', error);
+        // Don't show an alert for connection check failures
+      }
+    };
+    
+    checkGoogleConnection();
+  }, []);
+
+  // Update handler for Google connection
+  const handleGoogleConnection = async () => {
+    try {
+      console.log('Handling Google connection, current status:', isGoogleConnected);
+      
+      // Check if we're in a Chrome extension context
+      if (typeof chrome === 'undefined' || !chrome.runtime) {
+        console.error('Not in a Chrome extension context');
+        alert('Extension context not available. Please reload the extension.');
+        return;
+      }
+      
+      if (isGoogleConnected) {
+        // Use message passing to disconnect
+        console.log('Attempting to disconnect from Google...');
+        const response = await new Promise<{ success: boolean; error?: string }>((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            reject(new Error('Request timed out'));
+          }, 30000); // 30 second timeout
+
+          chrome.runtime.sendMessage({ type: 'GOOGLE_DISCONNECT' }, (result) => {
+            clearTimeout(timeoutId);
+            if (chrome.runtime.lastError) {
+              console.error('Chrome runtime error:', chrome.runtime.lastError);
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(result || { success: false, error: 'No response from background script' });
+            }
+          });
+        });
+        console.log('Google disconnect response:', response);
+        
+        if (response.success) {
+          setIsGoogleConnected(false);
+          console.log('Successfully disconnected from Google');
+        } else {
+          console.error('Failed to disconnect from Google:', response.error);
+          alert(`Failed to disconnect from Google: ${response.error || 'Unknown error'}`);
+        }
+      } else {
+        // Use message passing to connect
+        console.log('Attempting to connect to Google...');
+        const response = await new Promise<{ success: boolean; error?: string }>((resolve, reject) => {
+          const timeoutId = setTimeout(() => {
+            reject(new Error('Request timed out'));
+          }, 30000); // 30 second timeout
+
+          chrome.runtime.sendMessage({ type: 'GOOGLE_CONNECT' }, (result) => {
+            clearTimeout(timeoutId);
+            if (chrome.runtime.lastError) {
+              console.error('Chrome runtime error:', chrome.runtime.lastError);
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(result || { success: false, error: 'No response from background script' });
+            }
+          });
+        });
+        console.log('Google connect response:', response);
+        
+        if (response.success) {
+          setIsGoogleConnected(true);
+          console.log('Successfully connected to Google');
+        } else {
+          console.error('Failed to connect to Google:', response.error);
+          alert(`Failed to connect to Google: ${response.error || 'Unknown error'}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error handling Google connection:', error);
+      alert(`Error handling Google connection: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   /////////////////////////////////////////////////////
@@ -919,6 +1043,52 @@ export const SettingsModal: React.FC<{
     onClose();
   };
 
+  // Inside the Settings component, add a function to handle exporting to Google Sheets
+  const handleExportToGoogleSheets = async () => {
+    if (!isGoogleConnected) {
+      // Show a message to the user that they need to connect to Google first
+      alert('Please connect to Google first to export data to Google Sheets.');
+      return;
+    }
+
+    try {
+      setIsExporting(true);
+      
+      // Get product data from your state or context
+      // For now, we'll use placeholder data
+      const products: ProductData[] = [
+        {
+          id: '123',
+          name: 'Sample Product',
+          price: 29.99,
+          cost: 15.00,
+          profit: 14.99,
+          margin: 50,
+          category: 'Electronics',
+          brand: 'Sample Brand',
+          url: 'https://www.walmart.com/sample-product'
+        }
+        // Add more products as needed
+      ];
+
+      console.log('Starting export to Google Sheets...');
+      
+      const spreadsheetId = await exportToGoogleSheets(products, {
+        title: `NexSellPro Export ${new Date().toLocaleDateString()}`
+      });
+
+      console.log('Export successful, spreadsheet ID:', spreadsheetId);
+      
+      // Open the spreadsheet in a new tab
+      window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}`, '_blank');
+    } catch (error) {
+      console.error('Error exporting to Google Sheets:', error);
+      alert(`An error occurred while exporting to Google Sheets: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   /////////////////////////////////////////////////////
   // Conditional Rendering
   /////////////////////////////////////////////////////
@@ -1275,7 +1445,7 @@ export const SettingsModal: React.FC<{
                       </div>
                     </div>
                     <span className="px-2 py-1 text-[10px] font-medium bg-yellow-100 text-yellow-800 rounded shadow-sm">
-                      Not Connected
+                      {isGoogleConnected ? 'Connected' : 'Not Connected'}
                     </span>
                   </div>
                 </div>
@@ -1316,19 +1486,10 @@ export const SettingsModal: React.FC<{
 
                   {/* Connection Button */}
                   <button
-                    className="w-full bg-gradient-to-r from-cyan-500 to-cyan-600 text-white px-4 py-2 rounded-md text-xs font-medium hover:from-cyan-600 hover:to-cyan-700 transition-all duration-200 shadow-sm flex items-center justify-center gap-2 group"
-                    onClick={() => {
-                      // This will be implemented in the next step
-                      console.log('Connect Google Sheets clicked');
-                    }}
+                    onClick={handleGoogleConnection}
+                    className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                   >
-                    <div className="bg-white/20 p-1 rounded">
-                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 0C5.372 0 0 5.373 0 12s5.372 12 12 12c6.627 0 12-5.373 12-12S18.627 0 12 0zm.14 19.018c-3.868 0-7-3.14-7-7.018c0-3.878 3.132-7.018 7-7.018c1.89 0 3.47.697 4.682 1.829l-1.974 1.978v-.004c-.735-.702-1.667-1.062-2.708-1.062c-2.31 0-4.187 1.956-4.187 4.273c0 2.315 1.877 4.277 4.187 4.277c2.096 0 3.522-1.202 3.816-2.852H12.14v-2.737h6.585c.088.47.135.96.135 1.474c0 4.01-2.677 6.86-6.72 6.86z"/>
-                      </svg>
-                    </div>
-                    Connect with Google
-                    <span className="absolute right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">→</span>
+                    {isGoogleConnected ? 'Disconnect from Google' : 'Connect with Google'}
                   </button>
 
                   {/* Additional Info */}
@@ -1337,6 +1498,17 @@ export const SettingsModal: React.FC<{
                       By connecting, you'll be able to export your product data directly to Google Sheets. You can disconnect at any time.
                     </p>
                   </div>
+
+                  {/* Export to Google Sheets Button */}
+                  {isGoogleConnected && (
+                    <button
+                      onClick={handleExportToGoogleSheets}
+                      disabled={isExporting}
+                      className={`flex items-center justify-center w-full px-4 py-2 mt-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {isExporting ? 'Exporting...' : 'Export to Google Sheets'}
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

@@ -1,0 +1,4 @@
+export default {
+    optionsPage: true
+  }
+  

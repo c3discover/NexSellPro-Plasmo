@@ -12,11 +12,9 @@
   ],
   "scripts": {
     "dev": "plasmo dev",
-    "build": "plasmo build && npm run clean-root",
+    "build": "plasmo build && node postbuild.js",
     "package": "plasmo package",
-    "start": "npm run dev",
-    "clean": "rm -rf .plasmo/.build node_modules dist",
-    "clean-root": "rimraf *.png *.woff2 *.css",
+    "start": "pnpm dev",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
@@ -30,7 +28,6 @@
     "axios": "^1.7.9",
     "dotenv": "^16.4.7",
     "framer-motion": "^12.5.0",
-    "plasmo": "^0.90.3",
     "qs": "^6.13.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -59,6 +56,7 @@
     "identity-obj-proxy": "^3.0.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
+    "plasmo": "^0.90.3",
     "postcss": "8.4.33",
     "prettier": "3.2.4",
     "rimraf": "^5.0.5",
@@ -66,8 +64,27 @@
     "typescript": "^5.0.0"
   },
   "manifest": {
+    "permissions": [
+      "storage",
+      "tabs",
+      "webNavigation",
+      "webRequest",
+      "identity"
+    ],
+    "content_security_policy": {
+      "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://api.emailjs.com https://www.walmart.com https://accounts.google.com https://www.googleapis.com"
+    },
+    "oauth2": {
+      "client_id": "469074340331-ecg0lufoje86bk2ultj35voasto7s3nc.apps.googleusercontent.com",
+      "scopes": [
+        "https://www.googleapis.com/auth/drive.file",
+        "https://www.googleapis.com/auth/spreadsheets"
+      ]
+    },
     "host_permissions": [
-      "https://www.walmart.com/*"
+      "https://www.walmart.com/*",
+      "https://accounts.google.com/*",
+      "https://www.googleapis.com/*"
     ],
     "web_accessible_resources": [
       {
@@ -78,7 +95,8 @@
           "https://www.walmart.com/*"
         ]
       }
-    ]
+    ],
+    "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAoMoUnkthR+jQ8UpKoA6wxrS4G8MfdkvW8V8FxmQT9DzKQd3pCfYMLIE3AmA06MAVwyOx/LBRJKjxHmhJxOdljN2o/TpXUHQCbf0COIMB6gMLs3MaF0djWtNB6yPdaK8x2QiwN17P+ACP5IrZXLiiM5/xWbmQ0wrbZXxyiOEwoy+WCkm0i+LfzQtbLrN3Rgx73Y9YGLQoA10D7rYe7TQV0tjUyxvEL/HkBYe/5whlXMrGlCOBiy+a5pTYcRw4rf6Va5BSq4Ef+8z3NUPnRWaz21/l0D+Rp/Ok6Z8eb/biuw47xPDIY3U9iWe8g7C8b3jCO5ct06DmcyxqrOBGS3HdywIDAQAB"
   },
   "packageManager": "pnpm@9.14.2",
   "browser": {

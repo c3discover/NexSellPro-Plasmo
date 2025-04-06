@@ -18,6 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - "Cell Phones" → "Cell Phones"
   - "Camera"/"Photo" → "Camera & Photo"
 - Added CHANGELOG.md to track project changes and versions
+- Improved Google OAuth authentication with proper Chrome identity API integration
+- Added rate limiting for API requests to prevent throttling
 
 ### Fixed
 - Shipping dimensions now persist correctly when navigating away and returning
@@ -26,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Values maintain bold styling when edited and returning to page
 - Storage fee visibility now properly tied to fulfillment type selection
 - Shipping rate calculations improved in Pricing component
+- Extension persistence issues when navigating between product pages
+- Google authentication flow now properly handles connection and disconnection
+- Rate limiting implemented to prevent API throttling and CAPTCHA challenges
 
 ### Changed
 - Updated fulfillment option buttons with modern styling and better visual feedback
