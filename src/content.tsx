@@ -28,7 +28,7 @@ import { Product } from "~components/2ProductOverview/Product";
 import { ProductInfo } from "~components/5ProductInfo/ProductInfo";
 import { TopHeader } from "~components/1Header/TopHeader";
 import { Variations } from "~components/7Variations/Variations";
-import getData from "~utils/getData";
+import { getUsedData } from "~data/usedData";
 import { clearProductCache } from "~services/productService";
 
 ////////////////////////////////////////////////
@@ -99,32 +99,31 @@ const ContentUI = () => {
   ////////////////////////////////////////////////
   // Message Handlers:
   ////////////////////////////////////////////////
-  const handleMessage = (message: any) => {
+  const handleMessage = async (message: any) => {
     if (message.type === 'URL_CHANGED') {
-      console.log('URL changed:', message.url);
       
       // Update URL state
       setCurrentUrl(message.url);
       
       // Handle product page state
       if (message.isProductPage) {
-        console.log('Loading product data for new URL...');
         // Clear cache before getting new data
         clearProductCache();
         
-        // Get new product data
-        const data = getData();
-        if (data) {
-          console.log('Product data loaded successfully');
-          setProductDetails(data);
-          document.body.classList.add("plasmo-google-sidebar-show");
-        } else {
-          console.log('No product data found');
-          setProductDetails(null);
-          document.body.classList.remove("plasmo-google-sidebar-show");
+        // Get new product data using getUsedData instead of getData
+        // Note: Since getUsedData requires a productId, we extract it from the URL
+        const productId = message.url.split('/ip/')[1]?.split('/')[0] || '';
+        if (productId) {
+          const data = await getUsedData(productId);
+          if (data) {
+            setProductDetails(data);
+            document.body.classList.add("plasmo-google-sidebar-show");
+          } else {
+            setProductDetails(null);
+            document.body.classList.remove("plasmo-google-sidebar-show");
+          }
         }
       } else {
-        console.log('Not a product page, hiding sidebar');
         setProductDetails(null);
         document.body.classList.remove("plasmo-google-sidebar-show");
       }
@@ -139,37 +138,53 @@ const ContentUI = () => {
     let lastUrl = window.location.href;
     
     // Function to check URL changes
-    const checkForUrlChange = () => {
-      const currentUrl = window.location.href;
-      if (currentUrl !== lastUrl) {
-        console.log('URL changed internally:', currentUrl);
-        lastUrl = currentUrl;
-        
-        const isProductPage = currentUrl.includes("/ip/");
-        if (isProductPage) {
-          console.log('Loading product data...');
-          clearProductCache();
-          const data = getData();
-          if (data) {
-            console.log('Product data loaded');
-            setProductDetails(data);
-            document.body.classList.add("plasmo-google-sidebar-show");
+    const checkForUrlChange = async () => {
+      try {
+        const currentUrl = window.location.href;
+        if (currentUrl !== lastUrl) {
+          lastUrl = currentUrl;
+          
+          const isProductPage = currentUrl.includes("/ip/");
+          if (isProductPage) {
+            clearProductCache();
+            
+            // Extract productId from URL
+            const productId = currentUrl.split('/ip/')[1]?.split('/')[0] || '';
+            if (productId) {
+              const data = await getUsedData(productId);
+              if (data) {
+                setProductDetails(data);
+                document.body.classList.add("plasmo-google-sidebar-show");
+              }
+            }
+          } else {
+            setProductDetails(null);
+            document.body.classList.remove("plasmo-google-sidebar-show");
           }
-        } else {
-          console.log('Not a product page');
-          setProductDetails(null);
-          document.body.classList.remove("plasmo-google-sidebar-show");
         }
+      } catch (error) {
+        console.error('Error in checkForUrlChange:', error);
       }
     };
 
     // Set up observers for URL changes
-    const observer = new MutationObserver(() => {
-      checkForUrlChange();
+    const observer = new MutationObserver((mutations) => {
+      // Only check for URL changes if the mutation is relevant
+      if (mutations.some(mutation => 
+        mutation.type === 'childList' && 
+        mutation.target === document.body
+      )) {
+        checkForUrlChange();
+      }
     });
 
-    // Observe URL changes
-    observer.observe(document, { subtree: true, childList: true });
+    // Observe only the body element
+    if (document.body) {
+      observer.observe(document.body, { 
+        childList: true,
+        subtree: false 
+      });
+    }
 
     // Check URL changes on history events
     window.addEventListener('popstate', checkForUrlChange);
@@ -177,16 +192,27 @@ const ContentUI = () => {
     window.addEventListener('replaceState', checkForUrlChange);
 
     // Initial page check
-    const currentLocation = window.location.href;
-    if (currentLocation.includes("/ip/")) {
-      console.log('Initial page load - product page detected');
-      const data = getData();
-      if (data) {
-        console.log('Initial product data loaded');
-        setProductDetails(data);
-        document.body.classList.add("plasmo-google-sidebar-show");
+    const checkInitialPage = async () => {
+      try {
+        const currentLocation = window.location.href;
+        if (currentLocation.includes("/ip/")) {
+          // Extract productId from URL
+          const productId = currentLocation.split('/ip/')[1]?.split('/')[0] || '';
+          if (productId) {
+            const data = await getUsedData(productId);
+            if (data) {
+              setProductDetails(data);
+              document.body.classList.add("plasmo-google-sidebar-show");
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error in checkInitialPage:', error);
       }
-    }
+    };
+
+    // Run initial check
+    checkInitialPage();
 
     // Cleanup function
     return () => {
@@ -195,7 +221,7 @@ const ContentUI = () => {
       window.removeEventListener('pushState', checkForUrlChange);
       window.removeEventListener('replaceState', checkForUrlChange);
     };
-  }, []); // Empty dependency array since we want this to run once on mount
+  }, []);
 
   ////////////////////////////////////////////////
   // Event Handlers:
@@ -286,20 +312,30 @@ const ContentUI = () => {
           areSectionsOpen={areSectionsOpen} 
           productData={metrics}
           settings={{
-            minProfit: productDetails?.settings?.minProfit,
-            minMargin: productDetails?.settings?.minMargin,
-            minROI: productDetails?.settings?.minROI,
-            minTotalRatings: productDetails?.settings?.minTotalRatings,
-            minRatings30Days: productDetails?.settings?.minRatings30Days,
-            maxSellers: productDetails?.settings?.maxSellers,
-            maxWfsSellers: productDetails?.settings?.maxWfsSellers,
-            maxStock: productDetails?.settings?.maxStock
+            minProfit: productDetails?.baselineMetrics?.minProfit,
+            minMargin: productDetails?.baselineMetrics?.minMargin,
+            minROI: productDetails?.baselineMetrics?.minROI,
+            minTotalRatings: productDetails?.baselineMetrics?.minTotalRatings,
+            minRatings30Days: productDetails?.baselineMetrics?.minRatings30Days,
+            maxSellers: productDetails?.baselineMetrics?.maxSellers,
+            maxWfsSellers: productDetails?.baselineMetrics?.maxWfsSellers,
+            maxStock: productDetails?.baselineMetrics?.maxStock
           }}
         />
         <Pricing 
           product={productDetails} 
           areSectionsOpen={areSectionsOpen}
           onMetricsUpdate={setMetrics}
+          settings={{
+            profit: metrics.profit,
+            margin: metrics.margin,
+            roi: metrics.roi,
+            totalRatings: metrics.totalRatings,
+            ratingsLast30Days: metrics.ratingsLast30Days,
+            numSellers: metrics.numSellers,
+            numWfsSellers: metrics.numWfsSellers,
+            totalStock: metrics.totalStock
+          }}
         />
         <ProductInfo product={productDetails} areSectionsOpen={areSectionsOpen} />
         <Analysis product={productDetails} areSectionsOpen={areSectionsOpen} />

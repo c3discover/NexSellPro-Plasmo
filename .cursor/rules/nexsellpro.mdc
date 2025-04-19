@@ -1,0 +1,141 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: NexSellPro Chrome Extension architecture and coding rules
+globs:
+  - "src/**/*"
+  - "docs/templates/**/*"
+  - "*.config.*"
+  - "postbuild.js"
+  - "*.json"
+alwaysApply: true
+---
+
+
+# NexSellPro Project Rules
+...
+# NexSellPro Project Rules
+
+## Project Context
+This is a Chrome MV3 extension built using Plasmo. It scrapes Walmart product data, calculates seller profitability, and centralizes analysis for resellers.
+
+---
+
+## Module Boundaries
+Only the following files should contain logic:
+- getData.ts → Raw DOM scraping
+- sellerData.ts → GraphQL/API seller extraction
+- calculations.ts → ROI, margin, profit calculations
+- settings.ts → localStorage settings, overrides, and caching
+- logger.ts → styled, grouped logs
+- usedData.ts → single source of truth for all extension components
+
+> Do not import from these modules directly in UI components—only use usedData.ts.
+
+---
+
+## File Structure Standards
+
+### Single Export per File
+Each module exports exactly one main function or class.  
+It must include a JSDoc comment explaining its purpose, parameters, and return type.
+
+### Logging (Always in Logging Section)
+All logging code must:
+- Appear under a clearly marked "// Logging:" section in the file.
+- Use:
+  logGroup("ModuleName", data)
+  logTable(data)
+  logGroupEnd()
+
+- Be wrapped with a window.__nsp_logged_<MODULE> gate:
+  if (!window.__nsp_logged_moduleName) {
+    logGroup("ModuleName", data)
+    logTable(data)
+    logGroupEnd()
+    window.__nsp_logged_moduleName = true
+  }
+
+- Use only methods from logger.ts  
+- Raw console.log is not allowed outside logger.ts
+
+---
+
+## Data Flow Sequence
+
+The entire data pipeline must follow this strict order:
+
+1. getData()
+2. sellerData(getDataOutput)
+3. calculations(getDataOutput, sellerDataOutput)
+4. settings.applyOverrides(...)
+5. usedData.combine(...)
+6. UI components import only from usedData.ts
+
+> This flow ensures caching, override application, and clean separation of concerns.  
+> Any violation breaks traceability and consistency.
+
+---
+
+## Typing
+
+- Strict TypeScript only — absolutely no use of "any".
+- All shared types/interfaces must live in the types/ directory.
+- Each function must return a typed object/interface (e.g., SellerInfo, ProductData, ProfitMetrics).
+
+---
+
+## Caching & Performance
+
+- Long or repeated operations (e.g., GraphQL, scraping) must be cached.
+- Caching should be done in settings.ts using localStorage, with a time-based expiration (TTL).
+- Always check for existing valid cache before running new operations.
+
+---
+
+## Style & Linting
+
+- Use 2-space indent
+- Semicolons are required
+- Trailing commas allowed
+- Use consistent import ordering:
+  1. External libraries (e.g., react, plasmo)
+  2. Internal modules (e.g., @/utils/)
+  3. Relative paths (./ and ../)
+- Follow formatting from .prettierrc and .eslintrc
+
+---
+
+## File Templates
+
+All new files must be scaffolded from the following templates:
+
+- .ts → ./docs/templates/tsFiles.txt  
+- .tsx → ./docs/templates/txtFiles.txt
+
+> These templates define required section headers (Imports, Constants, Main Logic, Logging, Export, etc.)
+
+---
+
+## Package Manager
+
+- The project uses pnpm exclusively.
+- Valid commands include:
+  - pnpm install
+  - pnpm build
+  - pnpm dev
+  - pnpm lint
+- Do not use npm or yarn for any command.
+
+---
+
+## Edit Behavior
+
+- All refactors must be scoped to the specific function or module requested.
+- Do not edit unrelated code or optimize surrounding logic unless explicitly asked.
+- All edits should be submitted as small, isolated changes unless stated otherwise.
+
+---

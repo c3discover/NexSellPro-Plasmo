@@ -9,25 +9,20 @@
 // Imports:
 ////////////////////////////////////////////////
 import React, { useState, useEffect, useRef } from "react";
-import { getUsedData } from "../../utils/usedData";
-import type { UsedProductData } from "../../utils/usedData";
-import getData from "../../utils/getData";
+import { getUsedData, UsedProductData } from "../../data/usedData";
 import { contractCategoryOptions } from "../../constants/options";
-import {
-  calculateReferralFee,
-  calculateWFSFee,
-  calculateStorageFee,
-  calculateCubicFeet,
-  calculateFinalShippingWeightForInbound,
-  calculateFinalShippingWeightForWFS,
-  calculateStartingProductCost,
-  calculateTotalProfit,
-  calculateROI,
-  calculateMargin,
+import { 
+  calculateCubicFeet, 
+  calculateReferralFee, 
+  calculateWFSFee, 
+  calculatePrepFee, 
+  calculateStorageFee, 
+  calculateInboundShipping, 
   calculateAdditionalFees,
-  calculateInboundShipping,
-  calculatePrepFee
-} from "../../utils/calculations";
+  calculateFinalShippingWeightForWFS,
+  calculateFinalShippingWeightForInbound,
+  calculateStartingProductCost
+} from "../../data/logic/calculations";
 
 ////////////////////////////////////////////////
 // Constants and Variables:
@@ -73,8 +68,17 @@ const DEFAULT_RIGHT_PREFIX_SUFFIX_CLASS = STYLES.input.rightPrefix;
 ////////////////////////////////////////////////
 interface PricingProps {
   product: UsedProductData | null;
-  areSectionsOpen: boolean;
-  onMetricsUpdate?: (metrics: {
+  settings: {
+    profit: number;
+    margin: number;
+    roi: number;
+    totalRatings: number;
+    ratingsLast30Days: number;
+    numSellers: number;
+    numWfsSellers: number;
+    totalStock: number;
+  };
+  onMetricsUpdate: (metrics: {
     profit: number;
     margin: number;
     roi: number;
@@ -84,6 +88,7 @@ interface PricingProps {
     numWfsSellers: number;
     totalStock: number;
   }) => void;
+  areSectionsOpen: boolean;
 }
 
 interface CalculationResult {
@@ -94,37 +99,77 @@ interface CalculationResult {
 ////////////////////////////////////////////////
 // Component:
 ////////////////////////////////////////////////
-export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpdate }) => {
-  // Component implementation will be in the following sections
+const Pricing: React.FC<PricingProps> = ({ product, settings, onMetricsUpdate, areSectionsOpen }) => {
+  const [localProduct, setLocalProduct] = useState<UsedProductData | null>(product);
+  const [localSettings, setLocalSettings] = useState(settings);
+  const [isEditing, setIsEditing] = useState(false);
+  const [productData, setProductData] = useState<UsedProductData | null>(null);
 
+  useEffect(() => {
+    setLocalProduct(product);
+  }, [product]);
+
+  useEffect(() => {
+    setLocalSettings(settings);
+  }, [settings]);
+
+  // Fetch initial data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Get current URL to extract product ID
+        const currentUrl = window.location.href;
+        const productId = currentUrl.split('/ip/')[1]?.split('/')[0];
+        
+        if (productId) {
+          const data = await getUsedData(productId);
+          if (data) {
+            setProductData(data);
+            setSalePrice(data.currentPrice || 0);
+            const initialProductCost = calculateStartingProductCost(data.currentPrice || 0);
+            setProductCost(initialProductCost);
+
+            // Set shipping dimensions from product data
+            setShippingLength(parseFloat(data.shippingLength || "0"));
+            setShippingWidth(parseFloat(data.shippingWidth || "0"));
+            setShippingHeight(parseFloat(data.shippingHeight || "0"));
+            setWeight(parseFloat(data.weight || "0"));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching product data:", error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const handleProductChange = (updatedProduct: UsedProductData) => {
+    setLocalProduct(updatedProduct);
+    onMetricsUpdate({
+      ...localSettings,
+      profit: updatedProduct.profitability.totalProfit,
+      margin: updatedProduct.profitability.margin,
+      roi: updatedProduct.profitability.roi,
+      totalRatings: parseInt(updatedProduct.reviews.numberOfRatings?.toString() || "0"),
+      ratingsLast30Days: updatedProduct.reviews.reviewDates?.filter(date => {
+        if (!date) return false;
+        const reviewDate = new Date(date);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return reviewDate >= thirtyDaysAgo;
+      }).length || 0,
+      numSellers: updatedProduct.inventory.totalSellers,
+      numWfsSellers: updatedProduct.sellers.otherSellers?.filter(s => s.isWFS)?.length || 0,
+      totalStock: updatedProduct.inventory.totalStock
+    });
+  };
 
   /////////////////////////////////////////////////
   // State and Hooks
   /////////////////////////////////////////////////
   // UI State
-  const [isOpen, setIsOpen] = useState(areSectionsOpen);
-  const [productData, setProductData] = useState<UsedProductData | null>(null);
+  const [isOpen, setIsOpen] = useState(true);
   const [hasEdited, setHasEdited] = useState<{ [key: string]: boolean }>({});
-
-  // Fetch initial data
-  useEffect(() => {
-    const fetchData = async () => {
-      const data = await getUsedData();
-      if (data) {
-        setProductData(data);
-        setSalePrice(data.pricing.currentPrice || 0);
-        const initialProductCost = calculateStartingProductCost(data.pricing.currentPrice || 0);
-        setProductCost(initialProductCost);
-
-        // Set shipping dimensions from product data
-        setShippingLength(parseFloat(data.dimensions.shippingLength || "0"));
-        setShippingWidth(parseFloat(data.dimensions.shippingWidth || "0"));
-        setShippingHeight(parseFloat(data.dimensions.shippingHeight || "0"));
-        setWeight(parseFloat(data.dimensions.weight || "0"));
-      }
-    };
-    fetchData();
-  }, []);
 
   // General State (Group 1)
   const [contractCategory, setContractCategory] = useState<string>("Everything Else (Most Items)");
@@ -209,7 +254,7 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
     isWalmartFulfilled,
     isApparel: contractCategory === "Apparel & Accessories",
     isHazardousMaterial: productData?.flags?.isHazardousMaterial || false,
-    retailPrice: productData?.pricing?.currentPrice || 0,
+    retailPrice: productData?.currentPrice || 0,
   };
 
   // Add this with other useEffects
@@ -246,8 +291,8 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
         if (field === 'salePrice') setRawSalePrice(formattedValue);
 
         // Save to pricing localStorage
-        if (productData?.basic?.productID) {
-          const storageKey = `pricing_${productData.basic.productID}`;
+        if (productData?.productID) {
+          const storageKey = `pricing_${productData.productID}`;
           const savedPricing = JSON.parse(localStorage.getItem(storageKey) || "{}");
           savedPricing[field] = formattedValue;
           localStorage.setItem(storageKey, JSON.stringify(savedPricing));
@@ -264,8 +309,8 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
         if (field === 'weight') setRawWeight(formattedValue);
 
         // Save to dimensions localStorage
-        if (productData?.basic?.productID) {
-          const storageKey = `shippingDimensions_${productData.basic.productID}`;
+        if (productData?.productID) {
+          const storageKey = `shippingDimensions_${productData.productID}`;
           const savedDimensions = JSON.parse(localStorage.getItem(storageKey) || "{}");
           
           if (field === 'shippingLength') savedDimensions.length = formattedValue;
@@ -289,8 +334,8 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
         if (field === 'additionalFees') setRawAdditionalFees(formattedValue);
 
         // Save to pricing localStorage
-        if (productData?.basic?.productID) {
-          const storageKey = `pricing_${productData.basic.productID}`;
+        if (productData?.productID) {
+          const storageKey = `pricing_${productData.productID}`;
           const savedPricing = JSON.parse(localStorage.getItem(storageKey) || "{}");
           savedPricing[field] = formattedValue;
           localStorage.setItem(storageKey, JSON.stringify(savedPricing));
@@ -307,9 +352,9 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
   // Update the useEffect that loads saved values to handle fees
   useEffect(() => {
     try {
-      if (productData?.basic?.productID) {
-        const pricingKey = `pricing_${productData.basic.productID}`;
-        const dimensionsKey = `shippingDimensions_${productData.basic.productID}`;
+      if (productData?.productID) {
+        const pricingKey = `pricing_${productData.productID}`;
+        const dimensionsKey = `shippingDimensions_${productData.productID}`;
         const savedPricing = JSON.parse(localStorage.getItem(pricingKey) || "{}");
         const savedDimensions = JSON.parse(localStorage.getItem(dimensionsKey) || "{}");
         const editedFieldsSet = new Set<string>();
@@ -388,7 +433,7 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
     } catch (error) {
       console.error("Error loading saved data:", error);
     }
-  }, [productData?.basic?.productID]);
+  }, [productData?.productID]);
 
   // Helper function to get input className
   const getInputClassName = (fieldName: string, baseClassName: string) => {
@@ -397,15 +442,15 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
 
   // Reset functions
   const resetPricing = () => {
-    const initialProductCost = calculateStartingProductCost(productData?.pricing?.currentPrice || 0);
+    const initialProductCost = calculateStartingProductCost(productData?.currentPrice || 0);
     setProductCost(initialProductCost);
-    setSalePrice(productData?.pricing?.currentPrice || 0);
+    setSalePrice(productData?.currentPrice || 0);
     setRawProductCost(null);
     setRawSalePrice(null);
     
     // Only remove pricing data from localStorage
-    if (productData?.basic?.productID) {
-      const storageKey = `pricing_${productData.basic.productID}`;
+    if (productData?.productID) {
+      const storageKey = `pricing_${productData.productID}`;
       const savedPricing = JSON.parse(localStorage.getItem(storageKey) || "{}");
       delete savedPricing.productCost;
       delete savedPricing.salePrice;
@@ -450,8 +495,8 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
     setRawAdditionalFees(null);
 
     // Remove fee data from localStorage
-    if (productData?.basic?.productID) {
-      const storageKey = `pricing_${productData.basic.productID}`;
+    if (productData?.productID) {
+      const storageKey = `pricing_${productData.productID}`;
       const savedPricing = JSON.parse(localStorage.getItem(storageKey) || "{}");
       
       // Remove only fee fields
@@ -484,10 +529,6 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
   ////////////////////////////////////////////////
   // No Chrome API handlers needed for this component
 
-
-
-
-
   ////////////////////////////////////////////////
   // Event Handlers:
   ////////////////////////////////////////////////
@@ -500,8 +541,8 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
 
   // Data Update Events
   useEffect(() => {
-    setIsOpen(areSectionsOpen);
-  }, [areSectionsOpen]);
+    setIsOpen(true);
+  }, []);
 
   // Initialize WFS Fee and ensure product cost is initialized.
   useEffect(() => {
@@ -515,32 +556,44 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
 
   // Synchronize section visibility with props.
   useEffect(() => {
-    setIsOpen(areSectionsOpen);
-  }, [areSectionsOpen]);
+    setIsOpen(true);
+  }, []);
 
   // Recalculate profit, ROI, and margin whenever key pricing variables change.
   useEffect(() => {
-    const updatedTotalProfit = calculateTotalProfit(
-      salePrice,
-      productCost,
-      referralFee,
-      wfsFee,
-      inboundShippingFee,
-      storageFee,
-      prepFee,
-      additionalFees
-    );
-
-    setTotalProfit(updatedTotalProfit);
-
-    // Convert calculateROI result to a number before setting state
-    const calculatedROI = parseFloat(calculateROI(updatedTotalProfit, productCost));
-    setROI(isNaN(calculatedROI) ? 0 : calculatedROI); // Handle invalid ROI
-
-    // Set margin directly (assuming calculateMargin also returns a string)
-    const calculatedMargin = parseFloat(calculateMargin(updatedTotalProfit, salePrice));
-    setMargin(isNaN(calculatedMargin) ? 0 : calculatedMargin); // Handle invalid margin
-
+    const fetchUpdatedCalculations = async () => {
+      try {
+        // Get current URL to extract product ID
+        const currentUrl = window.location.href;
+        const productId = currentUrl.split('/ip/')[1]?.split('/')[0];
+        
+        if (productId) {
+          // Get centralized data
+          const usedData = await getUsedData(productId);
+          
+          // Update profit, ROI, and margin with values from central data source
+          setTotalProfit(usedData.totalProfit);
+          setROI(usedData.roi);
+          setMargin(usedData.margin);
+          
+          // Update product metrics for parent component
+          onMetricsUpdate({
+            profit: usedData.totalProfit,
+            margin: usedData.margin,
+            roi: usedData.roi,
+            totalRatings: usedData.numberOfRatings || 0,
+            ratingsLast30Days: usedData.reviewDates?.length || 0,
+            numSellers: usedData.totalSellers || 0,
+            numWfsSellers: usedData.otherSellers?.filter(s => s.fulfillmentType === 'WFS')?.length || 0,
+            totalStock: usedData.totalStock || 0
+          });
+        }
+      } catch (error) {
+        console.error('Error updating calculations:', error);
+      }
+    };
+    
+    fetchUpdatedCalculations();
   }, [
     salePrice,
     productCost,
@@ -550,6 +603,7 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
     storageFee,
     prepFee,
     additionalFees,
+    onMetricsUpdate
   ]);
 
   // Dynamically recalculate fees based on fulfillment type and user edits.
@@ -649,28 +703,28 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
 
   // Add effect to notify parent of metrics updates
   useEffect(() => {
-    onMetricsUpdate?.({
+    onMetricsUpdate({
       profit: totalProfit,
       margin: margin,
       roi: roi,
-      totalRatings: parseInt(productData?.reviews?.numberOfRatings?.toString() || "0"),
-      ratingsLast30Days: productData?.reviews?.reviewDates?.filter(date => {
+      totalRatings: parseInt(productData?.numberOfRatings?.toString() || "0"),
+      ratingsLast30Days: productData?.reviewDates?.filter(date => {
         if (!date) return false;
         const reviewDate = new Date(date);
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         return reviewDate >= thirtyDaysAgo;
       }).length || 0,
-      numSellers: productData?.inventory?.totalSellers || 0,
-      numWfsSellers: productData?.sellers?.otherSellers?.filter(s => s.isWFS)?.length || 0,
-      totalStock: productData?.inventory?.totalStock || 0
+      numSellers: productData?.totalSellers || 0,
+      numWfsSellers: productData?.otherSellers?.filter(s => s.isWFS || s.fulfillmentType === 'WFS')?.length || 0,
+      totalStock: productData?.totalStock || 0
     });
   }, [totalProfit, margin, roi, productData, onMetricsUpdate]);
 
   // Add new useEffect for contract category
   useEffect(() => {
-    if (productData?.categories?.mainCategory) {
-      const mainCategory = productData.categories.mainCategory;
+    if (productData?.mainCategory) {
+      const mainCategory = productData.mainCategory;
       console.log('Setting contract category based on main category:', mainCategory);
       
       switch (mainCategory) {
@@ -701,7 +755,7 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
           setContractCategory("Everything Else (Most Items)");
       }
     }
-  }, [productData?.categories?.mainCategory]);
+  }, [productData?.mainCategory]);
 
   // Add state for fulfillment type
   const [fulfillmentType, setFulfillmentType] = useState<string>("Walmart Fulfilled");
@@ -713,7 +767,6 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
       setIsWalmartFulfilled(savedFulfillment === "Walmart Fulfilled");
     }
   }, []);
-
 
   /////////////////////////////////////////////////
   // Helper Functions
@@ -756,8 +809,8 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
     setRawWeight(null);
 
     // Remove from localStorage
-    if (productData?.basic?.productID) {
-      const storageKey = `shippingDimensions_${productData.basic.productID}`;
+    if (productData?.productID) {
+      const storageKey = `shippingDimensions_${productData.productID}`;
       localStorage.removeItem(storageKey);
     }
 
@@ -770,11 +823,6 @@ export const Pricing: React.FC<PricingProps> = ({ areSectionsOpen, onMetricsUpda
       return newEdited;
     });
   };
-
-
-
-
-
 
   /////////////////////////////////////////////////////
   // JSX
@@ -1275,6 +1323,7 @@ ROI = (Total Profit / Product Cost) × 100
 ////////////////////////////////////////////////
 // Export Statement:
 ////////////////////////////////////////////////
+export { Pricing };
 export default Pricing;
 
 

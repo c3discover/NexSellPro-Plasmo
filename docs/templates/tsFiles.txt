@@ -1,5 +1,5 @@
 /**
- * @fileoverview Type definitions for Jest DOM testing utilities
+ * @fileoverview Template for utility/helper files
  * @author Your Name
  * @created 2024-03-20
  * @lastModified 2024-03-20
@@ -7,50 +7,41 @@
 
 ////////////////////////////////////////////////
 // Imports:
+// **All external and internal module imports
+// **Grouped by type (external, then internal utils/types)
 ////////////////////////////////////////////////
-// Import Jest DOM testing library
-import '@testing-library/jest-dom';
 
 ////////////////////////////////////////////////
 // Constants and Variables:
+// **Anything that defines shared constants, static strings, colors, styles, config, etc.
 ////////////////////////////////////////////////
-// No constants needed
 
 ////////////////////////////////////////////////
 // Types and Interfaces:
+// **Custom TypeScript interfaces for the data being worked on
 ////////////////////////////////////////////////
-
-/**
- * Extends Jest's matcher interface with DOM-specific matchers
- * These matchers are used in unit tests to verify DOM elements
- */
-declare global {
-  namespace jest {
-    interface Matchers<R> {
-      // Checks if an element is present in the document
-      toBeInTheDocument(): R;
-      // Checks if an element has a specific CSS class
-      toHaveClass(className: string): R;
-    }
-  }
-}
-
-////////////////////////////////////////////////
-// Enums:
-////////////////////////////////////////////////
-// No enums needed
 
 ////////////////////////////////////////////////
 // Configuration:
+// **For example: rate limiters, retry configs, cache TTLs
 ////////////////////////////////////////////////
-// No configuration needed
 
 ////////////////////////////////////////////////
 // Helper Functions:
+// **Utility functions (scrapers, parsers, sanitizers, formatters, fallbacks)
 ////////////////////////////////////////////////
-// No helper functions needed
+
+////////////////////////////////////////////////
+// Main Logic:
+// **The code that runs on import/execute (e.g., fetch, parse, etc.)
+////////////////////////////////////////////////
+
+////////////////////////////////////////////////
+// Logging:
+// **Clean console.log output with styling
+////////////////////////////////////////////////
 
 ////////////////////////////////////////////////
 // Export Statement:
-////////////////////////////////////////////////
-// No exports needed as this is a declaration file 
+// **The final export(s)
+//////////////////////////////////////////////// 

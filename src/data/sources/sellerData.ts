@@ -1,21 +1,23 @@
 /**
- * @fileoverview Utility for extracting and processing seller information from Walmart product pages
+ * @fileoverview Extracts seller information from Walmart pages using DOM and GraphQL as fallback. Returns normalized SellerInfo array with consistent logging and validation.
  * @author NexSellPro
- * @created 2024-03-07
- * @lastModified 2024-03-21
+ * @created 2024-03-20
+ * @lastModified 2025-04-18
  */
 
 ////////////////////////////////////////////////
 // Imports:
+// **All external and internal module imports
+// **Grouped by type (external, then internal utils/types)
 ////////////////////////////////////////////////
+import { logGroup, logTable, logGroupEnd, LogModule } from "../utils/logger"
 import { type SellerInfo } from '~/types/seller';
-import { getProductDetails } from './getData';
 
 ////////////////////////////////////////////////
 // Constants and Variables:
+// **Anything that defines shared constants, static strings, colors, styles, config, etc.
 ////////////////////////////////////////////////
-// Debug mode flag
-const DEBUG = true;
+let loggedOnce = false
 
 // GraphQL endpoint for fetching seller data
 const GRAPHQL_ENDPOINT = 'https://www.walmart.com/orchestra/home/graphql/GetAllSellerOffers/ceb1a19937155516286824bfb2b9cc9331cc89e6d4bea5756776737724d5b3cf';
@@ -113,6 +115,7 @@ const SELLER_SELECTORS = {
 
 ////////////////////////////////////////////////
 // Types and Interfaces:
+// **Custom TypeScript interfaces for the data being worked on
 ////////////////////////////////////////////////
 interface RawSellerData {
   name: string | null;
@@ -122,13 +125,15 @@ interface RawSellerData {
   isProSeller: boolean;
 }
 
-////////////////////////////////////////////////
-// Enums:
-////////////////////////////////////////////////
-// No enums needed for this utility
+declare global {
+  interface Window {
+    __nsp_logged_sellerData?: boolean;
+  }
+}
 
 ////////////////////////////////////////////////
 // Configuration:
+// **For example: rate limiters, retry configs, cache TTLs
 ////////////////////////////////////////////////
 // Cache for GraphQL responses
 let graphQLCache: {
@@ -143,21 +148,8 @@ let isCompareButtonDebouncing = false;
 
 ////////////////////////////////////////////////
 // Helper Functions:
+// **Utility functions (scrapers, parsers, sanitizers, formatters, fallbacks)
 ////////////////////////////////////////////////
-// Add logging constants
-const LOG_STYLES = {
-  SELLER_DATA: 'color: #6366f1; font-weight: bold; font-size: 12px',  // Indigo
-  GRAPHQL: 'color: #8b5cf6; font-weight: bold; font-size: 12px',      // Purple
-};
-
-// Update the logDebug function to only log essential information
-const logDebug = (message: string, data?: any) => {
-  if (!DEBUG) return;
-  // Only log specific debug messages that are essential
-  if (message.includes('Error') || message.includes('not found')) {
-    console.log(`%c[Seller Data] ${message}`, LOG_STYLES.SELLER_DATA, data || '');
-  }
-};
 
 // Wait for element to appear in DOM
 const waitForElement = async (selectors: string | string[], maxAttempts = 5): Promise<Element | null> => {
@@ -167,7 +159,6 @@ const waitForElement = async (selectors: string | string[], maxAttempts = 5): Pr
     for (const selector of selectorArray) {
       const element = document.querySelector(selector);
       if (element) {
-        logDebug(`Found element with selector: ${selector}`);
         return element;
       }
     }
@@ -217,11 +208,9 @@ const extractDeliveryInfo = (container: Element): string => {
 
 // Extract seller elements from container
 const extractSellerElements = (container: Element): RawSellerData => {
-  logDebug('Extracting data from container:', container);
 
   // Extract seller info with enhanced detection
   const sellerInfoEl = queryElement(container, SELLER_SELECTORS.SELLER_INFO);
-  logDebug('Found seller info element:', sellerInfoEl);
 
   let sellerName = null;
   if (sellerInfoEl) {
@@ -249,11 +238,9 @@ const extractSellerElements = (container: Element): RawSellerData => {
       }
     }
   }
-  logDebug('Extracted seller name:', sellerName);
 
   // Enhanced price extraction
   const priceEl = queryElement(container, SELLER_SELECTORS.PRICE_ELEMENT);
-  logDebug('Found price element:', priceEl);
   let price = null;
   if (priceEl) {
     // Try to find the most specific price element
@@ -262,11 +249,9 @@ const extractSellerElements = (container: Element): RawSellerData => {
                      priceEl.getAttribute('value');      // Finally try value attribute
     price = priceText;
   }
-  logDebug('Extracted price:', price);
 
   // Enhanced delivery info extraction
   const deliveryInfo = extractDeliveryInfo(container);
-  logDebug('Extracted delivery info:', deliveryInfo);
 
   // Enhanced WFS detection
   const isWFS = !!sellerInfoEl?.textContent?.toLowerCase().includes('fulfilled by walmart') ||
@@ -279,7 +264,6 @@ const extractSellerElements = (container: Element): RawSellerData => {
                      !!document.querySelector(SELLER_SELECTORS.PRO_SELLER_BADGE.join(',')) ||
                      !!container.querySelector('[data-testid*="pro-seller" i]');
 
-  logDebug('Seller status:', { isWFS, isProSeller });
 
   const data = {
     name: sellerName,
@@ -289,7 +273,6 @@ const extractSellerElements = (container: Element): RawSellerData => {
     isProSeller
   };
 
-  logDebug('Extracted seller data:', data);
   return data;
 };
 
@@ -325,16 +308,13 @@ const determineSellerType = (sellerName: string, isWFS: boolean, isProSeller: bo
 // Extract all sellers from page
 const extractAllSellers = async (): Promise<SellerInfo[]> => {
   try {
-    logDebug('Starting seller extraction...');
 
     // First, try to click the "Compare all sellers" button if it exists
     const compareButton = await waitForElement(SELLER_SELECTORS.COMPARE_SELLERS_BUTTON);
     if (compareButton instanceof HTMLElement) {
       const now = Date.now();
       if (now - lastCompareButtonClick < COMPARE_BUTTON_COOLDOWN || isCompareButtonDebouncing) {
-        logDebug('Skipping compare button click - on cooldown or debouncing');
       } else {
-        logDebug('Found compare sellers button, clicking...');
         isCompareButtonDebouncing = true;
         compareButton.click();
         lastCompareButtonClick = now;
@@ -346,7 +326,6 @@ const extractAllSellers = async (): Promise<SellerInfo[]> => {
 
     // Try to find seller wrapper
     const sellersWrapper = await waitForElement(SELLER_SELECTORS.MORE_SELLERS_WRAPPER);
-    logDebug('Found sellers wrapper:', sellersWrapper);
 
     if (!sellersWrapper) {
       console.warn('No sellers wrapper found, trying alternative methods...');
@@ -354,7 +333,6 @@ const extractAllSellers = async (): Promise<SellerInfo[]> => {
       // Try to find all seller elements directly
       const allSellerElements = document.querySelectorAll(SELLER_SELECTORS.SELLER_INFO.join(','));
       if (allSellerElements.length > 0) {
-        logDebug(`Found ${allSellerElements.length} seller elements directly`);
         const sellers = Array.from(allSellerElements)
           .map(element => {
             const raw = extractSellerElements(element);
@@ -363,7 +341,6 @@ const extractAllSellers = async (): Promise<SellerInfo[]> => {
           .filter((seller): seller is SellerInfo => seller !== null);
 
         if (sellers.length > 0) {
-          logDebug('Successfully extracted sellers directly:', sellers);
           return sellers;
         }
       }
@@ -379,7 +356,6 @@ const extractAllSellers = async (): Promise<SellerInfo[]> => {
         );
 
         if (uniqueSellers.size > 0) {
-          logDebug('Found sellers in page source:', uniqueSellers);
           return Array.from(uniqueSellers).map(name => ({
             sellerName: name,
             price: 'N/A',
@@ -397,7 +373,6 @@ const extractAllSellers = async (): Promise<SellerInfo[]> => {
 
     // Get all seller rows
     const sellerRows = sellersWrapper.querySelectorAll(SELLER_SELECTORS.SELLER_ROW.join(','));
-    logDebug(`Found ${sellerRows.length} seller rows:`, sellerRows);
 
     if (sellerRows.length === 0) {
       // If no seller rows found, try to extract from the wrapper itself
@@ -422,15 +397,12 @@ const extractAllSellers = async (): Promise<SellerInfo[]> => {
     // Extract data from each row
     const sellers = Array.from(sellerRows)
       .map((row, index) => {
-        logDebug(`Processing seller ${index + 1}/${sellerRows.length}`);
         const raw = extractSellerElements(row);
         const processed = validateAndTransformSellerData(raw);
-        logDebug(`Processed seller ${index + 1}:`, processed);
         return processed;
       })
       .filter((seller): seller is SellerInfo => seller !== null);
 
-    logDebug('Final processed sellers:', sellers);
     return sellers;
   } catch (error) {
     console.error('Error extracting sellers:', error);
@@ -508,10 +480,6 @@ const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo[]> => 
     }
 
     const data = await response.json();
-    console.groupCollapsed('%c[Seller Data GraphQL]', LOG_STYLES.GRAPHQL);
-    console.log('Timestamp:', new Date().toISOString());
-    console.log('Data:', data);
-    console.groupEnd();
 
     if (data?.data?.product?.allOffers) {
       const sellers = data.data.product.allOffers
@@ -572,26 +540,39 @@ const extractSellerData = async (): Promise<SellerInfo[]> => {
   try {
     const dataDiv = document.getElementById("__NEXT_DATA__");
     if (!dataDiv) {
-      throw new Error('No product data available');
+      console.warn("No __NEXT_DATA__ div found, returning fallback seller data");
+      return [{
+        sellerName: "Unknown Seller",
+        price: "$0.00",
+        type: "Unknown",
+        arrives: "N/A",
+        isProSeller: false,
+        isWFS: false
+      }];
     }
     
     const rawData = dataDiv.innerText;
     const { product, idml, reviews } = JSON.parse(rawData).props.pageProps.initialData.data;
-    const productDetails = getProductDetails(product, idml, reviews);
     
-    if (!productDetails?.productID) {
+    // Get product details using the working version's approach
+    const productDetails = {
+      productID: product?.id || idml?.id || window.location.pathname.match(/\/ip\/[^/]+\/(\d+)/)?.[1],
+      sellerName: product?.seller?.sellerDisplayName || product?.seller?.name,
+      sellerDisplayName: product?.seller?.sellerDisplayName,
+      currentPrice: product?.priceInfo?.currentPrice?.priceString?.replace(/[^\d.]/g, '')
+    };
+    
+    if (!productDetails.productID) {
       throw new Error('No product ID available');
     }
 
     // Try GraphQL endpoint first
     const graphQLData = await fetchSellerDataGraphQL(productDetails.productID);
     if (graphQLData && graphQLData.length > 0) {
-      logDebug('Successfully fetched data from GraphQL:', graphQLData);
       return graphQLData;
     }
 
     // Only try DOM extraction with button click if GraphQL failed
-    logDebug('GraphQL failed, falling back to DOM extraction');
     const domData = await extractAllSellers();
     if (domData && domData.length > 0) {
       return domData;
@@ -613,7 +594,7 @@ const extractSellerData = async (): Promise<SellerInfo[]> => {
       isWFS: false
     }];
   } catch (error) {
-    console.error('Error in seller extraction:', error);
+    console.error('[Seller Data] Error in seller extraction:', error);
     return [];
   }
 };
@@ -663,9 +644,31 @@ const observeSellerData = (callback: (sellers: SellerInfo[]) => void): () => voi
   };
 };
 
+
+////////////////////////////////////////////////
+// Main Logic:
+// **The code that runs on import/execute (e.g., fetch, parse, etc.)
+////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////
+// Logging:
+// **Clean console.log output with styling
+////////////////////////////////////////////////
+if (!window.__nsp_logged_sellerData) {
+  window.__nsp_logged_sellerData = true;
+  extractSellerData().then((sellers) => {
+    logGroup(LogModule.SELLER_DATA, sellers.length + " sellers");
+    console.log('Final Sellers', sellers);
+    logGroupEnd();
+  });
+}
+
 ////////////////////////////////////////////////
 // Export Statement:
+// **The final export(s)
 ////////////////////////////////////////////////
+// Main export is the default getSellerData function above
 export const getSellerData = extractSellerData;
 export { fetchSellerDataGraphQL, observeSellerData };
-export default extractSellerData; 
+export default extractSellerData;

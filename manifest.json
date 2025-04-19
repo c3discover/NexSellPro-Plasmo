@@ -37,7 +37,7 @@
         "open_in_tab": true
     },
     "content_security_policy": {
-        "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://api.emailjs.com https://www.walmart.com https://accounts.google.com https://www.googleapis.com"
+        "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' https://api.emailjs.com https://*.walmart.com https://accounts.google.com https://www.googleapis.com"
     },
     "oauth2": {
         "client_id": "469074340331-ecg0lufoje86bk2ultj35voasto7s3nc.apps.googleusercontent.com",

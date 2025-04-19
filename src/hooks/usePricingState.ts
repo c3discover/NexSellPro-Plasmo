@@ -11,8 +11,8 @@
 // Import React hooks for state management
 import { useState, useEffect, useRef } from 'react';
 // Import types and functions for product data
-import type { UsedProductData } from '../utils/usedData';
-import { getUsedData } from '../utils/usedData';
+import type { UsedProductData } from '../data/usedData';
+import { getUsedData } from '../data/usedData';
 // Import pricing calculation functions
 import {
   calculateWFSFee,

@@ -1,4 +1,4 @@
 export default {
-    optionsPage: true
-  }
-  
+  optionsPage: true,
+  contentScriptContextIsolation: false
+};

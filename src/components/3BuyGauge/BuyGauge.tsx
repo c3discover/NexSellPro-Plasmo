@@ -13,6 +13,7 @@ import { BuyGaugeProps, MetricScore, MetricScores, ProductMetrics, GaugeSettings
 import MetricsBreakdown from "./MetricsBreakdown";
 import CompactGauge from "./CompactGauge";
 import MetricDot from "./MetricDot";
+import { getUsedData, UsedProductData } from "../../data/usedData";
 
 ////////////////////////////////////////////////
 // Types and Interfaces:
@@ -252,6 +253,53 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({
   ////////////////////////////////////////////////
   const [isOpen, setIsOpen] = useState(areSectionsOpen);
   const [viewMode, setViewMode] = useState<'compact' | 'full'>('compact');
+  const [productMetrics, setProductMetrics] = useState<ProductMetrics>(productData);
+  const [productSettings, setProductSettings] = useState<GaugeSettings>(settings);
+
+  // Effect to update from the central data source whenever the component is displayed
+  useEffect(() => {
+    const updateFromCentralData = async () => {
+      try {
+        // Get the current URL to extract product ID
+        const currentUrl = window.location.href;
+        const productId = currentUrl.split('/ip/')[1]?.split('/')[0];
+        
+        if (productId) {
+          const usedData = await getUsedData(productId);
+          
+          // Update metrics from the central data source
+          setProductMetrics({
+            profit: usedData.totalProfit,
+            margin: usedData.margin,
+            roi: usedData.roi,
+            totalRatings: usedData.numberOfRatings,
+            ratingsLast30Days: usedData.reviewDates?.length || 0,
+            numSellers: usedData.totalSellers,
+            numWfsSellers: usedData.otherSellers?.filter(s => s.fulfillmentType === 'WFS')?.length || 0,
+            totalStock: usedData.totalStock
+          });
+          
+          // Update settings from the central data source
+          setProductSettings({
+            minProfit: usedData.baselineMetrics?.minProfit,
+            minMargin: usedData.baselineMetrics?.minMargin,
+            minROI: usedData.baselineMetrics?.minROI,
+            minTotalRatings: usedData.baselineMetrics?.minTotalRatings,
+            minRatings30Days: usedData.baselineMetrics?.minRatings30Days,
+            maxSellers: usedData.baselineMetrics?.maxSellers,
+            maxWfsSellers: usedData.baselineMetrics?.maxWfsSellers,
+            maxStock: usedData.baselineMetrics?.maxStock
+          });
+        }
+      } catch (error) {
+        console.error('Error getting updated data for BuyGauge:', error);
+      }
+    };
+    
+    if (isOpen) {
+      updateFromCentralData();
+    }
+  }, [isOpen]);
 
   ////////////////////////////////////////////////
   // Effects:
@@ -260,10 +308,19 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({
     setIsOpen(areSectionsOpen);
   }, [areSectionsOpen]);
 
+  // Update local state when props change
+  useEffect(() => {
+    setProductMetrics(productData);
+  }, [productData]);
+
+  useEffect(() => {
+    setProductSettings(settings);
+  }, [settings]);
+
   ////////////////////////////////////////////////
   // Calculations:
   ////////////////////////////////////////////////
-  const { score, metrics } = calculateBuyScore(productData, settings);
+  const { score, metrics } = calculateBuyScore(productMetrics, productSettings);
   const currentLevel = GAUGE_LEVELS.find(level => level.score === Math.round(score)) || GAUGE_LEVELS[0];
   
   const rotation = ((score - 1) * 20) - 90; // Maps 1-10 to 0-180 degrees
@@ -272,7 +329,7 @@ export const BuyGauge: React.FC<BuyGaugeProps> = ({
   // Helper Functions:
   ////////////////////////////////////////////////
   const hasConfiguredSettings = () => {
-    return Object.values(settings).some(value => value !== undefined);
+    return Object.values(productSettings).some(value => value !== undefined);
   };
 
   ////////////////////////////////////////////////

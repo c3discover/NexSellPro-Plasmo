@@ -9,9 +9,7 @@
 // Imports:
 /////////////////////////////////////////////////
 import React, { useState, useEffect } from "react";
-// Import the centralized data extraction function
-import { getUsedData } from '../../utils/usedData';
-import type { UsedProductData } from '../../utils/usedData';
+import { getUsedData, UsedProductData } from "../../data/usedData";
 import { FiCheckCircle } from "react-icons/fi";
 import { SellerTable } from '../../components/6Analysis/SellerTable';
 import { getDaysAgo, isBrandMatch } from '../../utils/analysisHelpers';
@@ -78,7 +76,8 @@ export const Analysis: React.FC<AnalysisProps> = ({ areSectionsOpen }) => {
   // Fetch product data and update state
   useEffect(() => {
     const fetchData = async () => {
-      const data = await getUsedData();
+      const productId = window.location.pathname.match(/\/ip\/[^\/]+\/(\d+)/)?.[1] || '';
+      const data = await getUsedData(productId);
       if (data) {
         setProductData(data);
       }
@@ -336,12 +335,12 @@ export const Analysis: React.FC<AnalysisProps> = ({ areSectionsOpen }) => {
                 (() => {
                   const maxSellers = JSON.parse(localStorage.getItem("desiredMetrics") || "{}")?.maxSellers;
                   if (!maxSellers || maxSellers === 0) return 'bg-gray-50 text-gray-600';
-                  return (productData?.sellers.totalSellers || 0) <= maxSellers
+                  return (productData?.totalSellers || 0) <= maxSellers
                     ? 'bg-emerald-50 text-emerald-700'
                     : 'bg-rose-50 text-rose-700';
                 })()
               }`}>
-                {productData?.sellers.totalSellers || 0}
+                {productData?.totalSellers || 0}
               </div>
             </div>
 

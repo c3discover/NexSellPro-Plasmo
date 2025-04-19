@@ -10,8 +10,7 @@
 ////////////////////////////////////////////////
 import React, { useEffect, useState } from "react";
 import { FiCheckCircle } from "react-icons/fi";
-import { getUsedData } from '../../utils/usedData';
-import type { UsedProductData } from '../../utils/usedData';
+import { getUsedData, UsedProductData } from "../../data/usedData";
 import { isBrandMatch } from '../../utils/analysisHelpers';
 
 ////////////////////////////////////////////////
@@ -50,7 +49,8 @@ export const SellerTable: React.FC = () => {
 
         const fetchSellers = async () => {
             try {
-                const data = await getUsedData();
+                const productId = window.location.pathname.match(/\/ip\/[^\/]+\/(\d+)/)?.[1] || '';
+                const data = await getUsedData(productId);
                 if (data && isMounted) {
                     setProductData(data);
                 }
@@ -142,7 +142,7 @@ export const SellerTable: React.FC = () => {
             return CLASS_SECTION_CONTENT_DEFAULT;
         }
 
-        return (productData?.sellers.totalSellers || 0) <= maxSellers
+        return (productData?.totalSellers || 0) <= maxSellers
             ? CLASS_SECTION_CONTENT_GREEN
             : CLASS_SECTION_CONTENT_RED;
     };

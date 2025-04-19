@@ -25,6 +25,7 @@
  */
 export interface SellerInfo {
   // Basic seller information
+  sellerID?: string;    // Optional seller identifier
   sellerName: string;  // Name of the seller
   price: string;       // Price as a formatted string
   type: 'WMT' | 'WFS' | 'WFS-Pro' | 'SF' | 'SF-Pro' | string;  // Seller type (Walmart, Walmart Fulfilled, Seller Fulfilled)
@@ -32,7 +33,8 @@ export interface SellerInfo {
   isProSeller: boolean;  // Whether the seller is a pro seller
   isWFS: boolean;      // Whether the seller uses Walmart Fulfillment Services
   availableQuantity?: number;  // Add this line
-
+  stock?: number;
+  
   // Optional pricing details
   priceInfo?: {
     currentPrice?: {

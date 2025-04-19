@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added rate limiting for API requests to prevent throttling
 
 ### Fixed
+- Streamlined Data Flow
 - Shipping dimensions now persist correctly when navigating away and returning
 - WFS apparel fee ($0.50) now correctly applies when "Apparel & Accessories" is selected
 - Pricing values (product cost, sale price) now persist correctly

@@ -245,6 +245,27 @@ export interface RawProductData {
   };
 }
 
+/**
+ * Combined used product data interface
+ */
+export interface UsedProductData {
+  basic: ProductBasicInfo;
+  pricing: ProductPricing;
+  dimensions: ProductDimensions;
+  media: ProductMedia;
+  categories: ProductCategories;
+  inventory: ProductInventory;
+  reviews: ProductReviews;
+  variants: ProductVariants;
+  badges: string[];
+  sellers: ProductSellers;
+  profitability: ProductProfitability;
+  flags: {
+    isApparel: boolean;
+    isHazardousMaterial: boolean;
+  };
+}
+
 ////////////////////////////////////////////////
 // Enums:
 ////////////////////////////////////////////////

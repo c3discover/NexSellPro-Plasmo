@@ -9,8 +9,7 @@
 // Imports:
 ////////////////////////////////////////////////
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { getUsedData } from "../../utils/usedData";
-import type { UsedProductData } from "../../utils/usedData";
+import { getUsedData, UsedProductData } from "../../data/usedData";
 
 ////////////////////////////////////////////////
 // Constants and Variables:
@@ -102,7 +101,8 @@ export const Product = () => {
       setError(null);
 
       try {
-        const data = await getUsedData();
+        const productId = window.location.pathname.match(/\/ip\/[^\/]+\/(\d+)/)?.[1] || '';
+        const data = await getUsedData(productId);
         if (isMounted) {
           setProductData(data);
           setIsLoading(false);
@@ -130,7 +130,7 @@ export const Product = () => {
   // Memoized copy handler to prevent recreation on every render
   const handleCopy = useCallback(() => {
     if (productData) {
-      navigator.clipboard.writeText(productData.basic.name);
+      navigator.clipboard.writeText(productData.name);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -146,11 +146,11 @@ export const Product = () => {
   ////////////////////////////////////////////////
   // Memoized shelving path renderer
   const renderShelvingPath = useMemo(() => {
-    if (!productData?.categories?.categories || productData.categories.categories.length === 0) {
+    if (!productData?.categories || productData.categories.length === 0) {
       return <span>No shelving path available</span>;
     }
 
-    return productData.categories.categories.map((category, index) => (
+    return productData.categories.map((category, index) => (
       <span key={category.url}>
         <a
           href={`https://www.walmart.com${category.url}`}
@@ -160,10 +160,10 @@ export const Product = () => {
         >
           {category.name}
         </a>
-        {index < productData.categories.categories.length - 1 && " > "}
+        {index < productData.categories.length - 1 && " > "}
       </span>
     ));
-  }, [productData?.categories?.categories]);
+  }, [productData?.categories]);
 
   // Memoized badges renderer
   const renderBadges = useMemo(() => {
@@ -269,7 +269,7 @@ export const Product = () => {
 
   // Optimize image loading with loading="lazy" and srcset for responsive images
   const renderProductImage = useMemo(() => {
-    if (!productData?.media?.imageUrl) return null;
+    if (!productData?.imageUrl) return null;
 
     return (
       <div className="relative w-full h-[150px] group">
@@ -280,8 +280,8 @@ export const Product = () => {
         )}
         <div className="absolute inset-0 flex items-center justify-center">
           <img
-            src={productData.media.imageUrl}
-            alt={productData.basic.name || 'Product image'}
+            src={productData.imageUrl}
+            alt={productData.name || 'Product image'}
             className={`w-auto h-auto max-h-[140px] object-contain transition-opacity duration-300 ${
               imageLoaded ? 'opacity-100' : 'opacity-0'
             } group-hover:scale-150 group-hover:z-50`}
@@ -292,7 +292,7 @@ export const Product = () => {
         </div>
       </div>
     );
-  }, [productData?.media?.imageUrl, imageLoaded]);
+  }, [productData?.imageUrl, imageLoaded]);
 
   ////////////////////////////////////////////////
   // Styles:
@@ -322,7 +322,7 @@ export const Product = () => {
   if (!productData) return null;
 
   // Get first category for the main category link
-  const firstCategory = productData.categories.categories[0];
+  const firstCategory = productData.categories[0];
 
   return (
     <div
@@ -332,7 +332,7 @@ export const Product = () => {
       {/* Product Name Section with Copy Functionality */}
       <div id="productName" className="flex items-center justify-between w-full">
         <p className="text-black font-bold text-sm text-center p-1 mb-2 mr-1 ml-2 rounded-lg bg-[#bfbfbf] shadow-black shadow-xl">
-          {productData.basic.name}
+          {productData.name}
         </p>
 
         {/* Copy Icon - Shows when not copied */}
@@ -373,10 +373,10 @@ export const Product = () => {
           {renderProductImage}
           <div>
             <p className="font-bold text-center text-black text-sm">
-              Images: <span className="font-normal">{productData.media.images?.length || 0}</span>
+              Images: <span className="font-normal">{productData.images?.length || 0}</span>
             </p>
             <p className="font-bold text-center text-black text-sm p-1">
-              Videos: <span className="font-normal">{productData.media.videos?.length || 0}</span>
+              Videos: <span className="font-normal">{productData.videos?.length || 0}</span>
             </p>
           </div>
         </div>
@@ -388,7 +388,7 @@ export const Product = () => {
             <p className="text-black text-sm p-1 flex justify-between items-center">
               <span className="font-bold">Price</span>
               <span className="px-2 py-1 bg-gray-300 rounded-lg text-black text-sm">
-                ${productData.pricing.currentPrice ? productData.pricing.currentPrice.toFixed(2) : '0.00'}
+                ${productData.currentPrice ? productData.currentPrice.toFixed(2) : '0.00'}
               </span>
             </p>
 
@@ -396,7 +396,7 @@ export const Product = () => {
             <p className="text-black text-sm p-1 flex justify-between items-center">
               <span className="font-bold">Ratings</span>
               <span className="px-2 py-1 bg-gray-300 rounded-lg text-black text-sm">
-                {productData.reviews.numberOfRatings}
+                {productData.numberOfRatings}
               </span>
             </p>
 
@@ -404,14 +404,14 @@ export const Product = () => {
             <p className="text-black text-sm p-1 flex justify-between items-center">
               <span className="font-bold">Sellers</span>
               <span className="px-2 py-1 bg-gray-300 rounded-lg text-black text-sm">
-                {productData.inventory.totalSellers}
+                {productData.totalSellers}
               </span>
             </p>
 
             {/* Walmart Selling Status */}
             <p className="text-black text-sm p-1 flex justify-between items-center">
               <span className="font-bold">Walmart Selling?</span>
-              {productData.pricing.sellerName === "Walmart.com" ? (
+              {productData.sellers.sellerName === "Walmart.com" ? (
                 <span className="px-1 py-1 text-sm bg-red-100 text-red-700 font-bold border border-red-500 rounded-lg shadow-sm">YES</span>
               ) : (
                 <span className="px-1 py-1 text-sm bg-green-100 text-green-700 font-bold border border-green-500 rounded-lg shadow-sm">NO</span>
@@ -422,7 +422,7 @@ export const Product = () => {
             <p className="text-black text-sm p-1 flex justify-between items-center">
               <span className="font-bold">Variations</span>
               <span className="px-2 py-1 bg-gray-300 rounded-lg text-black text-sm">
-                {Object.keys(productData.variants.variantsMap || {}).length || "-"}
+                {Object.keys(productData.variantsMap || {}).length || "-"}
               </span>
             </p>
           </div>
@@ -435,12 +435,12 @@ export const Product = () => {
         <p className="text-black font-bold text-start text-md">
           Brand:{" "}
           <a
-            href={`https://www.walmart.com/search?q=${productData.basic.brand}`}
+            href={`https://www.walmart.com/search?q=${productData.brand}`}
             target="_blank"
             rel="noopener noreferrer"
             className="ml-2 text-blue-500 hover:underline"
           >
-            {productData.basic.brand}
+            {productData.brand}
           </a>
         </p>
 

@@ -11,8 +11,7 @@
 // Imports:
 ////////////////////////////////////////////////
 import React, { useState, useEffect } from "react";
-import { getUsedData } from "../../utils/usedData";
-import type { UsedProductData } from "../../utils/usedData";
+import { getUsedData, UsedProductData } from "../../data/usedData";
 
 ////////////////////////////////////////////////
 // Constants and Variables:
@@ -85,7 +84,8 @@ export const ProductInfo: React.FC<ProductInfoProps> = ({ areSectionsOpen }) => 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const data = await getUsedData();
+        const productId = window.location.pathname.match(/\/ip\/[^\/]+\/(\d+)/)?.[1] || '';
+        const data = await getUsedData(productId);
         if (data) {
           setProductData(data);
         }

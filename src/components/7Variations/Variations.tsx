@@ -9,9 +9,7 @@
 // Imports:
 ////////////////////////////////////////////////
 import React, { useState, useEffect } from "react";
-import { getUsedData } from "../../utils/usedData";
-import type { UsedProductData } from "../../utils/usedData";
-import getData from "../../utils/getData";
+import { getUsedData, UsedProductData } from "../../data/usedData";
 
 ////////////////////////////////////////////////
 // Constants and Variables:
@@ -117,7 +115,8 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
   // Effect to fetch and process variation data
   useEffect(() => {
     const fetchData = async () => {
-      const data = await getUsedData();
+      const productId = window.location.pathname.match(/\/ip\/[^\/]+\/(\d+)/)?.[1] || '';
+      const data = await getUsedData(productId);
       if (data) {
         setProductData(data);
         if (data.variants.variantsMap) {
@@ -155,7 +154,7 @@ export const Variations: React.FC<VariationsProps> = ({ areSectionsOpen, variant
   // Effect to extract available attributes
   useEffect(() => {
     if (productData?.variants?.variantsMap) {
-      const firstVariant = Object.values(productData.variants.variantsMap)[0];
+      const firstVariant = Object.values(productData.variants.variantsMap)[0] as VariantInfo;
       if (firstVariant?.variants) {
         const attributes = firstVariant.variants
           .map(attr => attr.split('-')[0])
