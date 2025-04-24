@@ -220,6 +220,10 @@ export const calculateFinalShippingWeightForInbound = (weight: number, length: n
   return Math.max(weight, dim);
 };
 
+export const calculateTotalStock = (sellers: { availableQuantity?: number }[]): number => {
+  return sellers.reduce((sum, seller) => sum + (seller.availableQuantity || 0), 0);
+};
+
 ////////////////////////////////////////////////
 // Logging:
 // **Clean console.log output with styling
@@ -252,6 +256,7 @@ if (!loggedOnce) {
     calculateFinalShippingWeightForInbound,
     calculateStartingProductCost,
     calculateDimensionalWeight,
+    calculateTotalStock,
   });
   logGroupEnd();
   loggedOnce = true;

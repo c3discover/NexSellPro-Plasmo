@@ -27,7 +27,8 @@ import {
   calculateFinalShippingWeightForWFS,
   calculateFinalShippingWeightForInbound,
   calculateStartingProductCost,
-  calculateDimensionalWeight
+  calculateDimensionalWeight,
+  calculateTotalStock
 } from "./logic/calculations";
 import { getLocalData, BaselineMetrics, FeeSettings, PricingOverrides, ExportSettings } from "./logic/localData";
 import { LogModule, logGroup, logTable, logGroupEnd } from "./utils/logger";
@@ -384,7 +385,7 @@ export async function getUsedData(productId: string): Promise<UsedProductData> {
       mainSeller: seller[0] || null,
       otherSellers: seller.slice(1) || [],
       totalSellers: seller.length,
-      totalStock: seller.reduce((sum, s) => sum + (s.stock ?? 0), 0),
+      totalStock: calculateTotalStock(seller),
       totalProfit,
       roi: roiValue,
       margin: marginValue,
@@ -439,7 +440,7 @@ export async function getUsedData(productId: string): Promise<UsedProductData> {
       },
       inventory: {
         totalSellers: seller.length,
-        totalStock: seller.reduce((sum, s) => sum + (s.stock ?? 0), 0),
+        totalStock: calculateTotalStock(seller),
         fulfillmentOptions: raw.fulfillmentOptions.map(opt => opt.type)
       },
       sellers: {
