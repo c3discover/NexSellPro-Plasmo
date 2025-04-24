@@ -49,7 +49,7 @@
     "content_scripts": [
         {
             "matches": [
-                "https://www.walmart.com/*"
+                "https://www.walmart.com/ip/*"
             ],
             "js": [
                 "content.js"

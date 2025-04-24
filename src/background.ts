@@ -325,16 +325,26 @@ async function handleGoogleCheckConnection(): Promise<{ success: boolean; isConn
 ////////////////////////////////////////////////
 // Rate Limiting:
 ////////////////////////////////////////////////
-const RATE_LIMIT_DELAY = 2000; // 2 seconds between requests
-let lastRequestTime = 0;
+// Rate limiting configuration
+const RATE_LIMIT = {
+  MAX_REQUESTS: 10,
+  TIME_WINDOW: 60000, // 1 minute
+  requests: [] as number[]
+};
 
-// Rate limiting function
+// Rate limiting check
 const shouldThrottleRequest = (): boolean => {
   const now = Date.now();
-  if (now - lastRequestTime < RATE_LIMIT_DELAY) {
+  // Remove old requests outside the time window
+  RATE_LIMIT.requests = RATE_LIMIT.requests.filter(
+    time => now - time < RATE_LIMIT.TIME_WINDOW
+  );
+  
+  if (RATE_LIMIT.requests.length >= RATE_LIMIT.MAX_REQUESTS) {
     return true;
   }
-  lastRequestTime = now;
+  
+  RATE_LIMIT.requests.push(now);
   return false;
 };
 
@@ -428,7 +438,17 @@ const handleWebRequest = async (requestData: any) => {
 
   try {
     console.log('Fetching seller offers data...');
-    const response = await fetch(requestData.url);
+    const response = await fetch(requestData.url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': 'https://www.walmart.com/',
+        'DNT': '1',
+        'Connection': 'keep-alive'
+      },
+      credentials: 'include'
+    });
     
     // Check if response is HTML (indicating a potential CAPTCHA or error page)
     const contentType = response.headers.get('content-type');

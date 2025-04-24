@@ -1,24 +1,20 @@
 /**
- * @fileoverview Extracts seller information from Walmart pages using DOM and GraphQL as fallback. Returns normalized SellerInfo array with consistent logging and validation.
+ * @fileoverview Seller data extraction and processing
  * @author NexSellPro
- * @created 2024-03-20
+ * @created 2025-04-18
  * @lastModified 2025-04-18
  */
 
 ////////////////////////////////////////////////
 // Imports:
-// **All external and internal module imports
-// **Grouped by type (external, then internal utils/types)
 ////////////////////////////////////////////////
-import { logGroup, logTable, logGroupEnd, LogModule } from "../utils/logger"
+import { logGroup, logTable, logGroupEnd, LogModule } from '../utils/logger';
 import { type SellerInfo } from '~/types/seller';
+import { getProductDetails } from './getData';
 
 ////////////////////////////////////////////////
-// Constants and Variables:
-// **Anything that defines shared constants, static strings, colors, styles, config, etc.
+// Constants:
 ////////////////////////////////////////////////
-let loggedOnce = false
-
 // GraphQL endpoint for fetching seller data
 const GRAPHQL_ENDPOINT = 'https://www.walmart.com/orchestra/home/graphql/GetAllSellerOffers/ceb1a19937155516286824bfb2b9cc9331cc89e6d4bea5756776737724d5b3cf';
 
@@ -113,16 +109,46 @@ const SELLER_SELECTORS = {
   ]
 };
 
+
 ////////////////////////////////////////////////
-// Types and Interfaces:
-// **Custom TypeScript interfaces for the data being worked on
+// Types:
 ////////////////////////////////////////////////
+interface SellerCache {
+  data: SellerInfo[];
+  timestamp: number;
+  productId: string;
+}
+
 interface RawSellerData {
   name: string | null;
   price: string | null;
-  deliveryInfo: string | null;
+  deliveryInfo: string;
   isWFS: boolean;
   isProSeller: boolean;
+}
+
+interface SellerResponse {
+  data: {
+    product: {
+      sellers: {
+        name: string;
+        sellerId: string;
+        sellerType: string;
+        sellerRating: number;
+        fulfillmentType: string;
+        shippingMethods: {
+          shipPrice: number;
+          shipMethod: string;
+          estimatedDeliveryDate: string;
+        }[];
+        inventoryCount: number;
+        bestMarketplacePrice: {
+          price: number;
+          availabilityStatus: string;
+        };
+      }[];
+    };
+  };
 }
 
 declare global {
@@ -132,25 +158,8 @@ declare global {
 }
 
 ////////////////////////////////////////////////
-// Configuration:
-// **For example: rate limiters, retry configs, cache TTLs
-////////////////////////////////////////////////
-// Cache for GraphQL responses
-let graphQLCache: {
-  data: SellerInfo[];
-  timestamp: number;
-  productId: string;
-} | null = null;
-
-// Compare button state
-let lastCompareButtonClick = 0;
-let isCompareButtonDebouncing = false;
-
-////////////////////////////////////////////////
 // Helper Functions:
-// **Utility functions (scrapers, parsers, sanitizers, formatters, fallbacks)
 ////////////////////////////////////////////////
-
 // Wait for element to appear in DOM
 const waitForElement = async (selectors: string | string[], maxAttempts = 5): Promise<Element | null> => {
   const selectorArray = Array.isArray(selectors) ? selectors : [selectors];
@@ -205,6 +214,11 @@ const extractDeliveryInfo = (container: Element): string => {
   // Fallback to first delivery option
   return deliveryOptions[0].textContent?.trim() || 'N/A';
 };
+
+// State variables for button handling
+let isCompareButtonDebouncing = false;
+let lastCompareButtonClick = 0;
+let graphQLCache: SellerCache | null = null;
 
 // Extract seller elements from container
 const extractSellerElements = (container: Element): RawSellerData => {
@@ -265,15 +279,13 @@ const extractSellerElements = (container: Element): RawSellerData => {
                      !!container.querySelector('[data-testid*="pro-seller" i]');
 
 
-  const data = {
+  return {
     name: sellerName,
-    price: price,
-    deliveryInfo: deliveryInfo,
+    price,
+    deliveryInfo,
     isWFS,
     isProSeller
   };
-
-  return data;
 };
 
 // Validate and transform seller data
@@ -341,7 +353,7 @@ const extractAllSellers = async (): Promise<SellerInfo[]> => {
           .filter((seller): seller is SellerInfo => seller !== null);
 
         if (sellers.length > 0) {
-          return sellers;
+        return sellers;
         }
       }
 
@@ -540,29 +552,14 @@ const extractSellerData = async (): Promise<SellerInfo[]> => {
   try {
     const dataDiv = document.getElementById("__NEXT_DATA__");
     if (!dataDiv) {
-      console.warn("No __NEXT_DATA__ div found, returning fallback seller data");
-      return [{
-        sellerName: "Unknown Seller",
-        price: "$0.00",
-        type: "Unknown",
-        arrives: "N/A",
-        isProSeller: false,
-        isWFS: false
-      }];
+      throw new Error('No product data available');
     }
     
     const rawData = dataDiv.innerText;
     const { product, idml, reviews } = JSON.parse(rawData).props.pageProps.initialData.data;
+    const productDetails = getProductDetails(product, idml, reviews);
     
-    // Get product details using the working version's approach
-    const productDetails = {
-      productID: product?.id || idml?.id || window.location.pathname.match(/\/ip\/[^/]+\/(\d+)/)?.[1],
-      sellerName: product?.seller?.sellerDisplayName || product?.seller?.name,
-      sellerDisplayName: product?.seller?.sellerDisplayName,
-      currentPrice: product?.priceInfo?.currentPrice?.priceString?.replace(/[^\d.]/g, '')
-    };
-    
-    if (!productDetails.productID) {
+    if (!productDetails?.productID) {
       throw new Error('No product ID available');
     }
 
@@ -594,7 +591,7 @@ const extractSellerData = async (): Promise<SellerInfo[]> => {
       isWFS: false
     }];
   } catch (error) {
-    console.error('[Seller Data] Error in seller extraction:', error);
+    console.error('Error in seller extraction:', error);
     return [];
   }
 };
@@ -644,31 +641,38 @@ const observeSellerData = (callback: (sellers: SellerInfo[]) => void): () => voi
   };
 };
 
-
-////////////////////////////////////////////////
-// Main Logic:
-// **The code that runs on import/execute (e.g., fetch, parse, etc.)
-////////////////////////////////////////////////
-
-
 ////////////////////////////////////////////////
 // Logging:
-// **Clean console.log output with styling
 ////////////////////////////////////////////////
-if (!window.__nsp_logged_sellerData) {
-  window.__nsp_logged_sellerData = true;
-  extractSellerData().then((sellers) => {
-    logGroup(LogModule.SELLER_DATA, sellers.length + " sellers");
-    console.log('Final Sellers', sellers);
+function logSellerData(data: SellerInfo[]): void {
+  if (!window.__nsp_logged_sellerData) {
+    logGroup(LogModule.SELLER_DATA, "Seller Data");
+    logTable(LogModule.SELLER_DATA, "Sellers", data);
     logGroupEnd();
-  });
+    window.__nsp_logged_sellerData = true;
+  }
 }
 
 ////////////////////////////////////////////////
-// Export Statement:
-// **The final export(s)
+// Main Function:
 ////////////////////////////////////////////////
-// Main export is the default getSellerData function above
-export const getSellerData = extractSellerData;
-export { fetchSellerDataGraphQL, observeSellerData };
-export default extractSellerData;
+/**
+ * Get seller data for a product
+ * @param productId - The product ID to get seller data for
+ * @returns Array of seller information
+ */
+const getSellerData = async (productId: string): Promise<SellerInfo[]> => {
+  try {
+    const sellers = await extractSellerData();
+    logSellerData(sellers);
+    return sellers;
+  } catch (error) {
+    console.error('Error getting seller data:', error);
+    return [];
+  }
+};
+
+////////////////////////////////////////////////
+// Export:
+////////////////////////////////////////////////
+export { getSellerData };

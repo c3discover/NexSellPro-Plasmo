@@ -76,15 +76,13 @@ const ContentUI = () => {
   ////////////////////////////////////////////////
   // State and Hooks:
   ////////////////////////////////////////////////
-  // State for controlling sidebar visibility
   const [isOpen, setIsOpen] = useState(true);
-  // State for storing product details
-  const [productDetails, setProductDetails] = useState(null);
-  // State for controlling section expansion/collapse
-  const [areSectionsOpen, setAreSectionsOpen] = useState(true);
-  // State for tracking current URL
+  const [productDetails, setProductDetails] = useState<any>(null);
   const [currentUrl, setCurrentUrl] = useState(window.location.href);
-  // State for storing product metrics
+  const [areSectionsOpen, setAreSectionsOpen] = useState(true);
+  const [isBotProtection, setIsBotProtection] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingAttempts, setLoadingAttempts] = useState(0);
   const [metrics, setMetrics] = useState<ProductMetrics>({
     profit: 0,
     margin: 0,
@@ -95,6 +93,37 @@ const ContentUI = () => {
     numWfsSellers: 0,
     totalStock: 0
   });
+
+  ////////////////////////////////////////////////
+  // Data Loading:
+  ////////////////////////////////////////////////
+  const loadProductData = async (productId: string) => {
+    setIsLoading(true);
+    try {
+      const data = await getUsedData(productId);
+      if (data) {
+        setProductDetails(data);
+        document.body.classList.add("plasmo-google-sidebar-show");
+        setLoadingAttempts(0); // Reset attempts on success
+      } else {
+        setLoadingAttempts(prev => prev + 1);
+        if (loadingAttempts < 3) {
+          // Retry after a short delay
+          setTimeout(() => loadProductData(productId), 1000);
+        } else {
+          console.error('[ContentUI] Failed to load product data after multiple attempts');
+          setProductDetails(null);
+          document.body.classList.remove("plasmo-google-sidebar-show");
+        }
+      }
+    } catch (error) {
+      console.error('[ContentUI] Error loading product data:', error);
+      setProductDetails(null);
+      document.body.classList.remove("plasmo-google-sidebar-show");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   ////////////////////////////////////////////////
   // Message Handlers:
@@ -132,30 +161,37 @@ const ContentUI = () => {
   };
 
   ////////////////////////////////////////////////
+  // Bot Protection Detection:
+  ////////////////////////////////////////////////
+  const checkBotProtection = () => {
+    const botProtection = document.querySelector('div[class*="bot-protection"]') || 
+                         document.querySelector('div[class*="captcha"]') ||
+                         document.querySelector('form[class*="re-captcha"]');
+    setIsBotProtection(!!botProtection);
+    return !!botProtection;
+  };
+
+  ////////////////////////////////////////////////
   // URL Change Detection:
   ////////////////////////////////////////////////
   useEffect(() => {
     let lastUrl = window.location.href;
     
-    // Function to check URL changes
     const checkForUrlChange = async () => {
       try {
         const currentUrl = window.location.href;
         if (currentUrl !== lastUrl) {
           lastUrl = currentUrl;
+          setCurrentUrl(currentUrl);
+          setLoadingAttempts(0); // Reset attempts on URL change
           
           const isProductPage = currentUrl.includes("/ip/");
-          if (isProductPage) {
+          if (isProductPage && !checkBotProtection()) {
             clearProductCache();
             
-            // Extract productId from URL
             const productId = currentUrl.split('/ip/')[1]?.split('/')[0] || '';
             if (productId) {
-              const data = await getUsedData(productId);
-              if (data) {
-                setProductDetails(data);
-                document.body.classList.add("plasmo-google-sidebar-show");
-              }
+              await loadProductData(productId);
             }
           } else {
             setProductDetails(null);
@@ -163,26 +199,32 @@ const ContentUI = () => {
           }
         }
       } catch (error) {
-        console.error('Error in checkForUrlChange:', error);
+        console.error('[ContentUI] Error in checkForUrlChange:', error);
       }
     };
 
     // Set up observers for URL changes
     const observer = new MutationObserver((mutations) => {
-      // Only check for URL changes if the mutation is relevant
       if (mutations.some(mutation => 
         mutation.type === 'childList' && 
-        mutation.target === document.body
+        (mutation.target === document.body || mutation.target === document.head)
       )) {
         checkForUrlChange();
+        checkBotProtection();
       }
     });
 
-    // Observe only the body element
+    // Observe both body and head
     if (document.body) {
       observer.observe(document.body, { 
         childList: true,
-        subtree: false 
+        subtree: true 
+      });
+    }
+    if (document.head) {
+      observer.observe(document.head, {
+        childList: true,
+        subtree: true
       });
     }
 
@@ -195,8 +237,7 @@ const ContentUI = () => {
     const checkInitialPage = async () => {
       try {
         const currentLocation = window.location.href;
-        if (currentLocation.includes("/ip/")) {
-          // Extract productId from URL
+        if (currentLocation.includes("/ip/") && !checkBotProtection()) {
           const productId = currentLocation.split('/ip/')[1]?.split('/')[0] || '';
           if (productId) {
             const data = await getUsedData(productId);
@@ -221,7 +262,7 @@ const ContentUI = () => {
       window.removeEventListener('pushState', checkForUrlChange);
       window.removeEventListener('replaceState', checkForUrlChange);
     };
-  }, []);
+  }, [loadingAttempts]);
 
   ////////////////////////////////////////////////
   // Event Handlers:
@@ -244,9 +285,21 @@ const ContentUI = () => {
     };
   }, [isOpen, currentUrl, productDetails]);
 
-  // Don't render anything if not on a product page
-  if (!currentUrl.includes("/ip/") || !productDetails) {
+  // Don't render anything if not on a product page, if bot protection is active, or if still loading initial data
+  if (!currentUrl.includes("/ip/") || isBotProtection) {
     return null;
+  }
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="fixed right-0 top-0 h-screen w-[400px] bg-white shadow-lg flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading product data...</p>
+        </div>
+      </div>
+    );
   }
 
   ////////////////////////////////////////////////
