@@ -90,11 +90,8 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
 
   // Add handler for Walmart button click
   const handleWalmartClick = () => {
-    console.log('Walmart button clicked');
     setShowWalmartMessage(true);
-    console.log('Message state set to true');
     setTimeout(() => {
-      console.log('Timeout triggered, setting message to false');
       setShowWalmartMessage(false);
     }, 3000);
   };
@@ -149,7 +146,6 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
                   : ""
               }`}
               onClick={() => {
-                console.log('Button clicked:', label);
                 if (label === "Create Listing on Walmart") {
                   handleWalmartClick();
                 } else {

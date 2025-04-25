@@ -14,7 +14,6 @@ export const GOOGLE_CLIENT_ID = '469074340331-ecg0lufoje86bk2ultj35voasto7s3nc.a
 const REDIRECT_URI = typeof chrome !== "undefined" && chrome.identity
   ? chrome.identity.getRedirectURL("oauth2")
   : "";
-console.log('OAuth Redirect URI:', REDIRECT_URI);
 export const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
   'https://www.googleapis.com/auth/drive.file'
@@ -138,7 +137,6 @@ export const getGoogleAuthState = async (): Promise<GoogleAuthState | null> => {
             console.error('Error getting Google auth state:', chrome.runtime.lastError);
             reject(new Error(chrome.runtime.lastError.message));
           } else {
-            console.log('Retrieved Google auth state:', result[STORAGE_KEY] ? 'Found' : 'Not found');
             resolve(result[STORAGE_KEY] || null);
           }
         });
@@ -172,7 +170,6 @@ export const connectToGoogle = async (): Promise<boolean> => {
       throw new Error('Chrome identity API not available. Please check your extension permissions.');
     }
 
-    console.log('Starting Chrome extension Google auth...');
 
     const token = await new Promise<string>((resolve, reject) => {
       chrome.identity.getAuthToken({ interactive: true }, (token) => {
@@ -201,7 +198,6 @@ export const connectToGoogle = async (): Promise<boolean> => {
         if (chrome.runtime.lastError) {
           reject(new Error(chrome.runtime.lastError.message))
         } else {
-          console.log("Stored auth state successfully");
           resolve()
         }
       })
@@ -224,12 +220,10 @@ export const disconnectFromGoogle = async (): Promise<void> => {
       return;
     }
 
-    console.log('Starting Google disconnect process...');
 
     // Get current token
     const state = await getGoogleAuthState();
     if (state && state.accessToken) {
-      console.log('Found existing token, removing...');
       
       // First remove the cached token
       await new Promise<void>((resolve, reject) => {
@@ -238,7 +232,6 @@ export const disconnectFromGoogle = async (): Promise<void> => {
             console.error('Error removing cached token:', chrome.runtime.lastError);
             reject(chrome.runtime.lastError);
           } else {
-            console.log('Successfully removed cached token');
             resolve();
           }
         });
@@ -246,7 +239,6 @@ export const disconnectFromGoogle = async (): Promise<void> => {
 
       // Then revoke access
       try {
-        console.log('Revoking token access...');
         const response = await fetch(`https://accounts.google.com/o/oauth2/revoke?token=${state.accessToken}`, {
           method: 'GET'
         });
@@ -254,7 +246,6 @@ export const disconnectFromGoogle = async (): Promise<void> => {
         if (!response.ok) {
           console.error('Error revoking token:', response.statusText);
         } else {
-          console.log('Successfully revoked token access');
         }
       } catch (error) {
         console.error('Error making revoke request:', error);
@@ -262,20 +253,17 @@ export const disconnectFromGoogle = async (): Promise<void> => {
     }
 
     // Remove from storage regardless of token state
-    console.log('Clearing stored auth state...');
     await new Promise<void>((resolve, reject) => {
       chrome.storage.local.remove(STORAGE_KEY, () => {
         if (chrome.runtime.lastError) {
           console.error('Error clearing auth state:', chrome.runtime.lastError);
           reject(new Error(chrome.runtime.lastError.message));
         } else {
-          console.log('Successfully cleared auth state');
           resolve();
         }
       });
     });
 
-    console.log('Google disconnect process completed');
   } catch (error) {
     console.error('Error disconnecting from Google:', error);
     throw error;
@@ -289,19 +277,16 @@ export const getValidAccessToken = async (): Promise<string | null> => {
   try {
     const state = await getGoogleAuthState();
     if (!state) {
-      console.log('No Google auth state found');
       return null;
     }
 
     // Check if token is expired
     if (Date.now() >= state.expiryTime) {
-      console.log('Token is expired, need to refresh');
       // Token is expired, need to refresh
       // This will be handled by the background script
       return null;
     }
 
-    console.log('Valid access token found');
     return state.accessToken;
   } catch (error) {
     console.error('Error getting valid access token:', error);

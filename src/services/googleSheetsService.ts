@@ -76,7 +76,6 @@ export async function authenticate(): Promise<boolean> {
  * Create a new Google Sheet
  */
 async function createSpreadsheet(title: string): Promise<string> {
-  console.log('Creating new Google Sheet with title:', title);
 
   const accessToken = await getValidAccessToken();
 
@@ -85,7 +84,6 @@ async function createSpreadsheet(title: string): Promise<string> {
     throw new Error('No valid access token available. Please reconnect to Google.');
   }
 
-  console.log('Creating spreadsheet with token:', accessToken.substring(0, 10) + '...');
 
   try {
     const response = await fetch(`${GOOGLE_SHEETS_API_BASE}`, {
@@ -117,7 +115,6 @@ async function createSpreadsheet(title: string): Promise<string> {
     }
 
     const data = await response.json();
-    console.log('Successfully created spreadsheet with ID:', data.spreadsheetId);
     return data.spreadsheetId;
   } catch (error) {
     console.error('Error in createSpreadsheet:', error);
@@ -132,7 +129,6 @@ export async function exportToGoogleSheets(
   products: ProductData[],
   options: ExportOptions = {}
 ): Promise<string> {
-  console.log('Starting export to Google Sheets with', products.length, 'products');
 
   try {
     // Create a new spreadsheet
@@ -168,7 +164,6 @@ export async function exportToGoogleSheets(
     ];
 
     // Update the spreadsheet with data
-    console.log('Updating spreadsheet with data...');
     const accessToken = await getValidAccessToken();
 
     if (!accessToken) {
@@ -199,17 +194,14 @@ export async function exportToGoogleSheets(
         throw new Error(`Failed to update spreadsheet: ${updateResponse.status} ${updateResponse.statusText}`);
       }
 
-      console.log('Successfully updated spreadsheet with data');
     } catch (error) {
       console.error('Error updating spreadsheet with data:', error);
       throw error;
     }
 
     // Format the spreadsheet
-    console.log('Formatting spreadsheet...');
     try {
       await formatSpreadsheet(spreadsheetId, accessToken);
-      console.log('Successfully formatted spreadsheet');
     } catch (error) {
       console.error('Error formatting spreadsheet:', error);
       // Don't throw here, we still want to return the spreadsheet ID even if formatting fails
@@ -227,7 +219,6 @@ export async function exportToGoogleSheets(
  */
 async function formatSpreadsheet(spreadsheetId: string, accessToken: string): Promise<void> {
   try {
-    console.log('Applying formatting to spreadsheet...');
 
     // Apply formatting to the spreadsheet
     const formatResponse = await fetch(
@@ -286,7 +277,6 @@ async function formatSpreadsheet(spreadsheetId: string, accessToken: string): Pr
       throw new Error(`Failed to format spreadsheet: ${formatResponse.status} ${formatResponse.statusText}`);
     }
 
-    console.log('Successfully applied formatting to spreadsheet');
   } catch (error) {
     console.error('Error formatting spreadsheet:', error);
     throw error;

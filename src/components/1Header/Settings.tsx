@@ -342,7 +342,6 @@ export const SettingsModal: React.FC<{
   useEffect(() => {
     const checkGoogleConnection = async () => {
       try {
-        console.log('Checking Google connection status from Settings component...');
         
         // Check if we're in a Chrome extension context
         if (typeof chrome === 'undefined' || !chrome.runtime) {
@@ -366,11 +365,9 @@ export const SettingsModal: React.FC<{
           });
         });
         
-        console.log('Google connection check response:', response);
         
         if (response.success) {
           setIsGoogleConnected(response.isConnected);
-          console.log('Google connection status updated:', response.isConnected);
         } else {
           console.error('Failed to check Google connection:', response.error);
           // Don't show an alert for connection check failures
@@ -387,7 +384,6 @@ export const SettingsModal: React.FC<{
   // Update handler for Google connection
   const handleGoogleConnection = async () => {
     try {
-      console.log('Handling Google connection, current status:', isGoogleConnected);
       
       // Check if we're in a Chrome extension context
       if (typeof chrome === 'undefined' || !chrome.runtime) {
@@ -398,7 +394,6 @@ export const SettingsModal: React.FC<{
       
       if (isGoogleConnected) {
         // Use message passing to disconnect
-        console.log('Attempting to disconnect from Google...');
         const response = await new Promise<{ success: boolean; error?: string }>((resolve, reject) => {
           const timeoutId = setTimeout(() => {
             reject(new Error('Request timed out'));
@@ -414,18 +409,15 @@ export const SettingsModal: React.FC<{
             }
           });
         });
-        console.log('Google disconnect response:', response);
         
         if (response.success) {
           setIsGoogleConnected(false);
-          console.log('Successfully disconnected from Google');
         } else {
           console.error('Failed to disconnect from Google:', response.error);
           alert(`Failed to disconnect from Google: ${response.error || 'Unknown error'}`);
         }
       } else {
         // Use message passing to connect
-        console.log('Attempting to connect to Google...');
         const response = await new Promise<{ success: boolean; error?: string }>((resolve, reject) => {
           const timeoutId = setTimeout(() => {
             reject(new Error('Request timed out'));
@@ -441,11 +433,9 @@ export const SettingsModal: React.FC<{
             }
           });
         });
-        console.log('Google connect response:', response);
         
         if (response.success) {
           setIsGoogleConnected(true);
-          console.log('Successfully connected to Google');
         } else {
           console.error('Failed to connect to Google:', response.error);
           alert(`Failed to connect to Google: ${response.error || 'Unknown error'}`);
@@ -1071,14 +1061,11 @@ export const SettingsModal: React.FC<{
         // Add more products as needed
       ];
 
-      console.log('Starting export to Google Sheets...');
       
       const spreadsheetId = await exportToGoogleSheets(products, {
         title: `NexSellPro Export ${new Date().toLocaleDateString()}`
       });
-
-      console.log('Export successful, spreadsheet ID:', spreadsheetId);
-      
+    
       // Open the spreadsheet in a new tab
       window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}`, '_blank');
     } catch (error) {

@@ -187,7 +187,7 @@ export function getLocalData(productId: string): LocalData {
 
 ////////////////////////////////////////////////
 // Logging:
-// **Clean console.log output with styling
+// **Clean console output with styling
 ////////////////////////////////////////////////
 if (!loggedOnce) {
   if (!window.__nsp_logged_localData) {

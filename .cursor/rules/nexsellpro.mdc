@@ -26,14 +26,7 @@ This is a Chrome MV3 extension built using Plasmo. It scrapes Walmart product da
 
 ## Module Boundaries
 Only the following files should contain logic:
-- getData.ts → Raw DOM scraping
-- sellerData.ts → GraphQL/API seller extraction
-- calculations.ts → ROI, margin, profit calculations
-- settings.ts → localStorage settings, overrides, and caching
-- logger.ts → styled, grouped logs
-- usedData.ts → single source of truth for all extension components
-
-> Do not import from these modules directly in UI components—only use usedData.ts.
+- Only use usedData.ts to import data into modules in UI components.
 
 ---
 

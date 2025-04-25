@@ -725,8 +725,7 @@ const Pricing: React.FC<PricingProps> = ({ product, settings, onMetricsUpdate, a
   useEffect(() => {
     if (productData?.mainCategory) {
       const mainCategory = productData.mainCategory;
-      console.log('Setting contract category based on main category:', mainCategory);
-      
+     
       switch (mainCategory) {
         case "Clothing":
           setContractCategory("Apparel & Accessories");

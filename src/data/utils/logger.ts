@@ -140,13 +140,6 @@ export const setLoggerConfig = (newConfig: Partial<LoggerConfig>): void => {
 export const setDebugMode = (enable: boolean): void => {
   config.level = enable ? LogLevel.DEBUG : LogLevel.INFO;
   saveConfig();
-  
-  // Log the change
-  if (enable) {
-    console.log('%c[LOGGER] Debug mode enabled', 'color: #10b981; font-weight: bold;');
-  } else {
-    console.log('%c[LOGGER] Debug mode disabled', 'color: #10b981; font-weight: bold;');
-  }
 };
 
 /**
@@ -168,7 +161,6 @@ export const logDebug = (module: LogModule, message: string, ...args: any[]): vo
  */
 export const logInfo = (module: LogModule, message: string, ...args: any[]): void => {
   if (!shouldLog(module, LogLevel.INFO)) return;
-  console.log(`%c${formatMessage(module, LogLevel.INFO, message)}`, LOG_STYLES[module], ...args);
 };
 
 /**
@@ -240,4 +232,4 @@ export default {
   logTable,
   LogModule,
   LogLevel
-}; 
+}

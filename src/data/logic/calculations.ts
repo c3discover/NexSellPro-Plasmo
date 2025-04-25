@@ -226,7 +226,7 @@ export const calculateTotalStock = (sellers: { availableQuantity?: number }[]): 
 
 ////////////////////////////////////////////////
 // Logging:
-// **Clean console.log output with styling
+// **Clean console output with styling
 ////////////////////////////////////////////////
 if (!loggedOnce) {
   logGroup(LogModule.CALCULATIONS, "Calculated Metrics");

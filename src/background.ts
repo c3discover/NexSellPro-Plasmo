@@ -4,7 +4,6 @@
  * @created 2024-03-07
  * @lastModified 2024-03-21
  */
-console.log("✅ NexSellPro background script loaded and running");
 
 ////////////////////////////////////////////////
 // Imports:
@@ -87,7 +86,6 @@ const sendUrlChangeMessage = async (tabId: number, url: string) => {
       url,
       isProductPage: isProductPage(url)
     });
-    console.log('URL change message sent:', url);
   } catch (error) {
     // Ignore errors from closed tabs or unloaded content scripts
     console.debug('Could not send URL change message:', error);
@@ -105,15 +103,11 @@ const isServiceWorkerContext = (): boolean => {
 ////////////////////////////////////////////////
 // Installation handler
 const handleInstallation = async (details: chrome.runtime.InstalledDetails) => {
-  console.log("NexSellPro extension installed.");
 };
 
 // Handle Google connection
 async function handleGoogleConnect(): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log('Starting Google connection process in background...');
-    console.log('Client ID:', GOOGLE_CLIENT_ID);
-    console.log('Requested scopes:', GOOGLE_SCOPES);
     
     // Check if we're in a Chrome extension context
     if (!isChromeExtensionContext()) {
@@ -122,8 +116,6 @@ async function handleGoogleConnect(): Promise<{ success: boolean; error?: string
       return { success: false, error };
     }
     
-    console.log('Chrome extension context verified');
-    console.log('Checking Chrome APIs...');
     
     // Check if Chrome identity API is available
     if (!isChromeAPIAvailable('identity')) {
@@ -132,8 +124,6 @@ async function handleGoogleConnect(): Promise<{ success: boolean; error?: string
       return { success: false, error };
     }
 
-    console.log('Chrome identity API available');
-    console.log('Attempting to get auth token...');
     
     // Request auth token from Chrome identity API
     const token = await new Promise<string>((resolve, reject) => {
@@ -142,7 +132,6 @@ async function handleGoogleConnect(): Promise<{ success: boolean; error?: string
           interactive: true,
           scopes: GOOGLE_SCOPES
         };
-        console.log('Requesting token with params:', authParams);
         
         chrome.identity.getAuthToken(authParams, (token) => {
           if (chrome.runtime.lastError) {
@@ -155,7 +144,6 @@ async function handleGoogleConnect(): Promise<{ success: boolean; error?: string
             console.error('No token received from OAuth flow');
             reject(new Error('No token received from Google OAuth'));
           } else {
-            console.log('Successfully received auth token');
             resolve(token);
           }
         });
@@ -172,7 +160,6 @@ async function handleGoogleConnect(): Promise<{ success: boolean; error?: string
       expiryTime: Date.now() + (3600 * 1000) // Token typically expires in 1 hour
     };
 
-    console.log('Storing auth state...');
 
     // Save auth state to storage
     await new Promise<void>((resolve, reject) => {
@@ -182,7 +169,6 @@ async function handleGoogleConnect(): Promise<{ success: boolean; error?: string
             console.error('Error saving auth state:', chrome.runtime.lastError);
             reject(new Error(chrome.runtime.lastError.message));
           } else {
-            console.log('Successfully saved auth state');
             resolve();
           }
         });
@@ -192,7 +178,6 @@ async function handleGoogleConnect(): Promise<{ success: boolean; error?: string
       }
     });
 
-    console.log('Google connection process completed successfully');
     return { success: true };
   } catch (error) {
     console.error('Detailed error in handleGoogleConnect:', {
@@ -210,7 +195,6 @@ async function handleGoogleConnect(): Promise<{ success: boolean; error?: string
 // Handle Google disconnection
 async function handleGoogleDisconnect(): Promise<{ success: boolean; error?: string }> {
   try {
-    console.log('Starting Google disconnection process...');
     
     // Check if we're in a Chrome extension context
     if (!isChromeExtensionContext()) {
@@ -247,7 +231,6 @@ async function handleGoogleDisconnect(): Promise<{ success: boolean; error?: str
               console.error('Error removing cached auth token:', chrome.runtime.lastError);
               reject(new Error(chrome.runtime.lastError.message));
             } else {
-              console.log('Successfully removed cached auth token');
               resolve();
             }
           });
@@ -266,7 +249,6 @@ async function handleGoogleDisconnect(): Promise<{ success: boolean; error?: str
             console.error('Error removing auth state:', chrome.runtime.lastError);
             reject(new Error(chrome.runtime.lastError.message));
           } else {
-            console.log('Successfully removed auth state');
             resolve();
           }
         });
@@ -276,7 +258,6 @@ async function handleGoogleDisconnect(): Promise<{ success: boolean; error?: str
       }
     });
     
-    console.log('Successfully disconnected from Google');
     return { success: true };
   } catch (error) {
     console.error('Error disconnecting from Google:', error);
@@ -290,7 +271,6 @@ async function handleGoogleDisconnect(): Promise<{ success: boolean; error?: str
 // Handle Google connection check
 async function handleGoogleCheckConnection(): Promise<{ success: boolean; isConnected: boolean; error?: string }> {
   try {
-    console.log('Checking Google connection status...');
     
     // Check if we're in a Chrome extension context
     if (!isChromeExtensionContext()) {
@@ -310,7 +290,6 @@ async function handleGoogleCheckConnection(): Promise<{ success: boolean; isConn
     }
     
     const connected = await isConnectedToGoogle();
-    console.log('Google connection status:', connected);
     return { success: true, isConnected: connected };
   } catch (error) {
     console.error('Error checking Google connection:', error);
@@ -353,10 +332,8 @@ const shouldThrottleRequest = (): boolean => {
 ////////////////////////////////////////////////
 // Remove duplicate listeners and consolidate message handling
 chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendResponse) => {
-  console.log("Background received message:", message.type);
   
   if (message.type === "PING") {
-    console.log("✅ Got PING from Settings page");
     sendResponse({ pong: true });
     return false;
   }
@@ -365,7 +342,6 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
   if (message.type === 'GOOGLE_CONNECT') {
     handleGoogleConnect()
       .then(result => {
-        console.log('Google connect result:', result);
         sendResponse(result);
       })
       .catch(error => {
@@ -381,7 +357,6 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
   if (message.type === 'GOOGLE_DISCONNECT') {
     handleGoogleDisconnect()
       .then(result => {
-        console.log('Google disconnect result:', result);
         sendResponse(result);
       })
       .catch(error => {
@@ -397,7 +372,6 @@ chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendRes
   if (message.type === 'GOOGLE_CHECK_CONNECTION') {
     handleGoogleCheckConnection()
       .then(result => {
-        console.log('Google check connection result:', result);
         sendResponse(result);
       })
       .catch(error => {
@@ -432,12 +406,10 @@ const handleWebRequest = async (requestData: any) => {
 
   // Apply rate limiting
   if (shouldThrottleRequest()) {
-    console.log('Request throttled due to rate limiting');
     return;
   }
 
   try {
-    console.log('Fetching seller offers data...');
     const response = await fetch(requestData.url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',

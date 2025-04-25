@@ -193,9 +193,6 @@ export const showErrorNotification = (
     notificationFunction(message, severity, duration);
     return;
   }
-  
-  // Fallback to console logging
-  console.log(`[NOTIFICATION] ${severity.toUpperCase()}: ${message}`);
 };
 
 ////////////////////////////////////////////////
