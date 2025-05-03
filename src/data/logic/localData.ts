@@ -1,14 +1,11 @@
 /**
- * @fileoverview Template for utility/helper files
- * @author Your Name
- * @created 2025-04-18
- * @lastModified 2025-04-18
+ * @fileoverview Local data management and storage utilities
+ * @author NexSellPro
+ * @created 2024-03-21
  */
 
 ////////////////////////////////////////////////
 // Imports:
-// **All external and internal module imports
-// **Grouped by type (external, then internal utils/types)
 ////////////////////////////////////////////////
 import {
   logGroup,
@@ -16,13 +13,16 @@ import {
   logGroupEnd,
   LogModule
 } from '../utils/logger';
+import {
+  ExportSettings,
+  BaselineMetrics,
+  FeeSettings,
+  PricingOverrides
+} from '../../types/settings';
 
 ////////////////////////////////////////////////
-// Constants and Variables:
-// **Anything that defines shared constants, static strings, colors, styles, config, etc.
+// Constants:
 ////////////////////////////////////////////////
-let loggedOnce = false;
-
 const BASELINE_KEY = 'desiredMetrics';
 const FULFILLMENT_KEY = 'defaultFulfillment';
 const PREP_COST_TYPE_KEY = 'prepCostType';
@@ -39,57 +39,11 @@ declare global {
 
 ////////////////////////////////////////////////
 // Types and Interfaces:
-// **Custom TypeScript interfaces for the data being worked on
 ////////////////////////////////////////////////
-export interface BaselineMetrics {
-  defaultFulfillment: string;
-  minProfit: number;
-  minMargin: number;
-  minROI: number;
-  minMonthlySales?: number;
-  minTotalRatings: number;
-  minRatings30Days: number;
-  minOverallRating: number;
-  maxSellers: number;
-  maxWfsSellers: number;
-  maxStock: number;
-}
 
-export interface FeeSettings {
-  inboundShippingCost: number;
-  sfShippingCost: number;
-  storageLength: number;
-  season: string;
-  prepCost: number;
-  prepCostType: 'per lb' | 'each';
-  additionalCosts: number;
-  additionalCostType: 'per lb' | 'each';
-}
-
-export interface ExportField {
-  id: string;
-  label: string;
-  enabled: boolean;
-  order: number;
-}
-export type ExportSettings = ExportField[];
-
-export interface PricingOverrides {
-  productCost?: number;
-  salePrice?: number;
-  length?: number;
-  width?: number;
-  height?: number;
-  weight?: number;
-  referralFee?: number;
-  wfsFee?: number;
-  wfsInboundShipping?: number;
-  storageFee?: number;
-  prepFee?: number;
-  additionalFees?: number;
-  contractCategory?: string;
-}
-
+/**
+ * Combined local data interface
+ */
 export interface LocalData {
   baselineMetrics: BaselineMetrics;
   feeSettings: FeeSettings;
@@ -97,36 +51,35 @@ export interface LocalData {
   pricingOverrides: PricingOverrides;
 }
 
-
-////////////////////////////////////////////////
-// Configuration:
-// **For example: rate limiters, retry configs, cache TTLs
-////////////////////////////////////////////////
-// No configuration needed
-
 ////////////////////////////////////////////////
 // Helper Functions:
-// **Utility functions (scrapers, parsers, sanitizers, formatters, fallbacks)
 ////////////////////////////////////////////////
-function parseJSON<T>(raw: string | null, defaultVal: T): T {
+
+/**
+ * Parse JSON with fallback
+ */
+function parseJSON<T>(json: string | null, fallback: T): T {
+  if (!json) return fallback;
   try {
-    return raw ? JSON.parse(raw) : defaultVal;
+    return JSON.parse(json);
   } catch {
-    return defaultVal;
+    return fallback;
   }
 }
 
-
 ////////////////////////////////////////////////
 // Main Logic:
-// **The code that runs on import/execute (e.g., fetch, parse, etc.)
 ////////////////////////////////////////////////
+
+/**
+ * Get local data for a product
+ */
 export function getLocalData(productId: string): LocalData {
   // Baseline metrics
   const baselineRaw = localStorage.getItem(BASELINE_KEY);
   const bm = parseJSON<Record<string, string>>(baselineRaw, {});
   const baselineMetrics: BaselineMetrics = {
-    defaultFulfillment: localStorage.getItem(FULFILLMENT_KEY) || '',
+    defaultFulfillment: localStorage.getItem(FULFILLMENT_KEY) || 'Walmart Fulfilled',
     minProfit: parseFloat(bm.minProfit) || 0,
     minMargin: parseFloat(bm.minMargin) || 0,
     minROI: parseFloat(bm.minROI) || 0,
@@ -144,7 +97,7 @@ export function getLocalData(productId: string): LocalData {
     inboundShippingCost: parseFloat(bm.inboundShippingCost) || 0,
     sfShippingCost: parseFloat(bm.sfShippingCost) || 0,
     storageLength: parseInt(bm.storageLength) || 1,
-    season: bm.season || '',
+    season: bm.season || 'Jan-Sep',
     prepCost: parseFloat(bm.prepCost) || 0,
     prepCostType: (localStorage.getItem(PREP_COST_TYPE_KEY) as 'per lb' | 'each') || 'each',
     additionalCosts: parseFloat(bm.additionalCosts) || 0,
@@ -153,58 +106,32 @@ export function getLocalData(productId: string): LocalData {
 
   // Export settings
   const exportRaw = localStorage.getItem(EXPORT_SETTINGS_KEY);
-  const es = parseJSON<{ fields: ExportField[] }>(exportRaw, { fields: [] });
-  const exportSettings: ExportSettings = es.fields;
+  const exportSettings: ExportSettings = parseJSON<ExportSettings>(exportRaw, { fields: [] });
 
   // Pricing overrides
   const pricingRaw = localStorage.getItem(PRICING_PREFIX + productId);
-  const pricingData = parseJSON<Record<string, string>>(pricingRaw, {});
-  const shippingRaw = localStorage.getItem(SHIPPING_PREFIX + productId);
-  const shippingData = parseJSON<Record<string, string>>(shippingRaw, {});
+  const pricingOverrides: PricingOverrides = parseJSON(pricingRaw, {});
 
-  const pricingOverrides: PricingOverrides = {
-    productCost: pricingData.productCost ? parseFloat(pricingData.productCost) : undefined,
-    salePrice: pricingData.salePrice ? parseFloat(pricingData.salePrice) : undefined,
-    length: shippingData.length ? parseFloat(shippingData.length) : undefined,
-    width: shippingData.width ? parseFloat(shippingData.width) : undefined,
-    height: shippingData.height ? parseFloat(shippingData.height) : undefined,
-    weight: shippingData.weight ? parseFloat(shippingData.weight) : undefined,
-    referralFee: pricingData.referralFee ? parseFloat(pricingData.referralFee) : undefined,
-    wfsFee: pricingData.wfsFee ? parseFloat(pricingData.wfsFee) : undefined,
-    wfsInboundShipping: pricingData.inboundShippingFee ? parseFloat(pricingData.inboundShippingFee) : undefined,
-    storageFee: pricingData.storageFee ? parseFloat(pricingData.storageFee) : undefined,
-    prepFee: pricingData.prepFee ? parseFloat(pricingData.prepFee) : undefined,
-    additionalFees: pricingData.additionalFees ? parseFloat(pricingData.additionalFees) : undefined,
-    contractCategory: pricingData.contractCategory || undefined
-  };
+  // Log data if needed
+  if (!window.__nsp_logged_localData) {
+    window.__nsp_logged_localData = true;
+    logGroup(LogModule.LOCAL_DATA, "Local Data");
+    logTable(LogModule.LOCAL_DATA2, "Baseline Metrics", baselineMetrics);
+    logTable(LogModule.LOCAL_DATA2, "Fee Settings", feeSettings);
+    logTable(LogModule.LOCAL_DATA2, "Export Settings", {
+      totalFields: exportSettings.fields.length,
+      enabledFields: exportSettings.fields.filter(field => field.enabled).length
+    });
+    logTable(LogModule.LOCAL_DATA2, "Pricing Overrides", pricingOverrides);
+    logGroupEnd();
+  }
 
-  const result = {
+  return {
     baselineMetrics,
     feeSettings,
     exportSettings,
     pricingOverrides
   };
-
-////////////////////////////////////////////////
-// Logging:
-// **Clean console output with styling
-////////////////////////////////////////////////
-if (!loggedOnce) {
-  if (!window.__nsp_logged_localData) {
-  window.__nsp_logged_localData = true;
-  logGroup(LogModule.LOCAL_DATA, "Local Stored Data");
-  logTable(LogModule.LOCAL_DATA2, "Baseline Metrics", baselineMetrics);
-  logTable(LogModule.LOCAL_DATA2, "Fee Settings", feeSettings);
-  logTable(LogModule.LOCAL_DATA2, "Export Settings", exportSettings);
-  logTable(LogModule.LOCAL_DATA2, "Pricing Overrides", pricingOverrides);
-  logGroupEnd();
-  loggedOnce = true;
-}}
-
-return result;
 }
-////////////////////////////////////////////////
-// Export Statement:
-// **The final export(s)
-//////////////////////////////////////////////// 
-// getLocalData above
+
+export default getLocalData;

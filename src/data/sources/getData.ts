@@ -597,7 +597,7 @@ export const deleteItem = async (endpoint: string, id: string): Promise<ApiRespo
 function logProductData(data: ProductDetails[]): void {
   if (!window.__nsp_logged_sellerData) {
     logGroup(LogModule.RAW_DATA, "Raw Product Data");
-    logTable(LogModule.RAW_DATA, "Product Details", data);
+    logTable(LogModule.RAW_DATA2, "Product Details", data);
   logGroupEnd();
     window.__nsp_logged_sellerData = true;
   }

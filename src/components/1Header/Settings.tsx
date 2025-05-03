@@ -10,34 +10,115 @@
 /////////////////////////////////////////////////
 
 import React, { useState, useEffect } from "react";
-import { SortableContainer, SortableElement, SortableHandle, SortableElementProps, SortableContainerProps } from 'react-sortable-hoc';
+import { Storage } from "@plasmohq/storage";
+import {
+  SortableContainer,
+  SortableElement,
+  SortableHandle,
+  SortableElementProps,
+  SortableContainerProps
+} from 'react-sortable-hoc';
 import { arrayMoveImmutable } from 'array-move';
-import { exportToGoogleSheets, ProductData } from '../../services/googleSheetsService';
+import ConnectWithGoogle from "../../components/common/ConnectWithGoogle";
+import {
+  ExportField,
+  ExportSettings,
+  BaselineMetrics,
+  FeeSettings,
+  PricingOverrides
+} from '../../types/settings';
+import { exportToGoogleSheet } from "~/services/googleSheetsService";
+import { logGroup, logTable, logGroupEnd, logError } from "../../data/utils/logger";
+import { LogModule } from "../../data/utils/logger";
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// Add window property declarations
+declare global {
+  interface Window {
+    __nsp_logged_googleSheets?: boolean;
+    __nsp_logged_googleSheets_save?: boolean;
+  }
+}
+
+// Initialize storage
+const storage = new Storage();
 
 /////////////////////////////////////////////////
 // Component Definition
 /////////////////////////////////////////////////
 
-// Add Export Settings interfaces
-interface ExportField {
-  id: string;
-  label: string;
-  enabled: boolean;
-  order: number;
+/**
+ * Form state for desired metrics
+ */
+interface DesiredMetrics {
+  minProfit: string;
+  minMargin: string;
+  minROI: string;
+  minMonthlySales: string;
+  minTotalRatings: string;
+  minOverallRating: string;
+  minRatings30Days: string;
+  maxSellers: string;
+  maxWfsSellers: string;
+  maxStock: string;
+  inboundShippingCost: string;
+  sfShippingCost: string;
+  storageLength: string;
+  season: string;
+  prepCost: string;
+  additionalCosts: string;
 }
 
-interface ExportSettings {
-  fields: ExportField[];
+/**
+ * Initial state interface
+ */
+interface InitialState {
+  desiredMetrics: DesiredMetrics;
+  defaultFulfillment: string;
+  prepCostType: string;
+  additionalCostType: string;
+  exportSettings: ExportSettings;
 }
 
+/**
+ * Props for SettingsModal component
+ */
+interface SettingsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSettingsChange: () => void;
+}
+
+/**
+ * Props for sortable item component
+ */
 interface SortableItemProps extends SortableElementProps {
   field: ExportField;
   onToggle: (id: string) => void;
 }
 
+/**
+ * Props for sortable list component
+ */
 interface SortableListProps extends SortableContainerProps {
   items: ExportField[];
   onToggle: (id: string) => void;
+}
+
+/**
+ * Export status interface
+ */
+interface ExportStatus {
+  isLoading: boolean;
+  success: boolean;
+  error: string | null;
+  url: string | null;
 }
 
 // Update categories for export fields
@@ -123,36 +204,102 @@ const exportFieldCategories = {
   blankColumn4: 'Additional Fields'
 };
 
+// Helper to validate and repair exportSettings
+function validateExportSettings(settings: any, defaultFields: ExportField[]): ExportSettings {
+  if (!settings || !Array.isArray(settings.fields)) {
+    logError(LogModule.GOOGLE_SHEETS, 'Malformed exportSettings, falling back to defaults.');
+    return { fields: defaultFields };
+  }
+  // Remove any fields missing required keys
+  const validFields = settings.fields.filter(f => f && typeof f.id === 'string' && typeof f.label === 'string' && typeof f.enabled === 'boolean' && typeof f.order === 'number');
+  if (validFields.length === 0) {
+    logError(LogModule.GOOGLE_SHEETS, 'No valid export fields found, using defaults.');
+    return { fields: defaultFields };
+  }
+  return { fields: validFields };
+}
+
+// Sortable item for dnd-kit
+function SortableExportField({ field, onToggle, listeners, attributes, isDragging, setNodeRef, style }) {
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`grid grid-cols-[24px_60px_1fr_40px] items-center gap-2 py-[2px] px-2 bg-white rounded border mb-[2px] ${isDragging ? 'opacity-60' : ''}`}
+      {...attributes}
+      {...listeners}
+    >
+      <div className="flex justify-center cursor-grab">⋮⋮</div>
+      <div className="text-[10px] text-gray-500 truncate">{field.category}</div>
+      <div className="text-xs font-medium truncate">{field.label || field.name}</div>
+      <div className="flex justify-end">
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input
+            type="checkbox"
+            className="sr-only peer"
+            checked={field.enabled}
+            onChange={() => onToggle(field.id)}
+          />
+          <div className="w-7 h-3.5 bg-gray-200 rounded-full peer peer-focus:ring-2 peer-focus:ring-cyan-300 peer-checked:bg-cyan-500 after:content-[''] after:absolute after:top-0 after:left-0 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all after:shadow-sm peer-checked:after:translate-x-full peer-checked:after:border-white"></div>
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function DndSortableExportList({ fields, onToggle, onReorder }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+  const ids = fields.map(f => f.id);
+
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={event => {
+        const { active, over } = event;
+        if (active.id !== over?.id) {
+          const oldIndex = fields.findIndex(f => f.id === active.id);
+          const newIndex = fields.findIndex(f => f.id === over.id);
+          onReorder(oldIndex, newIndex);
+        }
+      }}
+    >
+      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        {fields.map(field => {
+          const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.id });
+          const style = {
+            transform: CSS.Transform.toString(transform),
+            transition,
+          };
+          return (
+            <SortableExportField
+              key={field.id}
+              field={field}
+              onToggle={onToggle}
+              listeners={listeners}
+              attributes={attributes}
+              setNodeRef={setNodeRef}
+              isDragging={isDragging}
+              style={style}
+            />
+          );
+        })}
+      </SortableContext>
+    </DndContext>
+  );
+}
+
 // SettingsModal Component: manages and saves user-defined settings
-export const SettingsModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  onSettingsChange: () => void;
-}> = ({ isOpen, onClose, onSettingsChange }) => {
+export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen: isModalOpen, onClose, onSettingsChange }) => {
 
   /////////////////////////////////////////////////////
   // State Definitions
   /////////////////////////////////////////////////////
 
   // User-defined metrics and fee settings
-  const [desiredMetrics, setDesiredMetrics] = useState<{
-    minProfit: string;
-    minMargin: string;
-    minROI: string;
-    minMonthlySales: string;
-    minTotalRatings: string;
-    minOverallRating: string;
-    minRatings30Days: string;
-    maxSellers: string;
-    maxWfsSellers: string;
-    maxStock: string;
-    inboundShippingCost: string;
-    sfShippingCost: string;
-    storageLength: string;
-    season: string;
-    prepCost: string;
-    additionalCosts: string;
-  }>({
+  const [desiredMetrics, setDesiredMetrics] = useState<DesiredMetrics>({
     minProfit: "0.00",
     minMargin: "0",
     minROI: "0",
@@ -172,10 +319,10 @@ export const SettingsModal: React.FC<{
   });
 
   // Prep and additional costs settings
-  const [prepCostType, setPrepCostType] = useState("per lb");
+  const [prepCostType, setPrepCostType] = useState<string>("per_item");
   const [prepCostPerLb, setPrepCostPerLb] = useState(0.0);
   const [prepCostEach, setPrepCostEach] = useState(0.0);
-  const [additionalCostType, setAdditionalCostType] = useState("per lb");
+  const [additionalCostType, setAdditionalCostType] = useState<string>("per_item");
   const [additionalCostPerLb, setAdditionalCostPerLb] = useState(0.0);
   const [additionalCostEach, setAdditionalCostEach] = useState(0.0);
 
@@ -183,7 +330,7 @@ export const SettingsModal: React.FC<{
   const [defaultFulfillment, setDefaultFulfillment] = useState<string>("Walmart Fulfilled");
 
   // New state to handle the raw values for all metrics
-  const [rawMetrics, setRawMetrics] = useState<Partial<typeof desiredMetrics>>({});
+  const [rawMetrics, setRawMetrics] = useState<Partial<DesiredMetrics>>({});
 
   // New state to handle the raw value
   const [rawMinProfit, setRawMinProfit] = useState<string | null>(null);
@@ -206,7 +353,46 @@ export const SettingsModal: React.FC<{
   const [editedFields, setEditedFields] = useState<Set<string>>(new Set());
 
   // Add new state for active tab
-  const [activeTab, setActiveTab] = useState<'baseline' | 'fees' | 'export' | 'integrations'>('baseline');
+  const [activeTab, setActiveTab] = useState<string>("baseline");
+
+  // Controls the expansion/collapse state of this section
+  const [isOpen, setIsOpen] = useState(isModalOpen);
+  
+  // Tracks which buttons have been clicked for showing success animation
+  const [isClicked, setIsClicked] = useState<boolean[]>([false, false, false]);
+
+  // Add new state for the info message
+  const [showWalmartMessage, setShowWalmartMessage] = useState(false);
+  
+  // Export status state
+  const [exportStatus, setExportStatus] = useState<ExportStatus>({
+    isLoading: false,
+    success: false,
+    error: null,
+    url: null
+  });
+
+  // Effect to sync the section's open state with the global sections state
+  useEffect(() => {
+    setIsOpen(isModalOpen);
+  }, [isModalOpen]);
+
+  // Effect to load the saved spreadsheet ID
+  useEffect(() => {
+    const loadSpreadsheetId = async () => {
+      try {
+        const storedId = await storage.get("spreadsheetId");
+        if (storedId) {
+          logGroup(LogModule.GOOGLE_SHEETS, "Loading Spreadsheet");
+          logTable(LogModule.GOOGLE_SHEETS, "Spreadsheet Info", { spreadsheetId: storedId });
+          logGroupEnd();
+        }
+      } catch (err) {
+        console.error("[GoogleSheets] Failed to load spreadsheet ID:", err);
+      }
+    };
+    loadSpreadsheetId();
+  }, []);
 
   // Update the initial export settings (remove currentPrice and reorder fields by category)
   const defaultExportFields = [
@@ -293,19 +479,13 @@ export const SettingsModal: React.FC<{
     { id: 'blankColumn4', label: 'Blank Column 4', enabled: false, order: 64 }
   ];
 
-  // Update the initial state to use the new defaultExportFields
+  // Update the initial state to use the new ExportSettings interface
   const [exportSettings, setExportSettings] = useState<ExportSettings>({
     fields: defaultExportFields
   });
 
   // Add state for initial values
-  const [initialState, setInitialState] = useState<{
-    desiredMetrics: typeof desiredMetrics;
-    defaultFulfillment: string;
-    prepCostType: string;
-    additionalCostType: string;
-    exportSettings: ExportSettings;
-  } | null>(null);
+  const [initialState, setInitialState] = useState<InitialState | null>(null);
 
   // Update the DEFAULT_VALUES constant to include all possible default values
   const DEFAULT_VALUES = {
@@ -326,125 +506,12 @@ export const SettingsModal: React.FC<{
     prepCost: "0.00",
     additionalCosts: "0.00",
     defaultFulfillment: "Walmart Fulfilled",
-    prepCostType: "per lb",
-    additionalCostType: "per lb",
+    prepCostType: "per_item",
+    additionalCostType: "per_item",
     prepCostPerLb: 0,
     prepCostEach: 0,
     additionalCostPerLb: 0,
     additionalCostEach: 0
-  };
-
-  // Inside the Settings component, add a new state variable for Google connection status
-  const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(false);
-  const [isExporting, setIsExporting] = useState<boolean>(false);
-
-  // Update the useEffect hook to check the initial Google connection status
-  useEffect(() => {
-    const checkGoogleConnection = async () => {
-      try {
-        
-        // Check if we're in a Chrome extension context
-        if (typeof chrome === 'undefined' || !chrome.runtime) {
-          console.error('Not in a Chrome extension context');
-          return;
-        }
-        
-        const response = await new Promise<{ success: boolean; isConnected: boolean; error?: string }>((resolve, reject) => {
-          const timeoutId = setTimeout(() => {
-            reject(new Error('Request timed out'));
-          }, 10000); // 10 second timeout
-
-          chrome.runtime.sendMessage({ type: 'GOOGLE_CHECK_CONNECTION' }, (result) => {
-            clearTimeout(timeoutId);
-            if (chrome.runtime.lastError) {
-              console.error('Chrome runtime error:', chrome.runtime.lastError);
-              reject(new Error(chrome.runtime.lastError.message));
-            } else {
-              resolve(result || { success: false, isConnected: false, error: 'No response from background script' });
-            }
-          });
-        });
-        
-        
-        if (response.success) {
-          setIsGoogleConnected(response.isConnected);
-        } else {
-          console.error('Failed to check Google connection:', response.error);
-          // Don't show an alert for connection check failures
-        }
-      } catch (error) {
-        console.error('Error checking Google connection:', error);
-        // Don't show an alert for connection check failures
-      }
-    };
-    
-    checkGoogleConnection();
-  }, []);
-
-  // Update handler for Google connection
-  const handleGoogleConnection = async () => {
-    try {
-      
-      // Check if we're in a Chrome extension context
-      if (typeof chrome === 'undefined' || !chrome.runtime) {
-        console.error('Not in a Chrome extension context');
-        alert('Extension context not available. Please reload the extension.');
-        return;
-      }
-      
-      if (isGoogleConnected) {
-        // Use message passing to disconnect
-        const response = await new Promise<{ success: boolean; error?: string }>((resolve, reject) => {
-          const timeoutId = setTimeout(() => {
-            reject(new Error('Request timed out'));
-          }, 30000); // 30 second timeout
-
-          chrome.runtime.sendMessage({ type: 'GOOGLE_DISCONNECT' }, (result) => {
-            clearTimeout(timeoutId);
-            if (chrome.runtime.lastError) {
-              console.error('Chrome runtime error:', chrome.runtime.lastError);
-              reject(new Error(chrome.runtime.lastError.message));
-            } else {
-              resolve(result || { success: false, error: 'No response from background script' });
-            }
-          });
-        });
-        
-        if (response.success) {
-          setIsGoogleConnected(false);
-        } else {
-          console.error('Failed to disconnect from Google:', response.error);
-          alert(`Failed to disconnect from Google: ${response.error || 'Unknown error'}`);
-        }
-      } else {
-        // Use message passing to connect
-        const response = await new Promise<{ success: boolean; error?: string }>((resolve, reject) => {
-          const timeoutId = setTimeout(() => {
-            reject(new Error('Request timed out'));
-          }, 30000); // 30 second timeout
-
-          chrome.runtime.sendMessage({ type: 'GOOGLE_CONNECT' }, (result) => {
-            clearTimeout(timeoutId);
-            if (chrome.runtime.lastError) {
-              console.error('Chrome runtime error:', chrome.runtime.lastError);
-              reject(new Error(chrome.runtime.lastError.message));
-            } else {
-              resolve(result || { success: false, error: 'No response from background script' });
-            }
-          });
-        });
-        
-        if (response.success) {
-          setIsGoogleConnected(true);
-        } else {
-          console.error('Failed to connect to Google:', response.error);
-          alert(`Failed to connect to Google: ${response.error || 'Unknown error'}`);
-        }
-      }
-    } catch (error) {
-      console.error('Error handling Google connection:', error);
-      alert(`Error handling Google connection: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
   };
 
   /////////////////////////////////////////////////////
@@ -538,16 +605,60 @@ export const SettingsModal: React.FC<{
 
   // Update useEffect to store initial state when modal opens
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && initialState === null) {
       setInitialState({
         desiredMetrics: { ...desiredMetrics },
         defaultFulfillment,
         prepCostType,
         additionalCostType,
         exportSettings: { ...exportSettings }
-      });
+      })
     }
+  }, [isOpen])
+
+  // Replace exportSettings initialization and loading logic:
+  useEffect(() => {
+    async function loadExportSettings() {
+      let loaded: any = null;
+      try {
+        // Try Storage API first
+        loaded = await storage.get('exportSettings');
+        if (!loaded) {
+          // Try localStorage
+          const local = localStorage.getItem('exportSettings');
+          if (local) loaded = JSON.parse(local);
+        }
+      } catch (e) {
+        logError(LogModule.GOOGLE_SHEETS, 'Error loading exportSettings: ' + (e as Error).message);
+      }
+      const validated = validateExportSettings(loaded, defaultExportFields);
+      setExportSettings(validated);
+      // Always repair and persist
+      await storage.set('exportSettings', validated);
+      localStorage.setItem('exportSettings', JSON.stringify(validated));
+    }
+    if (isOpen) loadExportSettings();
   }, [isOpen]);
+
+  // Remove spreadsheet ID loading effect
+  useEffect(() => {
+    const loadGoogleSheetSettings = async () => {
+      try {
+        const savedSheetId = await storage.get("spreadsheetId");
+        if (savedSheetId) {
+          if (!window.__nsp_logged_googleSheets) {
+            logGroup(LogModule.GOOGLE_SHEETS, "Loading Spreadsheet");
+            logTable(LogModule.GOOGLE_SHEETS, "Spreadsheet Info", { spreadsheetId: savedSheetId });
+            logGroupEnd();
+            window.__nsp_logged_googleSheets = true;
+          }
+        }
+      } catch (err) {
+        console.error("[GOOGLE SHEETS] ❌ Failed to load spreadsheet ID:", err.message);
+      }
+    };
+    loadGoogleSheetSettings();
+  }, []);
 
   /////////////////////////////////////////////////////
   // Handler Functions
@@ -579,8 +690,8 @@ export const SettingsModal: React.FC<{
     setDefaultFulfillment("Walmart Fulfilled");
 
     // Reset cost types
-    setPrepCostType("per lb");
-    setAdditionalCostType("per lb");
+    setPrepCostType("per_item");
+    setAdditionalCostType("per_item");
 
     // Reset export settings
     setExportSettings({
@@ -592,6 +703,17 @@ export const SettingsModal: React.FC<{
 
     // Clear all raw metrics
     setRawMetrics({});
+
+    // Clear localStorage for all relevant keys
+    localStorage.removeItem("desiredMetrics");
+    localStorage.removeItem("defaultFulfillment");
+    localStorage.removeItem("prepCostType");
+    localStorage.removeItem("additionalCostType");
+    localStorage.removeItem("exportSettings");
+    localStorage.removeItem("prepCostPerLb");
+    localStorage.removeItem("prepCostEach");
+    localStorage.removeItem("additionalCostPerLb");
+    localStorage.removeItem("additionalCostEach");
   };
 
   // Handle changes in user-defined metrics with proper formatting
@@ -611,7 +733,7 @@ export const SettingsModal: React.FC<{
     // Handle prep cost and additional cost changes
     if (fieldName === "prepCost") {
       const value = parseFloat(input) || 0;
-      if (prepCostType === "per lb") {
+      if (prepCostType === "per_item") {
         setPrepCostPerLb(value);
         localStorage.setItem("prepCostPerLb", value.toString());
       } else {
@@ -624,7 +746,7 @@ export const SettingsModal: React.FC<{
       }));
     } else if (fieldName === "additionalCosts") {
       const value = parseFloat(input) || 0;
-      if (additionalCostType === "per lb") {
+      if (additionalCostType === "per_item") {
         setAdditionalCostPerLb(value);
         localStorage.setItem("additionalCostPerLb", value.toString());
       } else {
@@ -695,7 +817,7 @@ export const SettingsModal: React.FC<{
     localStorage.setItem("prepCostType", newType);
 
     // Update the displayed value based on the selected type
-    const currentValue = newType === "per lb" ? prepCostPerLb : prepCostEach;
+    const currentValue = newType === "per_item" ? prepCostPerLb : prepCostEach;
     setDesiredMetrics(prev => ({
       ...prev,
       prepCost: currentValue.toFixed(2)
@@ -709,7 +831,7 @@ export const SettingsModal: React.FC<{
     localStorage.setItem("additionalCostType", newType);
 
     // Update the displayed value based on the selected type
-    const currentValue = newType === "per lb" ? additionalCostPerLb : additionalCostEach;
+    const currentValue = newType === "per_item" ? additionalCostPerLb : additionalCostEach;
     setDesiredMetrics(prev => ({
       ...prev,
       additionalCosts: currentValue.toFixed(2)
@@ -752,103 +874,38 @@ export const SettingsModal: React.FC<{
   };
 
   // Update the handleSaveAllAndClose function
-  const handleSaveAllAndClose = () => {
-    // Create a new Set for edited fields
-    const newEditedFields = new Set<string>();
-    const metricsToSave: Record<string, string> = {};
-
-    // Compare each metric against its default value
-    Object.entries(desiredMetrics).forEach(([key, value]) => {
-      const defaultValue = DEFAULT_VALUES[key as keyof typeof DEFAULT_VALUES];
-      if (value !== defaultValue) {
-        newEditedFields.add(key);
-        metricsToSave[key] = value;
-      }
-    });
-
-    // Only save metrics if there are changes
-    if (Object.keys(metricsToSave).length > 0) {
-      localStorage.setItem("desiredMetrics", JSON.stringify(metricsToSave));
-    } else {
-      localStorage.removeItem("desiredMetrics");
-    }
-
-    // Check fulfillment type
-    if (defaultFulfillment !== DEFAULT_VALUES.defaultFulfillment) {
-      newEditedFields.add('defaultFulfillment');
-      localStorage.setItem("defaultFulfillment", defaultFulfillment);
-    } else {
-      localStorage.removeItem("defaultFulfillment");
-    }
-
-    // Check prep costs
-    const prepCostChanged = 
-      prepCostType !== DEFAULT_VALUES.prepCostType ||
-      prepCostPerLb !== DEFAULT_VALUES.prepCostPerLb ||
-      prepCostEach !== DEFAULT_VALUES.prepCostEach;
-
-    if (prepCostChanged) {
-      newEditedFields.add('prepCost');
-      if (prepCostType !== DEFAULT_VALUES.prepCostType) {
-        localStorage.setItem("prepCostType", prepCostType);
-      }
-      if (prepCostPerLb !== DEFAULT_VALUES.prepCostPerLb) {
-        localStorage.setItem("prepCostPerLb", prepCostPerLb.toString());
-      }
-      if (prepCostEach !== DEFAULT_VALUES.prepCostEach) {
-        localStorage.setItem("prepCostEach", prepCostEach.toString());
-      }
-    } else {
-      localStorage.removeItem("prepCostType");
-      localStorage.removeItem("prepCostPerLb");
-      localStorage.removeItem("prepCostEach");
-    }
-
-    // Check additional costs
-    const additionalCostChanged = 
-      additionalCostType !== DEFAULT_VALUES.additionalCostType ||
-      additionalCostPerLb !== DEFAULT_VALUES.additionalCostPerLb ||
-      additionalCostEach !== DEFAULT_VALUES.additionalCostEach;
-
-    if (additionalCostChanged) {
-      newEditedFields.add('additionalCosts');
-      if (additionalCostType !== DEFAULT_VALUES.additionalCostType) {
-        localStorage.setItem("additionalCostType", additionalCostType);
-      }
-      if (additionalCostPerLb !== DEFAULT_VALUES.additionalCostPerLb) {
-        localStorage.setItem("additionalCostPerLb", additionalCostPerLb.toString());
-      }
-      if (additionalCostEach !== DEFAULT_VALUES.additionalCostEach) {
-        localStorage.setItem("additionalCostEach", additionalCostEach.toString());
-      }
-    } else {
-      localStorage.removeItem("additionalCostType");
-      localStorage.removeItem("additionalCostPerLb");
-      localStorage.removeItem("additionalCostEach");
-    }
-
-    // Save export settings only if they differ from default
-    const isExportDefault = JSON.stringify(exportSettings) === JSON.stringify({ fields: defaultExportFields });
-    if (!isExportDefault) {
+  const handleSaveAllAndClose = async () => {
+    try {
+      // Save export settings
+      await storage.set("exportSettings", exportSettings);
       localStorage.setItem("exportSettings", JSON.stringify(exportSettings));
-    } else {
-      localStorage.removeItem("exportSettings");
-    }
 
-    // Update edited fields state
-    setEditedFields(newEditedFields);
+      // Save metrics
+      const metricsToSave = {
+        ...desiredMetrics,
+        prepCostType,
+        additionalCostType,
+        defaultFulfillment
+      };
+      await storage.set("desiredMetrics", metricsToSave);
+      localStorage.setItem("desiredMetrics", JSON.stringify(metricsToSave));
 
-    // Notify parent of changes
-    onSettingsChange();
+      // Log success
+      if (!window.__nsp_logged_googleSheets_save) {
+        logGroup(LogModule.SETTINGS, "Saving settings");
+        logTable(LogModule.SETTINGS, "Current state", {
+          exportSettings,
+          metrics: metricsToSave
+        });
+        logGroupEnd();
+        window.__nsp_logged_googleSheets_save = true;
+      }
 
-    // Close the modal
-    onClose();
-
-    // Refresh the extension
-    if (chrome.runtime && chrome.runtime.reload) {
-      chrome.runtime.reload();
-    } else {
-      window.location.reload();
+      // Notify parent of changes and close
+      onSettingsChange();
+      onClose();
+    } catch (e) {
+      logError(LogModule.SETTINGS, 'Failed to save settings: ' + (e as Error).message);
     }
   };
 
@@ -857,110 +914,51 @@ export const SettingsModal: React.FC<{
     return `${baseClassName} ${editedFields.has(fieldName) ? "font-bold" : ""}`;
   };
 
-  // Add handlers for export settings
-  const handleExportFieldToggle = (fieldId: string) => {
-    setExportSettings(prev => ({
-      fields: prev.fields.map(field =>
-        field.id === fieldId
-          ? { ...field, enabled: !field.enabled }
-          : field
-      )
-    }));
-  };
-
-  // Update the DragHandle component to be more compact
-  const DragHandle = SortableHandle(() => (
-    <div className="text-gray-400 cursor-grab active:cursor-grabbing select-none hover:text-gray-600">
-      ⋮⋮
-    </div>
-  ));
-
-  // Update the SortableItem component with adjusted spacing
-  const SortableItem = SortableElement<SortableItemProps>(({ field, onToggle }: SortableItemProps) => (
-    <div className="grid grid-cols-[24px_60px_1fr_40px] items-center gap-2 py-[2px] px-2 bg-white rounded border mb-[2px]">
-      <div className="flex justify-center">
-        <DragHandle />
-      </div>
-      <div className="text-[10px] text-gray-500 truncate">
-        {exportFieldCategories[field.id as keyof typeof exportFieldCategories]}
-      </div>
-      <div className="text-xs font-medium truncate">
-        {field.label}
-      </div>
-      <div className="flex justify-end">
-        <label className="relative inline-flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            className="sr-only peer"
-            checked={field.enabled}
-            onChange={() => onToggle(field.id)}
-          />
-          <div className="w-7 h-3.5 bg-gray-200 rounded-full peer 
-          peer-focus:ring-2 peer-focus:ring-cyan-300 
-          peer-checked:bg-cyan-500
-          after:content-[''] 
-          after:absolute 
-          after:top-0 
-          after:left-0 
-          after:bg-white 
-          after:border-gray-300 
-          after:border 
-          after:rounded-full 
-          after:h-3.5 
-          after:w-3.5 
-          after:transition-all
-          after:shadow-sm
-          peer-checked:after:translate-x-full 
-          peer-checked:after:border-white">
-          </div>
-        </label>
-      </div>
-    </div>
-  ));
-
-  // Update the SortableList component with increased padding
-  const SortableList = SortableContainer<SortableListProps>(({ items, onToggle }: SortableListProps) => (
-    <div className="space-y-0.5 px-12">
-      <div className="grid grid-cols-[24px_60px_1fr_40px] items-center gap-2 px-2 py-1 text-[10px] font-medium text-gray-500 border-b">
-        <div className="flex justify-center">Sort</div>
-        <div>Category</div>
-        <div>Field</div>
-        <div className="flex justify-end">Enable</div>
-      </div>
-      {items.map((field, index) => (
-        <SortableItem
-          key={field.id}
-          index={index}
-          field={field}
-          onToggle={onToggle}
-        />
-      ))}
-    </div>
-  ));
-
-  // Update the handleExportFieldReorder function
-  const handleExportFieldReorder = ({ oldIndex, newIndex }: { oldIndex: number; newIndex: number }) => {
+  // Update the handleExportFieldToggle function
+  const handleExportFieldToggle = async (fieldId: string) => {
     setExportSettings(prev => {
-      const newFields = arrayMoveImmutable(prev.fields, oldIndex, newIndex).map((field, index) => ({
-        ...field,
-        order: index + 1
-      }));
-
-      // Save to localStorage immediately
-      const newSettings = {
-        ...prev,
-        fields: newFields
-      };
-      localStorage.setItem("exportSettings", JSON.stringify(newSettings));
-
+      const newFields = prev.fields.map(f =>
+        f.id === fieldId ? { ...f, enabled: !f.enabled } : f
+      );
+      const newSettings = { ...prev, fields: newFields };
+      storage.set('exportSettings', newSettings);
+      localStorage.setItem('exportSettings', JSON.stringify(newSettings));
       return newSettings;
     });
   };
 
-  // Add handler for Clear Tab
+  // Update the handleExportFieldReorder function
+  const handleExportFieldReorder = (oldIndex: number, newIndex: number) => {
+    setExportSettings(prev => {
+      const moved = arrayMoveImmutable(prev.fields, oldIndex, newIndex).map((f, i) => ({ ...f, order: i + 1 }));
+      const newSettings = { ...prev, fields: moved };
+      storage.set('exportSettings', newSettings);
+      localStorage.setItem('exportSettings', JSON.stringify(newSettings));
+      return newSettings;
+    });
+  };
+
+  // Update the handleExportSettingsChange function
+  const handleExportSettingsChange = async (newFields: ExportField[]) => {
+    const newSettings: ExportSettings = { fields: newFields };
+    setExportSettings(newSettings);
+    try {
+      await storage.set("exportSettings", newSettings);
+      localStorage.setItem("exportSettings", JSON.stringify(newSettings));
+    } catch (e) {
+      logError(LogModule.GOOGLE_SHEETS, 'Failed to persist exportSettings: ' + (e as Error).message);
+    }
+    onSettingsChange();
+  };
+
+  // Update the handleClearTab function
   const handleClearTab = () => {
     // Get the default values for the current tab
-    const defaultValues = {
+    const defaultValues: {
+      baseline: Partial<DesiredMetrics>;
+      fees: Partial<DesiredMetrics>;
+      export: { fields: ExportField[] };
+    } = {
       baseline: {
         minProfit: "0.00",
         minMargin: "0",
@@ -991,18 +989,31 @@ export const SettingsModal: React.FC<{
     
     if (activeTab === 'export') {
       // Handle export settings reset
-      setExportSettings({
-        fields: defaultExportFields
-      });
+      const defaultSettings: ExportSettings = { fields: defaultExportFields };
+      setExportSettings(defaultSettings);
+      localStorage.setItem("exportSettings", JSON.stringify(defaultSettings));
     } else {
       // Handle metrics reset
-      setDesiredMetrics(prev => ({
-        ...prev,
-        ...currentTabDefaults
-      }));
+      const metricsDefaults = currentTabDefaults as Partial<DesiredMetrics>;
+      
+      // Create a new metrics object with all required fields
+      const updatedMetrics = {
+        ...desiredMetrics, // Keep existing values
+        ...metricsDefaults // Override with default values for current tab
+      } as DesiredMetrics;
+      
+      setDesiredMetrics(updatedMetrics);
+
+      // Update localStorage for the current tab's fields
+      const currentMetrics = JSON.parse(localStorage.getItem("desiredMetrics") || "{}");
+      const updatedLocalStorage = {
+        ...currentMetrics,
+        ...metricsDefaults
+      };
+      localStorage.setItem("desiredMetrics", JSON.stringify(updatedLocalStorage));
 
       // Remove bold styling for current tab's fields
-      const currentTabFields = Object.keys(currentTabDefaults);
+      const currentTabFields = Object.keys(metricsDefaults);
       setEditedFields(prev => {
         const newSet = new Set(prev);
         currentTabFields.forEach(field => newSet.delete(field));
@@ -1033,48 +1044,75 @@ export const SettingsModal: React.FC<{
     onClose();
   };
 
-  // Inside the Settings component, add a function to handle exporting to Google Sheets
-  const handleExportToGoogleSheets = async () => {
-    if (!isGoogleConnected) {
-      // Show a message to the user that they need to connect to Google first
-      alert('Please connect to Google first to export data to Google Sheets.');
-      return;
-    }
+  // Add the DragHandle component
+  const DragHandle = SortableHandle(() => (
+    <div className="text-gray-400 cursor-grab active:cursor-grabbing select-none hover:text-gray-600">
+      ⋮⋮
+    </div>
+  ));
 
-    try {
-      setIsExporting(true);
-      
-      // Get product data from your state or context
-      // For now, we'll use placeholder data
-      const products: ProductData[] = [
-        {
-          id: '123',
-          name: 'Sample Product',
-          price: 29.99,
-          cost: 15.00,
-          profit: 14.99,
-          margin: 50,
-          category: 'Electronics',
-          brand: 'Sample Brand',
-          url: 'https://www.walmart.com/sample-product'
-        }
-        // Add more products as needed
-      ];
+  // Update the SortableItem component
+  const SortableItem = SortableElement<SortableItemProps>(({ field, onToggle }: SortableItemProps) => (
+  <div className="grid grid-cols-[24px_60px_1fr_40px] items-center gap-2 py-[2px] px-2 bg-white rounded border mb-[2px]">
+    <div className="flex justify-center">
+      <DragHandle />
+    </div>
+    <div className="text-[10px] text-gray-500 truncate">
+      {exportFieldCategories[field.id as keyof typeof exportFieldCategories]}
+    </div>
+    <div className="text-xs font-medium truncate">
+      {field.label}
+    </div>
+    <div className="flex justify-end">
+      <label className="relative inline-flex items-center cursor-pointer">
+        <input
+          type="checkbox"
+          className="sr-only peer"
+          checked={field.enabled}
+          onChange={() => onToggle(field.id)}
+        />
+        <div className="w-7 h-3.5 bg-gray-200 rounded-full peer 
+        peer-focus:ring-2 peer-focus:ring-cyan-300 
+        peer-checked:bg-cyan-500
+        after:content-[''] 
+        after:absolute 
+        after:top-0 
+        after:left-0 
+        after:bg-white 
+        after:border-gray-300 
+        after:border 
+        after:rounded-full 
+        after:h-3.5 
+        after:w-3.5 
+        after:transition-all
+        after:shadow-sm
+        peer-checked:after:translate-x-full 
+        peer-checked:after:border-white">
+        </div>
+      </label>
+    </div>
+  </div>
+));
 
-      
-      const spreadsheetId = await exportToGoogleSheets(products, {
-        title: `NexSellPro Export ${new Date().toLocaleDateString()}`
-      });
-    
-      // Open the spreadsheet in a new tab
-      window.open(`https://docs.google.com/spreadsheets/d/${spreadsheetId}`, '_blank');
-    } catch (error) {
-      console.error('Error exporting to Google Sheets:', error);
-      alert(`An error occurred while exporting to Google Sheets: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsExporting(false);
-    }
-  };
+  // Update the SortableList component
+  const SortableList = SortableContainer<SortableListProps>(({ items, onToggle }: SortableListProps) => (
+    <div className="space-y-0.5 px-12">
+      <div className="grid grid-cols-[24px_60px_1fr_40px] items-center gap-2 px-2 py-1 text-[10px] font-medium text-gray-500 border-b">
+        <div className="flex justify-center">Sort</div>
+        <div>Category</div>
+        <div>Field</div>
+        <div className="text-center">Enable</div>
+      </div>
+      {items.map((field, index) => (
+        <SortableItem
+          key={field.id}
+          index={index}
+          field={field}
+          onToggle={onToggle}
+        />
+      ))}
+    </div>
+  ));
 
   /////////////////////////////////////////////////////
   // Conditional Rendering
@@ -1344,7 +1382,7 @@ export const SettingsModal: React.FC<{
                           onChange={handlePrepCostTypeChange}
                           className="p-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white pr-6"
                         >
-                          <option value="per lb">Per Pound</option>
+                          <option value="per_item">Per Item</option>
                           <option value="each">Each</option>
                         </select>
                       </div>
@@ -1370,7 +1408,7 @@ export const SettingsModal: React.FC<{
                           onChange={handleAdditionalCostTypeChange}
                           className="p-1 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500 bg-white pr-6"
                         >
-                          <option value="per lb">Per Pound</option>
+                          <option value="per_item">Per Item</option>
                           <option value="each">Each</option>
                         </select>
                       </div>
@@ -1390,16 +1428,16 @@ export const SettingsModal: React.FC<{
                   Configure which fields to include in your exports and their order. Drag and drop fields to reorder them.
                 </p>
               </div>
-
               <div className="max-h-[65vh] overflow-y-auto px-1">
-                <SortableList
-                  items={exportSettings.fields}
-                  onToggle={handleExportFieldToggle}
-                  onSortEnd={handleExportFieldReorder}
-                  useDragHandle
-                  lockAxis="y"
-                  distance={1}
-                />
+                {(!exportSettings.fields || exportSettings.fields.length === 0) ? (
+                  <div className="text-red-500 text-xs">No export fields found. Please reset to defaults.</div>
+                ) : (
+                  <DndSortableExportList
+                    fields={exportSettings.fields}
+                    onToggle={handleExportFieldToggle}
+                    onReorder={handleExportFieldReorder}
+                  />
+                )}
               </div>
             </div>
           )}
@@ -1410,132 +1448,55 @@ export const SettingsModal: React.FC<{
               <div className="bg-cyan-50 border border-cyan-200 p-2 rounded">
                 <h3 className="font-medium text-cyan-800 text-xs mb-0.5">Integrations</h3>
                 <p className="text-xs text-cyan-700">
-                  Connect your external services to enhance NexSellPro's functionality. Currently supporting Google Sheets integration for data export.
+                  Connect with external services to enhance your product analysis workflow.
                 </p>
               </div>
 
-              {/* Google Sheets Section */}
-              <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-                {/* Integration Header */}
-                <div className="bg-gradient-to-r from-[#0F9D58] to-[#188038] p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="bg-white p-2 rounded-lg shadow-sm">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                          <path d="M19.5 3H4.5C3.67157 3 3 3.67157 3 4.5V19.5C3 20.3284 3.67157 21 4.5 21H19.5C20.3284 21 21 20.3284 21 19.5V4.5C21 3.67157 20.3284 3 19.5 3Z" fill="#0F9D58"/>
-                          <path d="M7 7H17V9H7V7ZM7 11H17V13H7V11ZM7 15H13V17H7V15Z" fill="white"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-white font-medium">Google Sheets</h3>
-                        <p className="text-[11px] text-green-100">Export your product data seamlessly</p>
-                      </div>
-                    </div>
-                    <span className="px-2 py-1 text-[10px] font-medium bg-yellow-100 text-yellow-800 rounded shadow-sm">
-                      {isGoogleConnected ? 'Connected' : 'Not Connected'}
-                    </span>
+              {/* Google Sheets Integration */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <img src="https://www.google.com/images/about/sheets-icon.svg" alt="Google Sheets" className="w-5 h-5" />
+                    <h3 className="text-sm font-medium text-gray-900">Google Sheets</h3>
                   </div>
                 </div>
 
-                {/* Integration Content */}
-                <div className="p-4 space-y-4">
-                  {/* Features List */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="flex items-start gap-2">
-                      <div className="mt-0.5 text-cyan-500">✓</div>
-                      <div>
-                        <h4 className="text-xs font-medium text-gray-900">Automated Export</h4>
-                        <p className="text-[11px] text-gray-500">Export data with one click</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="mt-0.5 text-cyan-500">✓</div>
-                      <div>
-                        <h4 className="text-xs font-medium text-gray-900">Custom Fields</h4>
-                        <p className="text-[11px] text-gray-500">Choose what data to export</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="mt-0.5 text-cyan-500">✓</div>
-                      <div>
-                        <h4 className="text-xs font-medium text-gray-900">Multiple Sheets</h4>
-                        <p className="text-[11px] text-gray-500">Export to different sheets</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-2">
-                      <div className="mt-0.5 text-cyan-500">✓</div>
-                      <div>
-                        <h4 className="text-xs font-medium text-gray-900">Secure Access</h4>
-                        <p className="text-[11px] text-gray-500">OAuth 2.0 authentication</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Connection Button */}
-                  <button
-                    onClick={handleGoogleConnection}
-                    className="flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                  >
-                    {isGoogleConnected ? 'Disconnect from Google' : 'Connect with Google'}
-                  </button>
-
-                  {/* Additional Info */}
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <p className="text-[11px] text-gray-500">
-                      By connecting, you'll be able to export your product data directly to Google Sheets. You can disconnect at any time.
-                    </p>
-                  </div>
-
-                  {/* Export to Google Sheets Button */}
-                  {isGoogleConnected && (
-                    <button
-                      onClick={handleExportToGoogleSheets}
-                      disabled={isExporting}
-                      className={`flex items-center justify-center w-full px-4 py-2 mt-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                      {isExporting ? 'Exporting...' : 'Export to Google Sheets'}
-                    </button>
-                  )}
-                </div>
+                {/* Mount the ConnectWithGoogle component */}
+                <ConnectWithGoogle />
               </div>
             </div>
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="p-3 border-t bg-gray-50">
-          <div className="flex justify-between items-center">
-            {/* Left Group - Clear Actions */}
-            <div className="flex gap-2">
-              <button
-                onClick={handleClearTab}
-                className="px-4 py-1.5 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-all duration-200 shadow-sm font-medium text-xs flex items-center gap-1.5"
-              >
-                <span>🗑️</span> Clear Tab
-              </button>
-              <button
-                onClick={handleClearAll}
-                className="px-4 py-1.5 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-all duration-200 shadow-sm font-medium text-xs flex items-center gap-1.5"
-              >
-                <span>🗑️🗑️</span> Clear All
-              </button>
-            </div>
-
-            {/* Right Group - Save/Cancel Actions */}
-            <div className="flex gap-2">
-              <button
-                onClick={handleCancel}
-                className="px-4 py-1.5 bg-white text-gray-700 border border-gray-300 rounded hover:bg-gray-50 transition-all duration-200 shadow-sm font-medium text-xs flex items-center gap-1.5"
-              >
-                <span>❌</span> Cancel
-              </button>
-              <button
-                onClick={handleSaveAllAndClose}
-                className="px-4 py-1.5 bg-gradient-to-r from-cyan-500 to-cyan-600 text-white rounded hover:from-cyan-600 hover:to-cyan-700 transition-all duration-200 shadow-sm font-medium text-xs flex items-center gap-1.5"
-              >
-                <span>💾</span> Save All & Close
-              </button>
-            </div>
+        {/* Modal Footer */}
+        <div className="flex justify-between items-center px-4 py-2 bg-gray-50 border-t">
+          <div className="flex gap-2">
+            <button
+              onClick={handleClearTab}
+              className="text-xs text-gray-600 hover:text-gray-800 focus:outline-none"
+            >
+              Reset Current Tab
+            </button>
+            <button
+              onClick={handleClearAll}
+              className="text-xs text-gray-600 hover:text-gray-800 focus:outline-none"
+            >
+              Reset All
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={handleCancel}
+              className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800 focus:outline-none"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSaveAllAndClose}
+              className="px-3 py-1 text-xs text-white bg-cyan-500 hover:bg-cyan-600 rounded focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-1"
+            >
+              Save All & Close
+            </button>
           </div>
         </div>
       </div>

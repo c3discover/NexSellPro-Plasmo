@@ -246,6 +246,60 @@ export interface RawProductData {
 }
 
 /**
+ * Basic product information interface
+ */
+export interface ProductBasicInfo {
+  id: string;
+  name: string;
+  brand: string;
+  upc?: string;
+  modelNumber?: string;
+}
+
+/**
+ * Product media interface
+ */
+export interface ProductMedia {
+  imageUrl?: string;
+  thumbnailUrl?: string;
+  additionalImages?: string[];
+}
+
+/**
+ * Product inventory interface
+ */
+export interface ProductInventory {
+  inStock: boolean;
+  quantity?: number;
+  fulfillmentOptions?: {
+    type: string;
+    availableQuantity: number;
+  }[];
+}
+
+/**
+ * Product sellers interface
+ */
+export interface ProductSellers {
+  totalCount: number;
+  primarySeller?: string;
+}
+
+/**
+ * Product profitability interface
+ */
+export interface ProductProfitability {
+  margin: number;
+  roi: number;
+  netProfit: number;
+  fees: {
+    selling: number;
+    fulfillment: number;
+    other: number;
+  };
+}
+
+/**
  * Combined used product data interface
  */
 export interface UsedProductData {
@@ -253,10 +307,10 @@ export interface UsedProductData {
   pricing: ProductPricing;
   dimensions: ProductDimensions;
   media: ProductMedia;
-  categories: ProductCategories;
+  categories: ProductCategory;
   inventory: ProductInventory;
   reviews: ProductReviews;
-  variants: ProductVariants;
+  variants: ProductVariation[];
   badges: string[];
   sellers: ProductSellers;
   profitability: ProductProfitability;
@@ -265,6 +319,25 @@ export interface UsedProductData {
     isHazardousMaterial: boolean;
   };
 }
+
+/**
+ * Export field interface for data export configuration
+ */
+export interface ExportField {
+  id: string;
+  label: string;
+  enabled: boolean;
+  order: number;
+}
+
+/**
+ * Maps export fields to their values in a type-safe way
+ */
+export const mapExportFieldsToValues = (
+  fields: ExportField[],
+  data: Record<string, any>
+): string[][] =>
+  fields.map((field) => [field.label, data?.[field.id] ?? "—"]);
 
 ////////////////////////////////////////////////
 // Enums:

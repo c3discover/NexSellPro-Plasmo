@@ -66,6 +66,17 @@ function formatDeliveryDate(dateString: string | null): string {
   }
 }
 
+const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+const randomUserAgents = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
+];
+function getRandomUserAgent() {
+  return randomUserAgents[Math.floor(Math.random() * randomUserAgents.length)];
+}
+
 ////////////////////////////////////////////////
 // Export Statement:
 ////////////////////////////////////////////////
@@ -102,10 +113,15 @@ export const fetchSellerDataFromAPI = withErrorHandling(
       variables: { itemId }
     };
     
+    // Anti-bot rate limiting: Walmart triggers CAPTCHA (412) without delays
+    await delay(Math.random() * 4000 + 3000); // 3 to 7 second random delay
     // Make the API request
     const response = await fetch(WALMART_GRAPHQL_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': getRandomUserAgent(),
+      },
       body: JSON.stringify(payload)
     });
     

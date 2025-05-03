@@ -14,21 +14,22 @@
     "dev": "plasmo dev",
     "build": "plasmo build",
     "package": "plasmo package",
-    "start": "pnpm dev",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
     "clean": "rimraf .plasmo dist .next build"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@emailjs/browser": "^4.4.1",
     "@headlessui/react": "^2.2.0",
     "@heroicons/react": "^2.2.0",
     "@parcel/watcher": "^2.5.1",
+    "@plasmohq/storage": "^1.15.0",
     "array-move": "^4.0.0",
     "axios": "^1.7.9",
     "dotenv": "^16.4.7",
     "framer-motion": "^12.5.0",
+    "googleapis": "^148.0.0",
     "qs": "^6.13.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -63,5 +64,27 @@
     "rimraf": "^5.0.5",
     "ts-jest": "^29.2.6",
     "typescript": "^5.0.0"
+  },
+  "manifest": {
+    "key": "$CRX_PUBLIC_KEY",
+    "oauth2": {
+      "client_id": "$GOOGLE_OAUTH_CLIENT_ID",
+      "scopes": [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive.file"
+      ]
+    },
+    "permissions": [
+      "storage",
+      "tabs",
+      "webNavigation",
+      "webRequest",
+      "identity"
+    ],
+    "host_permissions": [
+      "https://accounts.google.com/*",
+      "https://www.googleapis.com/*",
+      "https://www.walmart.com/*"
+    ]
   }
 }

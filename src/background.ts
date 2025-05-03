@@ -1,492 +1,441 @@
 /**
  * @fileoverview Chrome Extension Background Service Worker for NexSellPro
  * @author NexSellPro
- * @created 2024-03-07
- * @lastModified 2024-03-21
+ * @created 2025-04-27
+ * @lastModified 2025-04-27
  */
 
 ////////////////////////////////////////////////
 // Imports:
 ////////////////////////////////////////////////
-/// <reference types="chrome"/>
-// This special comment tells TypeScript to include Chrome extension types
-import { 
-  GOOGLE_CLIENT_ID, 
-  GOOGLE_SCOPES, 
-  connectToGoogle, 
-  disconnectFromGoogle, 
-  isConnectedToGoogle,
-  getGoogleAuthState,
-  GoogleAuthState,
-  STORAGE_KEY,
-  isChromeAPIAvailable,
-  isChromeExtensionContext
-} from '~/services/googleAuthService';
+import { Storage } from "@plasmohq/storage";
+import { LogModule, logGroup, logTable, logGroupEnd, logError } from "~/data/utils/logger";
 
 ////////////////////////////////////////////////
-// Constants and Variables:
+// Constants:
 ////////////////////////////////////////////////
-// Target domain for URL monitoring
-const WALMART_DOMAIN = 'https://www.walmart.com/';
-const PRODUCT_PAGE_IDENTIFIER = '/ip/';
+const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
+const CLIENT_ID = "469074340331-62763q6jvgj6voqg4vu8mi5bgfhs0qkd.apps.googleusercontent.com";
+const REDIRECT_URI = "https://oeoabefdhedmaeoghdmbcechbiepmfpc.chromiumapp.org";
+const SCOPES = [
+  "https://www.googleapis.com/auth/spreadsheets",
+  "https://www.googleapis.com/auth/drive.file"
+].join(" ");
 
-////////////////////////////////////////////////
-// Types and Interfaces:
-////////////////////////////////////////////////
-// Message type for URL change notifications
-interface UrlChangeMessage {
-  type: 'URL_CHANGED';
-  url: string;
-  isProductPage: boolean;
-}
+const EXPORT_ALL_DATA = "EXPORT_ALL_DATA";
+const START_GOOGLE_AUTH = "START_GOOGLE_AUTH";
+const REVOKE_TOKEN = "REVOKE_TOKEN";
 
-// Message type for seller offers data
-interface SellerOffersMessage {
-  type: 'ALL_OFFERS_DATA';
-  data: any;
-}
-
-// Add these message types to your existing ExtensionMessage type
-type GoogleAuthMessage = 
-  | { type: 'GOOGLE_CONNECT' }
-  | { type: 'GOOGLE_DISCONNECT' }
-  | { type: 'GOOGLE_CHECK_CONNECTION' };
-
-// Update your ExtensionMessage type to include the new message types
-type ExtensionMessage = 
-  | UrlChangeMessage 
-  | SellerOffersMessage
-  | GoogleAuthMessage
-  | { type: 'PING' };
-
-////////////////////////////////////////////////
-// Enums:
-////////////////////////////////////////////////
-// No enums needed for this service worker
-
-////////////////////////////////////////////////
-// Configuration:
-////////////////////////////////////////////////
-// Web request filter configuration
-const webRequestFilter = {
-  urls: ["*://*.walmart.com/*"]
+// Sheet formatting constants
+const HEADER_FORMAT = {
+  backgroundColor: { red: 0.2, green: 0.8, blue: 0.8 },
+  textFormat: {
+    bold: true,
+    fontSize: 11
+  }
 };
+
+const DATA_FORMAT = {
+  backgroundColor: { red: 1, green: 1, blue: 1 },
+  textFormat: {
+    fontSize: 10
+  }
+};
+
+////////////////////////////////////////////////
+// Types:
+////////////////////////////////////////////////
+interface MessageResponse {
+  success: boolean;
+  error?: string;
+  token?: string;
+  url?: string;
+}
+
+interface ExportData {
+  type: string;
+  token: string;
+  data: Record<string, any>;
+  fields: string[];
+  settings?: {
+    enabled: boolean;
+    order: number;
+  }[];
+}
+
+////////////////////////////////////////////////
+// Message Handlers:
+////////////////////////////////////////////////
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === START_GOOGLE_AUTH) {
+    handleGoogleAuth(sendResponse);
+    return true; // Keep message channel open
+  }
+
+  if (message.type === REVOKE_TOKEN) {
+    handleTokenRevocation(message.token, sendResponse);
+    return true; // Keep message channel open
+  }
+
+  if (message.type === "EXPORT_TO_SHEETS") {
+    const { token, sheetTitle, fields, values } = message.payload;
+
+    (async () => {
+      try {
+        const sheetUrl = await exportToGoogleSheet(token, sheetTitle, fields, values);
+        sendResponse({ success: true, sheetUrl });
+      } catch (err) {
+        console.error("[GOOGLE SHEETS EXPORT] Failed:", err);
+        sendResponse({ 
+          success: false, 
+          error: err instanceof Error ? err.message : err.toString() 
+        });
+      }
+    })();
+
+    return true; // Keep message channel open for async response
+  }
+});
 
 ////////////////////////////////////////////////
 // Helper Functions:
 ////////////////////////////////////////////////
-const isProductPage = (url: string): boolean => {
-  return url.includes(PRODUCT_PAGE_IDENTIFIER);
-};
 
-const sendUrlChangeMessage = async (tabId: number, url: string) => {
+/**
+ * Handle Google OAuth2 authentication flow
+ */
+async function handleGoogleAuth(sendResponse: (response: MessageResponse) => void) {
   try {
-    await chrome.tabs.sendMessage(tabId, {
-      type: 'URL_CHANGED',
-      url,
-      isProductPage: isProductPage(url)
-    });
-  } catch (error) {
-    // Ignore errors from closed tabs or unloaded content scripts
-    console.debug('Could not send URL change message:', error);
-  }
-};
-
-// Helper function to check if we're in a service worker context
-const isServiceWorkerContext = (): boolean => {
-  return typeof self !== 'undefined' && 
-         'ServiceWorkerGlobalScope' in self;
-};
-
-////////////////////////////////////////////////
-// Event Handlers:
-////////////////////////////////////////////////
-// Installation handler
-const handleInstallation = async (details: chrome.runtime.InstalledDetails) => {
-};
-
-// Handle Google connection
-async function handleGoogleConnect(): Promise<{ success: boolean; error?: string }> {
-  try {
+    logGroup(LogModule.GOOGLE_SHEETS, "Starting Google Auth");
     
-    // Check if we're in a Chrome extension context
-    if (!isChromeExtensionContext()) {
-      const error = 'Not in a Chrome extension context. This should not happen.';
-      console.error(error);
-      return { success: false, error };
-    }
-    
-    
-    // Check if Chrome identity API is available
-    if (!isChromeAPIAvailable('identity')) {
-      const error = 'Chrome identity API not available. Please check your extension permissions.';
-      console.error(error);
-      return { success: false, error };
-    }
+    const authUrl = `${GOOGLE_AUTH_URL}?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=token&scope=${encodeURIComponent(SCOPES)}&prompt=consent`;
 
-    
-    // Request auth token from Chrome identity API
-    const token = await new Promise<string>((resolve, reject) => {
-      try {
-        const authParams = { 
-          interactive: true,
-          scopes: GOOGLE_SCOPES
-        };
-        
-        chrome.identity.getAuthToken(authParams, (token) => {
-          if (chrome.runtime.lastError) {
-            console.error('Chrome identity error details:', {
-              message: chrome.runtime.lastError.message,
-              stack: new Error().stack
-            });
-            reject(new Error(chrome.runtime.lastError.message));
-          } else if (!token) {
-            console.error('No token received from OAuth flow');
-            reject(new Error('No token received from Google OAuth'));
-          } else {
-            resolve(token);
-          }
-        });
-      } catch (error) {
-        console.error('Error calling chrome.identity.getAuthToken:', error);
-        reject(error);
-      }
-    });
-
-    // Store the auth state
-    const authState: GoogleAuthState = {
-      accessToken: token,
-      refreshToken: '', // Chrome handles token refresh automatically
-      expiryTime: Date.now() + (3600 * 1000) // Token typically expires in 1 hour
-    };
-
-
-    // Save auth state to storage
-    await new Promise<void>((resolve, reject) => {
-      try {
-        chrome.storage.local.set({ [STORAGE_KEY]: authState }, () => {
-          if (chrome.runtime.lastError) {
-            console.error('Error saving auth state:', chrome.runtime.lastError);
-            reject(new Error(chrome.runtime.lastError.message));
-          } else {
-            resolve();
-          }
-        });
-      } catch (error) {
-        console.error('Error calling chrome.storage.local.set:', error);
-        reject(error);
-      }
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error('Detailed error in handleGoogleConnect:', {
-      error,
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : 'No stack trace'
-    });
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error occurred while connecting to Google' 
-    };
-  }
-}
-
-// Handle Google disconnection
-async function handleGoogleDisconnect(): Promise<{ success: boolean; error?: string }> {
-  try {
-    
-    // Check if we're in a Chrome extension context
-    if (!isChromeExtensionContext()) {
-      const error = 'Not in a Chrome extension context. This should not happen.';
-      console.error(error);
-      return { success: false, error };
-    }
-    
-    // Check if Chrome storage API is available
-    if (!isChromeAPIAvailable('storage')) {
-      console.error('Chrome storage API not available');
-      return { 
-        success: false, 
-        error: 'Chrome storage API not available. Please check your extension permissions.' 
-      };
-    }
-    
-    const state = await getGoogleAuthState();
-    if (state?.accessToken) {
-      // Check if Chrome identity API is available
-      if (!isChromeAPIAvailable('identity')) {
-        console.error('Chrome identity API not available');
-        return { 
-          success: false, 
-          error: 'Chrome identity API not available. Please check your extension permissions.' 
-        };
-      }
-      
-      // Remove the cached token
-      await new Promise<void>((resolve, reject) => {
-        try {
-          chrome.identity.removeCachedAuthToken({ token: state.accessToken }, () => {
-            if (chrome.runtime.lastError) {
-              console.error('Error removing cached auth token:', chrome.runtime.lastError);
-              reject(new Error(chrome.runtime.lastError.message));
-            } else {
-              resolve();
-            }
-          });
-        } catch (error) {
-          console.error('Error calling chrome.identity.removeCachedAuthToken:', error);
-          reject(error);
-        }
-      });
-    }
-    
-    // Clear the stored state
-    await new Promise<void>((resolve, reject) => {
-      try {
-        chrome.storage.local.remove(STORAGE_KEY, () => {
-          if (chrome.runtime.lastError) {
-            console.error('Error removing auth state:', chrome.runtime.lastError);
-            reject(new Error(chrome.runtime.lastError.message));
-          } else {
-            resolve();
-          }
-        });
-      } catch (error) {
-        console.error('Error calling chrome.storage.local.remove:', error);
-        reject(error);
-      }
-    });
-    
-    return { success: true };
-  } catch (error) {
-    console.error('Error disconnecting from Google:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    };
-  }
-}
-
-// Handle Google connection check
-async function handleGoogleCheckConnection(): Promise<{ success: boolean; isConnected: boolean; error?: string }> {
-  try {
-    
-    // Check if we're in a Chrome extension context
-    if (!isChromeExtensionContext()) {
-      const error = 'Not in a Chrome extension context. This should not happen.';
-      console.error(error);
-      return { success: false, isConnected: false, error };
-    }
-    
-    // Check if Chrome storage API is available
-    if (!isChromeAPIAvailable('storage')) {
-      console.error('Chrome storage API not available');
-      return { 
-        success: false, 
-        isConnected: false, 
-        error: 'Chrome storage API not available. Please check your extension permissions.' 
-      };
-    }
-    
-    const connected = await isConnectedToGoogle();
-    return { success: true, isConnected: connected };
-  } catch (error) {
-    console.error('Error checking Google connection:', error);
-    return { 
-      success: false, 
-      isConnected: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    };
-  }
-}
-
-////////////////////////////////////////////////
-// Rate Limiting:
-////////////////////////////////////////////////
-// Rate limiting configuration
-const RATE_LIMIT = {
-  MAX_REQUESTS: 10,
-  TIME_WINDOW: 60000, // 1 minute
-  requests: [] as number[]
-};
-
-// Rate limiting check
-const shouldThrottleRequest = (): boolean => {
-  const now = Date.now();
-  // Remove old requests outside the time window
-  RATE_LIMIT.requests = RATE_LIMIT.requests.filter(
-    time => now - time < RATE_LIMIT.TIME_WINDOW
-  );
-  
-  if (RATE_LIMIT.requests.length >= RATE_LIMIT.MAX_REQUESTS) {
-    return true;
-  }
-  
-  RATE_LIMIT.requests.push(now);
-  return false;
-};
-
-////////////////////////////////////////////////
-// Event Listeners:
-////////////////////////////////////////////////
-// Remove duplicate listeners and consolidate message handling
-chrome.runtime.onMessage.addListener((message: ExtensionMessage, sender, sendResponse) => {
-  
-  if (message.type === "PING") {
-    sendResponse({ pong: true });
-    return false;
-  }
-
-  // Handle Google authentication messages
-  if (message.type === 'GOOGLE_CONNECT') {
-    handleGoogleConnect()
-      .then(result => {
-        sendResponse(result);
-      })
-      .catch(error => {
-        console.error('Error in handleGoogleConnect:', error);
-        sendResponse({ 
-          success: false, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
-        });
-      });
-    return true;
-  }
-
-  if (message.type === 'GOOGLE_DISCONNECT') {
-    handleGoogleDisconnect()
-      .then(result => {
-        sendResponse(result);
-      })
-      .catch(error => {
-        console.error('Error in handleGoogleDisconnect:', error);
-        sendResponse({ 
-          success: false, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
-        });
-      });
-    return true;
-  }
-
-  if (message.type === 'GOOGLE_CHECK_CONNECTION') {
-    handleGoogleCheckConnection()
-      .then(result => {
-        sendResponse(result);
-      })
-      .catch(error => {
-        console.error('Error in handleGoogleCheckConnection:', error);
-        sendResponse({ 
-          success: false, 
-          isConnected: false, 
-          error: error instanceof Error ? error.message : 'Unknown error' 
-        });
-      });
-    return true;
-  }
-
-  if (message.type === 'ALL_OFFERS_DATA') {
-    handleWebRequest(message.data)
-      .then(() => sendResponse({ status: "received" }))
-      .catch(error => {
-        console.error('Error handling web request:', error);
-        sendResponse({ status: "error", error: error.message });
-      });
-    return true;
-  }
-
-  return false;
-});
-
-// Network request handler with rate limiting and better error handling
-const handleWebRequest = async (requestData: any) => {
-  if (!requestData.url.includes("GetAllSellerOffers")) {
-    return;
-  }
-
-  // Apply rate limiting
-  if (shouldThrottleRequest()) {
-    return;
-  }
-
-  try {
-    const response = await fetch(requestData.url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0',
-        'Accept': 'application/json',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': 'https://www.walmart.com/',
-        'DNT': '1',
-        'Connection': 'keep-alive'
+    chrome.identity.launchWebAuthFlow(
+      {
+        url: authUrl,
+        interactive: true
       },
-      credentials: 'include'
-    });
-    
-    // Check if response is HTML (indicating a potential CAPTCHA or error page)
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('text/html')) {
-      console.warn('Received HTML response instead of JSON. Possible rate limiting or CAPTCHA.');
-      return;
-    }
+      (redirectUrl) => {
+        if (chrome.runtime.lastError || !redirectUrl) {
+          const error = chrome.runtime.lastError?.message || "Authentication failed";
+          logError(LogModule.GOOGLE_SHEETS, `Auth Error: ${error}`);
+          sendResponse({ success: false, error });
+          return;
+        }
 
-    // Only proceed if we got a valid JSON response
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+        const accessToken = new URL(redirectUrl).hash
+          .split("&")
+          .find((part) => part.startsWith("#access_token") || part.startsWith("access_token"))
+          ?.split("=")[1];
 
-    const responseData = await response.json();
-    
-    // Only send message if we have a valid tab ID
-    if (requestData.tabId) {
-      await chrome.tabs.sendMessage(requestData.tabId, { 
-        type: "ALL_OFFERS_DATA", 
-        data: responseData 
-      });
-    }
-  } catch (error) {
-    console.error('Error handling web request:', error);
-    // Don't throw the error - just log it and continue
+        if (!accessToken) {
+          logError(LogModule.GOOGLE_SHEETS, "No access token in response");
+          sendResponse({ success: false, error: "No access token received" });
+          return;
+        }
+
+        logTable(LogModule.GOOGLE_SHEETS, "Auth Success", {
+          tokenLength: accessToken.length
+        });
+        logGroupEnd();
+
+        sendResponse({ success: true, token: accessToken });
+      }
+    );
+  } catch (err) {
+    const error = err instanceof Error ? err.message : "Authentication failed";
+    logError(LogModule.GOOGLE_SHEETS, `Auth Error: ${error}`);
+    sendResponse({ success: false, error });
   }
-};
-
-// Tab update handler
-const handleTabUpdate = async (tabId: number, changeInfo: chrome.tabs.TabChangeInfo, tab: chrome.tabs.Tab) => {
-  if (changeInfo.url && tab.url?.startsWith(WALMART_DOMAIN)) {
-    await sendUrlChangeMessage(tabId, changeInfo.url);
-  }
-};
-
-// Navigation handler with rate limiting
-const handleNavigation = async (details: chrome.webNavigation.WebNavigationTransitionCallbackDetails) => {
-  if (details.url.startsWith(WALMART_DOMAIN)) {
-    if (!shouldThrottleRequest()) {
-      await sendUrlChangeMessage(details.tabId, details.url);
-    }
-  }
-};
-
-// Listen for tab URL changes
-chrome.tabs.onUpdated.addListener(handleTabUpdate);
-
-// Listen for navigation state changes (e.g., single-page app navigation)
-if (chrome.webNavigation) {
-  chrome.webNavigation.onHistoryStateUpdated.addListener(handleNavigation);
-  chrome.webNavigation.onCompleted.addListener(handleNavigation);
 }
 
-// Listen for network requests to capture seller data
-if (chrome.webRequest) {
-  chrome.webRequest.onCompleted.addListener(
-    (details) => {
-      if (!shouldThrottleRequest()) {
-        handleWebRequest(details);
+/**
+ * Handle token revocation
+ */
+async function handleTokenRevocation(token: string, sendResponse: (response: MessageResponse) => void) {
+  try {
+    logGroup(LogModule.GOOGLE_SHEETS, "Revoking Token");
+
+    const response = await fetch(`https://accounts.google.com/o/oauth2/revoke?token=${token}`, {
+      method: "GET"
+    });
+
+    if (!response.ok) {
+      throw new Error("Token revocation failed");
+    }
+
+    logTable(LogModule.GOOGLE_SHEETS, "Revocation Success", {
+      status: response.status
+    });
+    logGroupEnd();
+
+    sendResponse({ success: true });
+  } catch (err) {
+    const error = err instanceof Error ? err.message : "Token revocation failed";
+    logError(LogModule.GOOGLE_SHEETS, `Revocation Error: ${error}`);
+    sendResponse({ success: false, error });
+  }
+}
+
+/**
+ * Handle data export to Google Sheets
+ */
+async function handleDataExport(message: ExportData, sendResponse: (response: MessageResponse) => void) {
+  try {
+    logGroup(LogModule.GOOGLE_SHEETS, "Starting Data Export");
+    
+    const { token, data, fields } = message;
+
+    // Validate token
+    if (!token) {
+      throw new Error("No access token provided");
+    }
+
+    // Validate data and fields
+    if (!data || typeof data !== "object") {
+      throw new Error("Invalid data format");
+    }
+
+    if (!Array.isArray(fields) || fields.length === 0) {
+      throw new Error("Invalid fields format");
+    }
+
+    logTable(LogModule.GOOGLE_SHEETS, "Export Data", {
+      fields: fields.length,
+      dataKeys: Object.keys(data).length
+    });
+
+    // Create new spreadsheet
+    const createResponse = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        properties: {
+          title: `NexSellPro Export - ${data.itemId || new Date().toISOString()}`,
+          defaultFormat: {
+            ...DATA_FORMAT,
+            wrapStrategy: "WRAP"
+          }
+        },
+        sheets: [{
+          properties: {
+            title: "Product Data",
+            gridProperties: {
+              frozenRowCount: 1,
+              rowCount: 2,
+              columnCount: fields.length
+            }
+          },
+          data: [{
+            startRow: 0,
+            startColumn: 0,
+            rowData: [
+              {
+                values: fields.map(field => ({
+                  userEnteredValue: { stringValue: field },
+                  userEnteredFormat: HEADER_FORMAT
+                }))
+              },
+              {
+                values: fields.map(field => ({
+                  userEnteredValue: { stringValue: String(data[field] ?? "") },
+                  userEnteredFormat: DATA_FORMAT
+                }))
+              }
+            ]
+          }]
+        }]
+      })
+    });
+
+    if (!createResponse.ok) {
+      throw new Error(`Failed to create sheet: ${await createResponse.text()}`);
+    }
+
+    const sheet = await createResponse.json();
+    const sheetId = sheet.spreadsheetId;
+
+    if (!sheetId) {
+      throw new Error("No spreadsheet ID in response");
+    }
+
+    // Apply auto-resizing to all columns
+    await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        requests: [{
+          autoResizeDimensions: {
+            dimensions: {
+              sheetId: 0,
+              dimension: "COLUMNS",
+              startIndex: 0,
+              endIndex: fields.length
+            }
+          }
+        }]
+      })
+    });
+
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}`;
+    
+    logTable(LogModule.GOOGLE_SHEETS, "Export Success", {
+      url,
+      fields: fields.length
+    });
+    logGroupEnd();
+
+    sendResponse({
+      success: true,
+      url
+    });
+  } catch (err) {
+    const error = err instanceof Error ? err.message : "Export failed";
+    logError(LogModule.GOOGLE_SHEETS, `Export Error: ${error}`);
+    sendResponse({ success: false, error });
+  }
+}
+
+// Add the exportToGoogleSheet function
+async function exportToGoogleSheet(
+  token: string,
+  sheetTitle: string,
+  fields: string[],
+  values: any[][]
+): Promise<string> {
+  try {
+    // Create new spreadsheet
+    const createResponse = await fetch("https://sheets.googleapis.com/v4/spreadsheets", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        properties: {
+          title: sheetTitle
+        }
+      })
+    });
+
+    if (!createResponse.ok) {
+      throw new Error(`Failed to create spreadsheet: ${createResponse.statusText}`);
+    }
+
+    const { spreadsheetId } = await createResponse.json();
+
+    // Update values
+    const range = `Sheet1!A1:${String.fromCharCode(65 + fields.length - 1)}${values.length}`;
+
+    console.log("[EXPORT DEBUG] Preparing to send to Google Sheets");
+    console.log("[EXPORT DEBUG] Sheet ID:", spreadsheetId);
+    console.log("[EXPORT DEBUG] Range:", range);
+    console.log("[EXPORT DEBUG] Fields:", fields);
+    console.log("[EXPORT DEBUG] Values:", values);
+
+    if (!Array.isArray(values) || !Array.isArray(values[0])) {
+      throw new Error("[GOOGLE SHEETS EXPORT] Invalid values payload. Must be a 2D array.");
+    }
+
+    const updateResponse = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${range}?valueInputOption=RAW`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ values })
       }
-    },
-    webRequestFilter
-  );
+    );
+
+    if (!updateResponse.ok) {
+      throw new Error(`Failed to update values: ${updateResponse.statusText}`);
+    }
+
+    // Apply formatting
+    const requests = [
+      // Format header row
+      {
+        updateCells: {
+          range: {
+            sheetId: 0,
+            startRowIndex: 0,
+            endRowIndex: 1,
+            startColumnIndex: 0,
+            endColumnIndex: fields.length
+          },
+          rows: [
+            {
+              values: fields.map(() => ({
+                userEnteredFormat: HEADER_FORMAT
+              }))
+            }
+          ],
+          fields: "userEnteredFormat"
+        }
+      },
+      // Format data rows
+      {
+        updateCells: {
+          range: {
+            sheetId: 0,
+            startRowIndex: 1,
+            endRowIndex: values.length,
+            startColumnIndex: 0,
+            endColumnIndex: fields.length
+          },
+          rows: values.slice(1).map(() => ({
+            values: fields.map(() => ({
+              userEnteredFormat: DATA_FORMAT
+            }))
+          })),
+          fields: "userEnteredFormat"
+        }
+      },
+      // Auto-resize columns
+      {
+        autoResizeDimensions: {
+          dimensions: {
+            sheetId: 0,
+            dimension: "COLUMNS",
+            startIndex: 0,
+            endIndex: fields.length
+          }
+        }
+      }
+    ];
+
+    const formatResponse = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ requests })
+      }
+    );
+
+    if (!formatResponse.ok) {
+      throw new Error(`Failed to apply formatting: ${formatResponse.statusText}`);
+    }
+
+    return `https://docs.google.com/spreadsheets/d/${spreadsheetId}`;
+  } catch (error) {
+    console.error("[GOOGLE SHEETS EXPORT] Error:", error);
+    throw error;
+  }
 }
 
 ////////////////////////////////////////////////
 // Export Statement:
 ////////////////////////////////////////////////
-// No exports needed for background service worker 
+export {}; 

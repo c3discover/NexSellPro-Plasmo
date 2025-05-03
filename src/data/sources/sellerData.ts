@@ -454,6 +454,9 @@ const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo[]> => 
 
     const correlationId = Math.random().toString(36).substring(2, 15);
     
+    // Get current page cookies
+    const cookies = document.cookie;
+    
     const response = await fetch(`${GRAPHQL_ENDPOINT}?variables=${encodeURIComponent(JSON.stringify(variables))}`, {
       method: 'GET',
       headers: {
@@ -464,7 +467,7 @@ const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo[]> => 
         'pragma': 'no-cache',
         'sec-ch-ua': '"Chromium";v="131", "Not_A Brand";v="24"',
         'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"macOS"',
+        'sec-ch-ua-platform': '"Windows"',
         'sec-fetch-dest': 'empty',
         'sec-fetch-mode': 'cors',
         'sec-fetch-site': 'same-origin',
@@ -481,14 +484,17 @@ const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo[]> => 
         'x-o-segment': 'oaoh',
         'wm_mp': 'true',
         'wm_qos.correlation_id': correlationId,
-        'referer': 'https://www.walmart.com/',
-        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
+        'referer': window.location.href,
+        'user-agent': navigator.userAgent,
+        'cookie': cookies
       },
-      credentials: 'include'
+      credentials: 'include',
+      mode: 'cors'
     });
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorText = await response.text();
+      throw new Error(`HTTP error! status: ${response.status}. Details: ${errorText}`);
     }
 
     const data = await response.json();
@@ -519,6 +525,7 @@ const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo[]> => 
     return [];
   } catch (error) {
     console.error('Error fetching seller data from GraphQL:', error);
+    // If GraphQL fails, try DOM extraction as fallback
     return [];
   }
 };
@@ -647,7 +654,7 @@ const observeSellerData = (callback: (sellers: SellerInfo[]) => void): () => voi
 function logSellerData(data: SellerInfo[]): void {
   if (!window.__nsp_logged_sellerData) {
     logGroup(LogModule.SELLER_DATA, "Seller Data");
-    logTable(LogModule.SELLER_DATA, "Sellers", data);
+    logTable(LogModule.SELLER_DATA2, "Sellers", data);
     logGroupEnd();
     window.__nsp_logged_sellerData = true;
   }

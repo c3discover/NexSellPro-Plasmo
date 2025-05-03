@@ -10,7 +10,7 @@
 ////////////////////////////////////////////////
 import React, { useState, useEffect, useRef } from "react";
 import { getUsedData, UsedProductData } from "../../data/usedData";
-import { contractCategoryOptions } from "../../constants/options";
+import { contractCategoryOptions } from "../../data/constants/options";
 import { 
   calculateCubicFeet, 
   calculateReferralFee, 
@@ -23,6 +23,7 @@ import {
   calculateFinalShippingWeightForInbound,
   calculateStartingProductCost
 } from "../../data/logic/calculations";
+import { calculateProfitability } from "../../utils/profitability";
 
 ////////////////////////////////////////////////
 // Constants and Variables:
@@ -559,41 +560,41 @@ const Pricing: React.FC<PricingProps> = ({ product, settings, onMetricsUpdate, a
     setIsOpen(true);
   }, []);
 
-  // Recalculate profit, ROI, and margin whenever key pricing variables change.
+  // Replace the useEffect that fetches data for metrics with this new one
   useEffect(() => {
-    const fetchUpdatedCalculations = async () => {
-      try {
-        // Get current URL to extract product ID
-        const currentUrl = window.location.href;
-        const productId = currentUrl.split('/ip/')[1]?.split('/')[0];
-        
-        if (productId) {
-          // Get centralized data
-          const usedData = await getUsedData(productId);
-          
-          // Update profit, ROI, and margin with values from central data source
-          setTotalProfit(usedData.totalProfit);
-          setROI(usedData.roi);
-          setMargin(usedData.margin);
-          
-          // Update product metrics for parent component
-          onMetricsUpdate({
-            profit: usedData.totalProfit,
-            margin: usedData.margin,
-            roi: usedData.roi,
-            totalRatings: usedData.numberOfRatings || 0,
-            ratingsLast30Days: usedData.reviewDates?.length || 0,
-            numSellers: usedData.totalSellers || 0,
-            numWfsSellers: usedData.otherSellers?.filter(s => s.fulfillmentType === 'WFS')?.length || 0,
-            totalStock: usedData.totalStock || 0
-          });
-        }
-      } catch (error) {
-        console.error('Error updating calculations:', error);
-      }
-    };
-    
-    fetchUpdatedCalculations();
+    const metrics = calculateProfitability({
+      salePrice,
+      productCost,
+      referralFee,
+      wfsFee,
+      inboundShippingFee,
+      storageFee,
+      prepFee,
+      additionalFees
+    });
+
+    setTotalProfit(metrics.totalProfit);
+    setROI(metrics.roi);
+    setMargin(metrics.margin);
+
+    // Update parent component with new metrics
+    onMetricsUpdate({
+      ...localSettings,
+      profit: metrics.totalProfit,
+      margin: metrics.margin,
+      roi: metrics.roi,
+      totalRatings: parseInt(productData?.reviews?.numberOfRatings?.toString() || "0"),
+      ratingsLast30Days: productData?.reviews?.reviewDates?.filter(date => {
+        if (!date) return false;
+        const reviewDate = new Date(date);
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return reviewDate >= thirtyDaysAgo;
+      }).length || 0,
+      numSellers: productData?.inventory?.totalSellers || 0,
+      numWfsSellers: productData?.sellers?.otherSellers?.filter(s => s.isWFS)?.length || 0,
+      totalStock: productData?.inventory?.totalStock || 0
+    });
   }, [
     salePrice,
     productCost,
@@ -603,7 +604,9 @@ const Pricing: React.FC<PricingProps> = ({ product, settings, onMetricsUpdate, a
     storageFee,
     prepFee,
     additionalFees,
-    onMetricsUpdate
+    localSettings,
+    onMetricsUpdate,
+    productData
   ]);
 
   // Dynamically recalculate fees based on fulfillment type and user edits.
