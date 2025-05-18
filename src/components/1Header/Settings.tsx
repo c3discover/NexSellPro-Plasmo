@@ -11,13 +11,6 @@
 
 import React, { useState, useEffect } from "react";
 import { Storage } from "@plasmohq/storage";
-import {
-  SortableContainer,
-  SortableElement,
-  SortableHandle,
-  SortableElementProps,
-  SortableContainerProps
-} from 'react-sortable-hoc';
 import { arrayMoveImmutable } from 'array-move';
 import ConnectWithGoogle from "../../components/common/ConnectWithGoogle";
 import {
@@ -37,6 +30,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { defaultExportFields } from "../../data/constants/exportFields";
 
 // Add window property declarations
 declare global {
@@ -75,6 +69,13 @@ interface DesiredMetrics {
   additionalCosts: string;
 }
 
+interface ExportStatus {
+  isLoading: boolean;
+  success: boolean;
+  error: string | null;
+  url: string | null;
+}
+
 /**
  * Initial state interface
  */
@@ -93,32 +94,6 @@ interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSettingsChange: () => void;
-}
-
-/**
- * Props for sortable item component
- */
-interface SortableItemProps extends SortableElementProps {
-  field: ExportField;
-  onToggle: (id: string) => void;
-}
-
-/**
- * Props for sortable list component
- */
-interface SortableListProps extends SortableContainerProps {
-  items: ExportField[];
-  onToggle: (id: string) => void;
-}
-
-/**
- * Export status interface
- */
-interface ExportStatus {
-  isLoading: boolean;
-  success: boolean;
-  error: string | null;
-  url: string | null;
 }
 
 // Update categories for export fields
@@ -212,15 +187,29 @@ function validateExportSettings(settings: any, defaultFields: ExportField[]): Ex
   }
   // Remove any fields missing required keys
   const validFields = settings.fields.filter(f => f && typeof f.id === 'string' && typeof f.label === 'string' && typeof f.enabled === 'boolean' && typeof f.order === 'number');
-  if (validFields.length === 0) {
-    logError(LogModule.GOOGLE_SHEETS, 'No valid export fields found, using defaults.');
+  if (validFields.length === 0 || validFields.length !== defaultFields.length) {
+    logError(LogModule.GOOGLE_SHEETS, 'Invalid number of export fields, using defaults.');
     return { fields: defaultFields };
   }
   return { fields: validFields };
 }
 
-// Sortable item for dnd-kit
-function SortableExportField({ field, onToggle, listeners, attributes, isDragging, setNodeRef, style }) {
+// Update the SortableExportField component to use @dnd-kit
+function SortableExportField({ field, onToggle }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: field.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -247,6 +236,7 @@ function SortableExportField({ field, onToggle, listeners, attributes, isDraggin
   );
 }
 
+// Update the DndSortableExportList component
 function DndSortableExportList({ fields, onToggle, onReorder }) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -267,25 +257,21 @@ function DndSortableExportList({ fields, onToggle, onReorder }) {
       }}
     >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-        {fields.map(field => {
-          const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: field.id });
-          const style = {
-            transform: CSS.Transform.toString(transform),
-            transition,
-          };
-          return (
+        <div className="space-y-0.5 px-12">
+          <div className="grid grid-cols-[24px_60px_1fr_40px] items-center gap-2 px-2 py-1 text-[10px] font-medium text-gray-500 border-b">
+            <div className="flex justify-center">Sort</div>
+            <div>Category</div>
+            <div>Field</div>
+            <div className="text-center">Enable</div>
+          </div>
+          {fields.map(field => (
             <SortableExportField
               key={field.id}
               field={field}
               onToggle={onToggle}
-              listeners={listeners}
-              attributes={attributes}
-              setNodeRef={setNodeRef}
-              isDragging={isDragging}
-              style={style}
             />
-          );
-        })}
+          ))}
+        </div>
       </SortableContext>
     </DndContext>
   );
@@ -394,91 +380,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen: isModalOpe
     loadSpreadsheetId();
   }, []);
 
-  // Update the initial export settings (remove currentPrice and reorder fields by category)
-  const defaultExportFields = [
-    // System
-    { id: 'timestamp', label: 'Timestamp', enabled: true, order: 1 },
-
-    // Product Details
-    { id: 'mainImage', label: 'Main Image', enabled: true, order: 2 },
-    { id: 'numberOfImages', label: 'Number of Images', enabled: true, order: 3 },
-    { id: 'numberOfVideos', label: 'Number of Videos', enabled: true, order: 4 },
-    { id: 'brand', label: 'Brand', enabled: true, order: 5 },
-    { id: 'category', label: 'Category', enabled: true, order: 6 },
-    { id: 'shelvingPath', label: 'Shelving Path', enabled: true, order: 7 },
-    { id: 'badges', label: 'Badges', enabled: true, order: 8 },
-    { id: 'contractCategory', label: 'Contract Category', enabled: true, order: 9 },
-    { id: 'itemId', label: 'Item ID', enabled: true, order: 10 },
-    { id: 'gtin', label: 'GTIN', enabled: true, order: 11 },
-    { id: 'upc', label: 'UPC', enabled: true, order: 12 },
-    { id: 'ean', label: 'EAN', enabled: true, order: 13 },
-    { id: 'modelNumber', label: 'Model Number', enabled: true, order: 14 },
-    { id: 'countryOfOrigin', label: 'Country of Origin', enabled: true, order: 15 },
-    { id: 'variations', label: 'Variations', enabled: true, order: 16 },
-    { id: 'numberOfVariants', label: 'Number of Variants', enabled: true, order: 17 },
-    { id: 'variationAttributes', label: 'Variation Attributes', enabled: true, order: 18 },
-
-    // Dimensions
-    { id: 'length', label: 'Length', enabled: true, order: 19 },
-    { id: 'width', label: 'Width', enabled: true, order: 20 },
-    { id: 'height', label: 'Height', enabled: true, order: 21 },
-    { id: 'weight', label: 'Weight', enabled: true, order: 22 },
-
-    // Financial
-    { id: 'salePrice', label: 'Sale Price', enabled: true, order: 23 },
-    { id: 'estMonthlySales', label: 'Est Monthly Sales', enabled: true, order: 24 },
-    { id: 'totalProfit', label: 'Total Profit', enabled: true, order: 25 },
-    { id: 'margin', label: 'Margin', enabled: true, order: 26 },
-    { id: 'roi', label: 'ROI', enabled: true, order: 27 },
-    { id: 'productCost', label: 'Product Cost', enabled: true, order: 28 },
-    { id: 'referralFee', label: 'Referral Fee', enabled: true, order: 29 },
-    { id: 'wfsFee', label: 'WFS Fee', enabled: true, order: 30 },
-    { id: 'wfsInboundShipping', label: 'WFS Inbound Shipping', enabled: true, order: 31 },
-    { id: 'sfShipping', label: 'SF Shipping', enabled: true, order: 32 },
-    { id: 'storageFee', label: 'Storage Fee', enabled: true, order: 33 },
-    { id: 'prepFee', label: 'Prep Fee', enabled: true, order: 34 },
-    { id: 'additionalFees', label: 'Additional Fees', enabled: true, order: 35 },
-
-    // Competitive Analysis
-    { id: 'store1Name', label: 'Store 1 - Name', enabled: false, order: 36 },
-    { id: 'store1Link', label: 'Store 1 - Link', enabled: false, order: 37 },
-    { id: 'store1Price', label: 'Store 1 - Price', enabled: false, order: 38 },
-    { id: 'store2Name', label: 'Store 2 - Name', enabled: false, order: 39 },
-    { id: 'store2Link', label: 'Store 2 - Link', enabled: false, order: 40 },
-    { id: 'store2Price', label: 'Store 2 - Price', enabled: false, order: 41 },
-    { id: 'store3Name', label: 'Store 3 - Name', enabled: false, order: 42 },
-    { id: 'store3Link', label: 'Store 3 - Link', enabled: false, order: 43 },
-    { id: 'store3Price', label: 'Store 3 - Price', enabled: false, order: 44 },
-    { id: 'averageExternalPrice', label: 'Average External Price', enabled: true, order: 45 },
-
-    // Review Data
-    { id: 'totalRatings', label: 'Total Ratings', enabled: true, order: 46 },
-    { id: 'totalReviews', label: 'Total Reviews', enabled: true, order: 47 },
-    { id: 'overallRating', label: 'Overall Rating', enabled: true, order: 48 },
-    { id: 'reviews30Days', label: 'Total Reviews (30 days)', enabled: true, order: 49 },
-    { id: 'reviews90Days', label: 'Total Reviews (90 days)', enabled: true, order: 50 },
-    { id: 'reviews1Year', label: 'Total Reviews (1 year)', enabled: true, order: 51 },
-
-    // Seller Data
-    { id: 'totalSellers', label: 'Total Sellers', enabled: true, order: 52 },
-    { id: 'wfsSellers', label: 'WFS Sellers', enabled: true, order: 53 },
-    { id: 'walmartSells', label: 'Walmart Sells?', enabled: true, order: 54 },
-    { id: 'brandSells', label: 'Brand Sells?', enabled: true, order: 55 },
-    { id: 'isWalmartSelling', label: 'Is Walmart Selling', enabled: true, order: 56 },
-    { id: 'isBrandSelling', label: 'Is Brand Selling', enabled: true, order: 57 },
-
-    // Inventory Data
-    { id: 'totalStock', label: 'Total Stock', enabled: true, order: 58 },
-    { id: 'variantsInStock', label: 'Number of Variants in Stock', enabled: true, order: 59 },
-
-    // Additional Fields
-    { id: 'notes', label: 'Notes', enabled: false, order: 60 },
-    { id: 'blankColumn1', label: 'Blank Column 1', enabled: false, order: 61 },
-    { id: 'blankColumn2', label: 'Blank Column 2', enabled: false, order: 62 },
-    { id: 'blankColumn3', label: 'Blank Column 3', enabled: false, order: 63 },
-    { id: 'blankColumn4', label: 'Blank Column 4', enabled: false, order: 64 }
-  ];
-
   // Update the initial state to use the new ExportSettings interface
   const [exportSettings, setExportSettings] = useState<ExportSettings>({
     fields: defaultExportFields
@@ -534,16 +435,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen: isModalOpe
       // Load export settings
       const storedExportSettings = localStorage.getItem("exportSettings");
       if (storedExportSettings) {
-        const parsed = JSON.parse(storedExportSettings);
-        // Filter out currentPrice if it exists in stored settings
+        const parsed = JSON.parse(storedExportSettings) as ExportSettings;
         const filteredFields = parsed.fields.filter((field: ExportField) => field.id !== 'currentPrice');
-        // Reorder the fields to ensure continuous ordering
         const reorderedFields = filteredFields.map((field: ExportField, index: number) => ({
           ...field,
           order: index + 1
         }));
         setExportSettings({ fields: reorderedFields });
-        // Save the filtered settings back to localStorage
         localStorage.setItem("exportSettings", JSON.stringify({ fields: reorderedFields }));
       } else {
         // If no stored settings, initialize with default values
@@ -626,7 +524,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen: isModalOpe
         if (!loaded) {
           // Try localStorage
           const local = localStorage.getItem('exportSettings');
-          if (local) loaded = JSON.parse(local);
+          if (local) {
+            const parsed = JSON.parse(local) as ExportSettings;
+            loaded = parsed;
+          }
         }
       } catch (e) {
         logError(LogModule.GOOGLE_SHEETS, 'Error loading exportSettings: ' + (e as Error).message);
@@ -1043,76 +944,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen: isModalOpe
     }
     onClose();
   };
-
-  // Add the DragHandle component
-  const DragHandle = SortableHandle(() => (
-    <div className="text-gray-400 cursor-grab active:cursor-grabbing select-none hover:text-gray-600">
-      ⋮⋮
-    </div>
-  ));
-
-  // Update the SortableItem component
-  const SortableItem = SortableElement<SortableItemProps>(({ field, onToggle }: SortableItemProps) => (
-  <div className="grid grid-cols-[24px_60px_1fr_40px] items-center gap-2 py-[2px] px-2 bg-white rounded border mb-[2px]">
-    <div className="flex justify-center">
-      <DragHandle />
-    </div>
-    <div className="text-[10px] text-gray-500 truncate">
-      {exportFieldCategories[field.id as keyof typeof exportFieldCategories]}
-    </div>
-    <div className="text-xs font-medium truncate">
-      {field.label}
-    </div>
-    <div className="flex justify-end">
-      <label className="relative inline-flex items-center cursor-pointer">
-        <input
-          type="checkbox"
-          className="sr-only peer"
-          checked={field.enabled}
-          onChange={() => onToggle(field.id)}
-        />
-        <div className="w-7 h-3.5 bg-gray-200 rounded-full peer 
-        peer-focus:ring-2 peer-focus:ring-cyan-300 
-        peer-checked:bg-cyan-500
-        after:content-[''] 
-        after:absolute 
-        after:top-0 
-        after:left-0 
-        after:bg-white 
-        after:border-gray-300 
-        after:border 
-        after:rounded-full 
-        after:h-3.5 
-        after:w-3.5 
-        after:transition-all
-        after:shadow-sm
-        peer-checked:after:translate-x-full 
-        peer-checked:after:border-white">
-        </div>
-      </label>
-    </div>
-  </div>
-));
-
-  // Update the SortableList component
-  const SortableList = SortableContainer<SortableListProps>(({ items, onToggle }: SortableListProps) => (
-    <div className="space-y-0.5 px-12">
-      <div className="grid grid-cols-[24px_60px_1fr_40px] items-center gap-2 px-2 py-1 text-[10px] font-medium text-gray-500 border-b">
-        <div className="flex justify-center">Sort</div>
-        <div>Category</div>
-        <div>Field</div>
-        <div className="text-center">Enable</div>
-      </div>
-      {items.map((field, index) => (
-        <SortableItem
-          key={field.id}
-          index={index}
-          field={field}
-          onToggle={onToggle}
-        />
-      ))}
-    </div>
-  ));
 
   /////////////////////////////////////////////////////
   // Conditional Rendering

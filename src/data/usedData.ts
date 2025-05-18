@@ -82,12 +82,12 @@ export interface UsedProductData {
   shippingHeight: string;
   weight: string;
   badges: string[];
-  variantCriteria: any[];
-  variantsMap: any;
+  variantCriteria: string[];
+  variantsMap: Record<string, VariantInfo>;
   overallRating: number;
   numberOfRatings: number;
   numberOfReviews: number;
-  customerReviews: any[];
+  customerReviews: CustomerReview[];
   reviewDates: string[];
   fulfillmentOptions: string[];
   isHazardousMaterial: boolean;
@@ -96,8 +96,8 @@ export interface UsedProductData {
   sellerName: string;
   sellerDisplayName: string;
   sellerType: string;
-  mainSeller: any;
-  otherSellers: any[];
+  mainSeller: SellerInfo;
+  otherSellers: SellerInfo[];
   totalSellers: number;
   totalStock: number;
 
@@ -150,7 +150,7 @@ export interface UsedProductData {
     numberOfRatings: number;
     numberOfReviews: number;
     reviewDates: string[];
-    customerReviews: any[];
+    customerReviews: CustomerReview[];
   };
   inventory: {
     totalSellers: number;
@@ -158,8 +158,8 @@ export interface UsedProductData {
     fulfillmentOptions: string[];
   };
   sellers: {
-    mainSeller: any;
-    otherSellers: any[];
+    mainSeller: SellerInfo;
+    otherSellers: SellerInfo[];
     sellerName: string;
     sellerDisplayName: string;
     sellerType: string;
@@ -181,8 +181,8 @@ export interface UsedProductData {
     additionalFees: number;
   };
   variants: {
-    variantCriteria: any[];
-    variantsMap: any;
+    variantCriteria: string[];
+    variantsMap: Record<string, VariantInfo>;
   };
 
   // 🆕 Flattened fields for export
@@ -219,6 +219,54 @@ export interface UsedProductData {
   blankColumn2: string;
   blankColumn3: string;
   blankColumn4: string;
+}
+
+// Supporting types
+export interface SellerInfo {
+  sellerName: string;
+  sellerID: string;
+  sellerType: string;
+  sellerRating: number;
+  fulfillmentType: string;
+  shippingMethods: {
+    shipPrice: number;
+    shipMethod: string;
+    estimatedDeliveryDate: string;
+  }[];
+  inventoryCount: number;
+  bestMarketplacePrice: {
+    price: number;
+  };
+  isWFS?: boolean;
+}
+
+export interface CustomerReview {
+  reviewer: string;
+  rating: number;
+  date: string;
+  text: string;
+}
+
+export interface VariantInfo {
+  name: string;
+  usItemId: string;
+  availabilityStatus: string;
+  variants: string[];
+  priceInfo?: {
+    currentPrice?: {
+      price: number;
+      priceString: string;
+    };
+  };
+  image?: string;
+  title?: string;
+  ratings?: number | string;
+  sellers?: number | string;
+  upc?: string;
+  price?: string;
+  stock?: number;
+  inStock?: boolean;
+  deliveryDate?: string;
 }
 
 ////////////////////////////////////////////////
@@ -729,8 +777,40 @@ export async function getUsedData(productId: string): Promise<UsedProductData> {
       sellerName: seller?.[0]?.sellerName || "",
       sellerDisplayName: seller?.[0]?.sellerName || "",
       sellerType: seller?.[0]?.type || "",
-      mainSeller: seller?.[0] || null,
-      otherSellers: seller?.slice(1) || [],
+      mainSeller: seller?.[0] ? {
+        sellerID: seller[0].sellerID || "",
+        sellerName: seller[0].sellerName || "",
+        sellerType: seller[0].type || "",
+        sellerRating: 0,
+        fulfillmentType: seller[0].isWFS ? "WFS" : "Seller Fulfilled",
+        shippingMethods: [{
+          shipPrice: 0,
+          shipMethod: "Standard",
+          estimatedDeliveryDate: seller[0].arrivalDate || ""
+        }],
+        inventoryCount: seller[0].stock || 0,
+        bestMarketplacePrice: {
+          price: parseFloat(seller[0].price) || 0
+        },
+        isWFS: seller[0].isWFS || false
+      } : null,
+      otherSellers: (seller?.slice(1) || []).map(s => ({
+        sellerID: s.sellerID || "",
+        sellerName: s.sellerName || "",
+        sellerType: s.type || "",
+        sellerRating: 0,
+        fulfillmentType: s.isWFS ? "WFS" : "Seller Fulfilled",
+        shippingMethods: [{
+          shipPrice: 0,
+          shipMethod: "Standard",
+          estimatedDeliveryDate: s.arrivalDate || ""
+        }],
+        inventoryCount: s.stock || 0,
+        bestMarketplacePrice: {
+          price: parseFloat(s.price) || 0
+        },
+        isWFS: s.isWFS || false
+      })),
       totalSellers: seller?.length || 0,
       totalStock: calculateTotalStock(seller || []),
       wfsSellers: seller?.filter(s => s.isWFS)?.length || 0,
@@ -796,8 +876,40 @@ export async function getUsedData(productId: string): Promise<UsedProductData> {
         fulfillmentOptions: raw?.fulfillmentOptions?.map(opt => opt?.type) || []
       },
       sellers: {
-        mainSeller: seller?.[0] || null,
-        otherSellers: seller?.slice(1) || [],
+        mainSeller: seller?.[0] ? {
+          sellerID: seller[0].sellerID || "",
+          sellerName: seller[0].sellerName || "",
+          sellerType: seller[0].type || "",
+          sellerRating: 0,
+          fulfillmentType: seller[0].isWFS ? "WFS" : "Seller Fulfilled",
+          shippingMethods: [{
+            shipPrice: 0,
+            shipMethod: "Standard",
+            estimatedDeliveryDate: seller[0].arrivalDate || ""
+          }],
+          inventoryCount: seller[0].stock || 0,
+          bestMarketplacePrice: {
+            price: parseFloat(seller[0].price) || 0
+          },
+          isWFS: seller[0].isWFS || false
+        } : null,
+        otherSellers: (seller?.slice(1) || []).map(s => ({
+          sellerID: s.sellerID || "",
+          sellerName: s.sellerName || "",
+          sellerType: s.type || "",
+          sellerRating: 0,
+          fulfillmentType: s.isWFS ? "WFS" : "Seller Fulfilled",
+          shippingMethods: [{
+            shipPrice: 0,
+            shipMethod: "Standard",
+            estimatedDeliveryDate: s.arrivalDate || ""
+          }],
+          inventoryCount: s.stock || 0,
+          bestMarketplacePrice: {
+            price: parseFloat(s.price) || 0
+          },
+          isWFS: s.isWFS || false
+        })),
         sellerName: seller?.[0]?.sellerName || "",
         sellerDisplayName: seller?.[0]?.sellerName || "",
         sellerType: seller?.[0]?.type || ""

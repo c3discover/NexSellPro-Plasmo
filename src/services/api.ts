@@ -115,6 +115,7 @@ export const fetchSellerDataFromAPI = withErrorHandling(
     
     // Anti-bot rate limiting: Walmart triggers CAPTCHA (412) without delays
     await delay(Math.random() * 4000 + 3000); // 3 to 7 second random delay
+    
     // Make the API request
     const response = await fetch(WALMART_GRAPHQL_URL, {
       method: 'POST',
@@ -130,24 +131,60 @@ export const fetchSellerDataFromAPI = withErrorHandling(
       throw new Error(`API error: ${response.status} ${response.statusText}`);
     }
     
-    // Parse the response
+    // Parse the response with defensive checks
     const data = await response.json();
     
-    // Return empty array if no data found
-    if (!data.data?.product?.sellerInfo) {
+    // Validate response structure
+    if (!data || typeof data !== 'object') {
+      logError({
+        message: 'Invalid response format from GraphQL API',
+        severity: ErrorSeverity.ERROR,
+        component: 'api',
+        context: { method: 'fetchSellerDataFromAPI', itemId }
+      });
+      return [];
+    }
+
+    // Check for GraphQL errors
+    if (data.errors) {
+      logError({
+        message: 'GraphQL errors in response',
+        severity: ErrorSeverity.ERROR,
+        component: 'api',
+        error: new Error(JSON.stringify(data.errors)),
+        context: { method: 'fetchSellerDataFromAPI', itemId }
+      });
+      return [];
+    }
+
+    // Safely access nested data with optional chaining
+    const sellerInfo = data?.data?.product?.sellerInfo;
+    if (!sellerInfo || !Array.isArray(sellerInfo)) {
+      logError({
+        message: 'No seller information found in response',
+        severity: ErrorSeverity.WARNING,
+        component: 'api',
+        context: { method: 'fetchSellerDataFromAPI', itemId }
+      });
       return [];
     }
     
-    // Transform API response into our SellerInfo format
-    return data.data.product.sellerInfo.map((seller: any) => ({
-      sellerName: seller.sellerName || 'Unknown Seller',
-      price: seller.priceInfo?.currentPrice?.priceString || 'N/A',
-      type: determineSellerType(seller),
-      arrives: formatDeliveryDate(seller.shippingInfo?.deliveryDate),
-      isProSeller: seller.sellerType === 'PRO',
-      isWFS: seller.fulfillmentType === 'WFS',
-      priceInfo: seller.priceInfo
-    }));
+    // Transform API response into our SellerInfo format with defensive checks
+    return sellerInfo.map((seller: any) => {
+      // Safely access nested properties with optional chaining and default values
+      const priceInfo = seller?.priceInfo?.currentPrice;
+      const shippingInfo = seller?.shippingInfo;
+      
+      return {
+        sellerName: seller?.sellerName || 'Unknown Seller',
+        price: priceInfo?.priceString || 'N/A',
+        type: determineSellerType(seller),
+        arrives: shippingInfo?.deliveryDate ? formatDeliveryDate(new Date(shippingInfo.deliveryDate)) : 'N/A',
+        isProSeller: seller?.sellerType === 'PRO',
+        isWFS: seller?.fulfillmentType === 'WFS',
+        priceInfo: priceInfo || null
+      };
+    });
   },
   (error) => {
     // Log error and return empty array on failure

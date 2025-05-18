@@ -132,6 +132,151 @@ export async function exportToGoogleSheet({
       throw new Error(`Failed to append data: ${response.statusText}`);
     }
 
+    // --- Google Sheets formatting for NexSellPro exports ---
+    // Applies after data is written. Format spec:
+    // - Row 1: Bold, light gray background
+    // - Thin borders around all populated cells
+    // - Column A: left-align
+    // - Column B: center-align
+    // - Columns C+: right-align
+    // Update this block if export format changes.
+    const numRows = data.length;
+    const numCols = data[0].length;
+    const formatResponse = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          requests: [
+            // Header row formatting (row 1)
+            {
+              repeatCell: {
+                range: {
+                  sheetId: 0,
+                  startRowIndex: 0,
+                  endRowIndex: 1,
+                  startColumnIndex: 0,
+                  endColumnIndex: numCols
+                },
+                cell: {
+                  userEnteredFormat: {
+                    backgroundColor: {
+                      red: 0.95,
+                      green: 0.95,
+                      blue: 0.95
+                    },
+                    textFormat: {
+                      bold: true,
+                      fontFamily: "Inter"
+                    },
+                    horizontalAlignment: "CENTER",
+                    verticalAlignment: "MIDDLE"
+                  }
+                },
+                fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
+              }
+            },
+            // Borders for all populated cells
+            {
+              repeatCell: {
+                range: {
+                  sheetId: 0,
+                  startRowIndex: 0,
+                  endRowIndex: numRows,
+                  startColumnIndex: 0,
+                  endColumnIndex: numCols
+                },
+                cell: {
+                  userEnteredFormat: {
+                    borders: {
+                      top: { style: "SOLID", width: 1, color: { red: 0.8, green: 0.8, blue: 0.8 } },
+                      bottom: { style: "SOLID", width: 1, color: { red: 0.8, green: 0.8, blue: 0.8 } },
+                      left: { style: "SOLID", width: 1, color: { red: 0.8, green: 0.8, blue: 0.8 } },
+                      right: { style: "SOLID", width: 1, color: { red: 0.8, green: 0.8, blue: 0.8 } }
+                    }
+                  }
+                },
+                fields: "userEnteredFormat.borders"
+              }
+            },
+            // Alignment: Column A (left)
+            {
+              repeatCell: {
+                range: {
+                  sheetId: 0,
+                  startRowIndex: 0,
+                  endRowIndex: numRows,
+                  startColumnIndex: 0,
+                  endColumnIndex: 1
+                },
+                cell: {
+                  userEnteredFormat: {
+                    horizontalAlignment: "LEFT"
+                  }
+                },
+                fields: "userEnteredFormat.horizontalAlignment"
+              }
+            },
+            // Alignment: Column B (center)
+            {
+              repeatCell: {
+                range: {
+                  sheetId: 0,
+                  startRowIndex: 0,
+                  endRowIndex: numRows,
+                  startColumnIndex: 1,
+                  endColumnIndex: 2
+                },
+                cell: {
+                  userEnteredFormat: {
+                    horizontalAlignment: "CENTER"
+                  }
+                },
+                fields: "userEnteredFormat.horizontalAlignment"
+              }
+            },
+            // Alignment: Columns C+ (right)
+            {
+              repeatCell: {
+                range: {
+                  sheetId: 0,
+                  startRowIndex: 0,
+                  endRowIndex: numRows,
+                  startColumnIndex: 2,
+                  endColumnIndex: numCols
+                },
+                cell: {
+                  userEnteredFormat: {
+                    horizontalAlignment: "RIGHT"
+                  }
+                },
+                fields: "userEnteredFormat.horizontalAlignment"
+              }
+            },
+            // Auto-resize columns
+            {
+              autoResizeDimensions: {
+                dimensions: {
+                  sheetId: 0,
+                  dimension: "COLUMNS",
+                  startIndex: 0,
+                  endIndex: numCols
+                }
+              }
+            }
+          ]
+        })
+      }
+    );
+
+    if (!formatResponse.ok) {
+      throw new Error(`Failed to apply formatting: ${formatResponse.statusText}`);
+    }
+
     logger.logTable(LogModule.GOOGLE_SHEETS, "Export Success", {
       spreadsheetId,
       rowsExported: data.length

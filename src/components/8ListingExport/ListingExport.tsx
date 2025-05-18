@@ -11,12 +11,14 @@
 import React, { useState, useEffect } from "react";
 import { Storage } from "@plasmohq/storage";
 import { getUsedData } from "~data/usedData";
+import { useLiveExportData } from "~/data/liveDataCollector";
 // Import icons and animations for the buttons
 import importIcon from "data-base64:../../../assets/importIcon.png";
 import SuccessGif from "data-base64:../../../assets/greenTick.gif";
 import { exportToGoogleSheet } from "~/services/googleSheetsService";
 import { LogModule, logGroup, logTable, logGroupEnd, logError, logInfo, logWarning } from "~/data/utils/logger";
 import { ExportField, ExportSettings } from '../../types/settings';
+import { defaultExportFields } from "../../data/constants/exportFields";
 
 ////////////////////////////////////////////////
 // Constants and Variables:
@@ -69,6 +71,9 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
     url: null
   });
 
+  // Live export data from real-time collector
+  const liveData = useLiveExportData();
+
   // Effect to sync the section's open state with the global sections state
   useEffect(() => {
     setIsOpen(areSectionsOpen);
@@ -103,8 +108,8 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
       return { fields: defaultFields };
     }
     const validFields = settings.fields.filter(f => f && typeof f.id === 'string' && typeof f.label === 'string' && typeof f.enabled === 'boolean' && typeof f.order === 'number');
-    if (validFields.length === 0) {
-      logError(LogModule.GOOGLE_SHEETS, 'No valid export fields found, using defaults.');
+    if (validFields.length === 0 || validFields.length !== defaultFields.length) {
+      logError(LogModule.GOOGLE_SHEETS, 'Invalid number of export fields, using defaults.');
       return { fields: defaultFields };
     }
     return { fields: validFields };
@@ -115,14 +120,8 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
     try {
       setExportStatus({ isLoading: true, success: false, error: null, url: null });
 
-      // Get product ID from URL
-      const productId = window.location.pathname.split('/')?.pop();
-      if (!productId) {
-        throw new Error("Could not determine product ID from URL");
-      }
-
-      // Get product data
-      const productData = await getUsedData(productId);
+      // Use live export data instead of stale usedData
+      const productData = liveData;
       if (!productData) {
         throw new Error("No product data available to export");
       }
@@ -141,66 +140,102 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
         return value !== undefined && value !== null;
       });
 
-      let exportSettings: ExportSettings | null = null;
+      // Load exportSettings fields for metadata (category, order, label)
+      let exportSettingsFields: ExportField[] = [];
       try {
-        // Try Storage API first
-        exportSettings = await storage.get('exportSettings');
-        if (!exportSettings) {
+        let settings = await storage.get('exportSettings') as ExportSettings;
+        if (!settings) {
           const local = localStorage.getItem('exportSettings');
-          if (local) exportSettings = JSON.parse(local);
+          if (local) settings = JSON.parse(local) as ExportSettings;
         }
+        const validated = validateExportSettings(settings, defaultExportFields);
+        exportSettingsFields = validated.fields;
+        // Persist validated settings
+        await storage.set('exportSettings', validated);
+        localStorage.setItem('exportSettings', JSON.stringify(validated));
       } catch (e) {
         logError(LogModule.GOOGLE_SHEETS, 'Error loading exportSettings: ' + (e as Error).message);
-      }
-      const defaultFields = allFields.map(f => ({ id: f, label: f, enabled: true, order: 0 }));
-      const validated = validateExportSettings(exportSettings, defaultFields);
-
-      const enabledFields = validated.fields.filter(f => f.enabled).sort((a, b) => a.order - b.order);
-      if (enabledFields.length === 0) {
-        setExportStatus({
-          isLoading: false,
-          success: false,
-          error: 'Please enable at least one export field in settings.',
-          url: null
-        });
-        logError(LogModule.GOOGLE_SHEETS, 'No fields are enabled for export.');
-        return;
-      }
-      const fieldsToExport = enabledFields.map(f => f.id).filter(id => allFields.includes(id));
-      if (fieldsToExport.length === 0) {
-        setExportStatus({
-          isLoading: false,
-          success: false,
-          error: 'None of the enabled fields contain valid data for export.',
-          url: null
-        });
-        logError(LogModule.GOOGLE_SHEETS, 'None of the enabled fields contain valid data for export.');
-        return;
+        exportSettingsFields = defaultExportFields;
       }
 
-      // Prepare headers and data row
-      const headers = fieldsToExport.map(field => {
-        // Convert field ID to readable label
-        return field.split(/(?=[A-Z])/).join(' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+      // Helper: get field meta from exportSettings.fields or fallback
+      const getFieldMeta = (id: string) => {
+        return (
+          exportSettingsFields.find(f => f.id === id) ||
+          { id, label: id, enabled: true, order: 999, category: 'General' }
+        );
+      };
+
+      let fieldsToExport: string[] = [];
+      if (exportAll) {
+        // Export all fields in default (alphabetical) order, but group/sort by category/order if possible
+        fieldsToExport = [...allFields];
+      } else {
+        // Export only enabled fields, sorted by order
+        const enabledFields = exportSettingsFields.filter(f => f.enabled).sort((a, b) => a.order - b.order);
+        fieldsToExport = enabledFields.map(f => f.id).filter(id => allFields.includes(id));
+        if (fieldsToExport.length === 0) {
+          setExportStatus({
+            isLoading: false,
+            success: false,
+            error: 'Please enable at least one export field in settings.',
+            url: null
+          });
+          logError(LogModule.GOOGLE_SHEETS, 'No fields are enabled for export.');
+          return;
+        }
+      }
+
+      // Build export rows with meta
+      let exportRows = fieldsToExport.map(field => {
+        const meta = getFieldMeta(field);
+        let value = productData[field];
+        let formattedValue = "";
+        if (value === undefined || value === null) {
+          formattedValue = "";
+        } else if (typeof value === "object") {
+          formattedValue = JSON.stringify(value);
+        } else if (typeof value === "number") {
+          formattedValue = value.toString();
+        } else if (typeof value === "boolean") {
+          formattedValue = value ? "Yes" : "No";
+        } else {
+          formattedValue = String(value);
+        }
+        // Special handling for mainImage field: embed image using Google Sheets IMAGE formula if valid URL
+        if (field === "mainImage" && typeof formattedValue === "string" && /^https?:\/\//.test(formattedValue)) {
+          formattedValue = `=IMAGE("${formattedValue}", 4, 75, 75)`;
+        }
+        return {
+          category: meta.category || 'General',
+          label: meta.label || field,
+          value: formattedValue,
+          order: meta.order || 999,
+          id: field
+        };
       });
 
-      const row = fieldsToExport.map(field => {
-        const value = productData[field];
-        if (value === undefined || value === null) return "";
-        if (typeof value === "object") return JSON.stringify(value);
-        if (typeof value === "number") return value.toString();
-        if (typeof value === "boolean") return value ? "Yes" : "No";
-        return String(value);
+      // Group by category, then sort by order within each group, then flatten
+      exportRows = exportRows.sort((a, b) => {
+        if (a.category < b.category) return -1;
+        if (a.category > b.category) return 1;
+        if (a.order < b.order) return -1;
+        if (a.order > b.order) return 1;
+        return 0;
       });
+
+      // Add header row for three columns (multi-product ready)
+      const productHeaders = ["Product 1"];
+      const headers = ["Category", "Field", ...productHeaders];
+      const data = [headers, ...exportRows.map(row => [row.category, row.label, row.value])];
 
       // Log the final payload before sending
       logGroup(LogModule.GOOGLE_SHEETS, "Export Payload");
-      logTable(LogModule.GOOGLE_SHEETS, "Headers", { headers });
-      logTable(LogModule.GOOGLE_SHEETS, "Data", { row });
+      logTable(LogModule.GOOGLE_SHEETS, "Data", { rows: data.length });
       logGroupEnd();
 
       const result = await exportToGoogleSheet({
-        data: [headers, row],
+        data,
         logger: { logGroup, logTable, logGroupEnd, logError }
       });
 
@@ -216,7 +251,6 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
       });
 
       handleButtonClick(EXPORT_OPTIONS.indexOf(label));
-      
       logInfo(LogModule.GOOGLE_SHEETS, `Export completed successfully - ${fieldsToExport.length} fields exported to ${result.url}`);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Export failed. Please try again.";

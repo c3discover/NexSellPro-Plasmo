@@ -77,7 +77,18 @@ function getProductSpecification(idml: any, name: string): string | null {
  * @returns The processed product details
  */
 export function processProductDetails(product: any, idml: any, reviews: any): ProductDetails {
-  // Extract basic product information
+  // Validate input data
+  if (!product || typeof product !== 'object') {
+    logError({
+      message: 'Invalid product data received',
+      severity: ErrorSeverity.ERROR,
+      component: 'productService',
+      context: { method: 'processProductDetails' }
+    });
+    return createEmptyProductDetails();
+  }
+
+  // Extract basic product information with defensive checks
   const productDetails: ProductDetails = {
     id: product?.usItemId || '',
     name: product?.name || '',
@@ -87,7 +98,7 @@ export function processProductDetails(product: any, idml: any, reviews: any): Pr
     imageUrl: product?.imageInfo?.thumbnailUrl || '',
     mainCategory: product?.category?.path?.[0]?.name || '',
     currentPrice: product?.priceInfo?.currentPrice?.price || 0,
-    variantCriteria: product?.variantCriteria || [],
+    variantCriteria: Array.isArray(product?.variantCriteria) ? product.variantCriteria : [],
     variantsMap: product?.variantsMap || {},
     shippingLength: getProductSpecification(idml, "Shipping Length") || "0",
     shippingWidth: getProductSpecification(idml, "Shipping Width") || "0",
@@ -107,32 +118,70 @@ export function processProductDetails(product: any, idml: any, reviews: any): Pr
     specifications: {}
   };
 
-  // Extract fulfillment options
-  if (product?.fulfillmentOptions) {
-    productDetails.fulfillmentOptions = product.fulfillmentOptions.map((option: any) => ({
-      type: option.fulfillmentType,
-      availableQuantity: option.availableQuantity || 0
-    }));
+  // Extract fulfillment options with defensive checks
+  if (Array.isArray(product?.fulfillmentOptions)) {
+    productDetails.fulfillmentOptions = product.fulfillmentOptions
+      .filter((option: any) => option && typeof option === 'object')
+      .map((option: any) => ({
+        type: option?.fulfillmentType || 'UNKNOWN',
+        availableQuantity: typeof option?.availableQuantity === 'number' ? option.availableQuantity : 0
+      }));
   }
 
-  // Extract review dates
-  if (reviews?.reviewStatistics?.reviewDateDistribution) {
-    productDetails.reviewDates = reviews.reviewStatistics.reviewDateDistribution.map(
-      (dateObj: any) => dateObj.date
-    );
+  // Extract review dates with defensive checks
+  if (reviews?.reviewStatistics?.reviewDateDistribution && Array.isArray(reviews.reviewStatistics.reviewDateDistribution)) {
+    productDetails.reviewDates = reviews.reviewStatistics.reviewDateDistribution
+      .filter((dateObj: any) => dateObj && dateObj.date)
+      .map((dateObj: any) => dateObj.date);
   }
 
-  // Extract badges
-  if (product?.badges) {
-    productDetails.badges = product.badges.map((badge: any) => badge.key);
+  // Extract badges with defensive checks
+  if (Array.isArray(product?.badges)) {
+    productDetails.badges = product.badges
+      .filter((badge: any) => badge && badge.key)
+      .map((badge: any) => badge.key);
   }
 
-  // Extract total sellers
-  if (product?.sellerInfo?.sellerCount) {
+  // Extract total sellers with defensive checks
+  if (typeof product?.sellerInfo?.sellerCount === 'number') {
     productDetails.totalSellers = product.sellerInfo.sellerCount;
   }
 
   return productDetails;
+}
+
+/**
+ * Creates an empty product details object with default values
+ */
+function createEmptyProductDetails(): ProductDetails {
+  return {
+    id: '',
+    name: '',
+    upc: '',
+    brand: '',
+    brandUrl: '',
+    imageUrl: '',
+    mainCategory: '',
+    currentPrice: 0,
+    variantCriteria: [],
+    variantsMap: {},
+    shippingLength: "0",
+    shippingWidth: "0",
+    shippingHeight: "0",
+    weight: "0",
+    stock: 0,
+    fulfillmentOptions: [],
+    modelNumber: '',
+    reviewDates: [],
+    badges: [],
+    totalSellers: 0,
+    price: 0,
+    category: '',
+    rating: 0,
+    reviewCount: 0,
+    inStock: false,
+    specifications: {}
+  };
 }
 
 /**
@@ -205,19 +254,54 @@ const getProductSpecifications = memoize(async (productId: string): Promise<Reco
  */
 export const getProductData = async (productId: string): Promise<Product> => {
   const productDiv = document.querySelector(`[data-product-id="${productId}"]`);
-  if (!productDiv) throw new Error('Product not found');
+  if (!productDiv) {
+    logError({
+      message: 'Product element not found in DOM',
+      severity: ErrorSeverity.ERROR,
+      component: 'productService',
+      context: { method: 'getProductData', productId }
+    });
+    return createEmptyProduct();
+  }
 
-  return {
-    weight: parseFloat(productDiv.getAttribute('data-weight') || '0'),
-    length: parseFloat(productDiv.getAttribute('data-length') || '0'),
-    width: parseFloat(productDiv.getAttribute('data-width') || '0'),
-    height: parseFloat(productDiv.getAttribute('data-height') || '0'),
-    isWalmartFulfilled: productDiv.getAttribute('data-fulfillment') === 'WFS',
-    isApparel: productDiv.getAttribute('data-category') === 'Apparel',
-    isHazardousMaterial: productDiv.getAttribute('data-hazmat') === 'true',
-    retailPrice: parseFloat(productDiv.getAttribute('data-price') || '0')
-  };
+  try {
+    return {
+      weight: parseFloat(productDiv.getAttribute('data-weight') || '0') || 0,
+      length: parseFloat(productDiv.getAttribute('data-length') || '0') || 0,
+      width: parseFloat(productDiv.getAttribute('data-width') || '0') || 0,
+      height: parseFloat(productDiv.getAttribute('data-height') || '0') || 0,
+      isWalmartFulfilled: productDiv.getAttribute('data-fulfillment') === 'WFS',
+      isApparel: productDiv.getAttribute('data-category') === 'Apparel',
+      isHazardousMaterial: productDiv.getAttribute('data-hazmat') === 'true',
+      retailPrice: parseFloat(productDiv.getAttribute('data-price') || '0') || 0
+    };
+  } catch (error) {
+    logError({
+      message: 'Error parsing product data from DOM',
+      severity: ErrorSeverity.ERROR,
+      component: 'productService',
+      error: error as Error,
+      context: { method: 'getProductData', productId }
+    });
+    return createEmptyProduct();
+  }
 };
+
+/**
+ * Creates an empty product object with default values
+ */
+function createEmptyProduct(): Product {
+  return {
+    weight: 0,
+    length: 0,
+    width: 0,
+    height: 0,
+    isWalmartFulfilled: false,
+    isApparel: false,
+    isHazardousMaterial: false,
+    retailPrice: 0
+  };
+}
 
 // Throttle the getProductDetailsFromPage function to prevent excessive calls
 const throttledGetProductDetails = throttle(getProductDetailsFromPage, 500);

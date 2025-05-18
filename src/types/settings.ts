@@ -16,6 +16,7 @@ export interface ExportField {
   label: string;
   enabled: boolean;
   order: number;
+  category: string;
 }
 
 /**
