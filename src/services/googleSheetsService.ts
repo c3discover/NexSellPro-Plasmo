@@ -134,14 +134,26 @@ export async function exportToGoogleSheet({
 
     // --- Google Sheets formatting for NexSellPro exports ---
     // Applies after data is written. Format spec:
-    // - Row 1: Bold, light gray background
-    // - Thin borders around all populated cells
-    // - Column A: left-align
-    // - Column B: center-align
-    // - Columns C+: right-align
-    // Update this block if export format changes.
+    // - Freeze Row 1 and Columns A & B
+    // - Set entire sheet font to Inter (fallback Arial), center/middle align, wrap text
+    // - Add thin borders to all cells
+    // - Row 1: bold, light gray background
+    // - Cell B1: bold font (overrides column B style)
+    // - Column A: width 100px, light blue, bold
+    // - Column B: width 200px, light gray, medium font (except B1)
+    // - Columns C+: width 150px, center align
+    // - Set row height to 100px for row with 'Main Image' in col B
+    // Dynamic range detection
     const numRows = data.length;
     const numCols = data[0].length;
+    // Find the row index (zero-based) where column B is 'Main Image'
+    let mainImageRow = -1;
+    for (let i = 0; i < data.length; i++) {
+      if (data[i][1] && typeof data[i][1] === 'string' && data[i][1].trim().toLowerCase() === 'main image') {
+        mainImageRow = i;
+        break;
+      }
+    }
     const formatResponse = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
       {
@@ -152,32 +164,38 @@ export async function exportToGoogleSheet({
         },
         body: JSON.stringify({
           requests: [
-            // Header row formatting (row 1)
+            // Freeze row 1 and columns A & B
+            {
+              updateSheetProperties: {
+                properties: {
+                  sheetId: 0,
+                  gridProperties: {
+                    frozenRowCount: 1,
+                    frozenColumnCount: 2
+                  }
+                },
+                fields: "gridProperties.frozenRowCount,gridProperties.frozenColumnCount"
+              }
+            },
+            // Set font, center/middle align, wrap for all cells
             {
               repeatCell: {
                 range: {
                   sheetId: 0,
                   startRowIndex: 0,
-                  endRowIndex: 1,
+                  endRowIndex: numRows,
                   startColumnIndex: 0,
                   endColumnIndex: numCols
                 },
                 cell: {
                   userEnteredFormat: {
-                    backgroundColor: {
-                      red: 0.95,
-                      green: 0.95,
-                      blue: 0.95
-                    },
-                    textFormat: {
-                      bold: true,
-                      fontFamily: "Inter"
-                    },
+                    textFormat: { fontFamily: "Inter" },
                     horizontalAlignment: "CENTER",
-                    verticalAlignment: "MIDDLE"
+                    verticalAlignment: "MIDDLE",
+                    wrapStrategy: "WRAP"
                   }
                 },
-                fields: "userEnteredFormat(backgroundColor,textFormat,horizontalAlignment,verticalAlignment)"
+                fields: "userEnteredFormat(textFormat,horizontalAlignment,verticalAlignment,wrapStrategy)"
               }
             },
             // Borders for all populated cells
@@ -203,7 +221,56 @@ export async function exportToGoogleSheet({
                 fields: "userEnteredFormat.borders"
               }
             },
-            // Alignment: Column A (left)
+            // Header row formatting (row 1): bold, light gray
+            {
+              repeatCell: {
+                range: {
+                  sheetId: 0,
+                  startRowIndex: 0,
+                  endRowIndex: 1,
+                  startColumnIndex: 0,
+                  endColumnIndex: numCols
+                },
+                cell: {
+                  userEnteredFormat: {
+                    backgroundColor: { red: 0.95, green: 0.95, blue: 0.95 },
+                    textFormat: { bold: true, fontFamily: "Inter" }
+                  }
+                },
+                fields: "userEnteredFormat(backgroundColor,textFormat)"
+              }
+            },
+            // Cell B1: bold font (overrides column B style)
+            {
+              repeatCell: {
+                range: {
+                  sheetId: 0,
+                  startRowIndex: 0,
+                  endRowIndex: 1,
+                  startColumnIndex: 1,
+                  endColumnIndex: 2
+                },
+                cell: {
+                  userEnteredFormat: {
+                    textFormat: { bold: true, fontFamily: "Inter" }
+                  }
+                },
+                fields: "userEnteredFormat.textFormat"
+              }
+            },
+            // Column A: width 100px, light blue, bold
+            {
+              updateDimensionProperties: {
+                range: {
+                  sheetId: 0,
+                  dimension: "COLUMNS",
+                  startIndex: 0,
+                  endIndex: 1
+                },
+                properties: { pixelSize: 100 },
+                fields: "pixelSize"
+              }
+            },
             {
               repeatCell: {
                 range: {
@@ -215,59 +282,70 @@ export async function exportToGoogleSheet({
                 },
                 cell: {
                   userEnteredFormat: {
-                    horizontalAlignment: "LEFT"
+                    backgroundColor: { red: 0.85, green: 0.92, blue: 0.98 },
+                    textFormat: { bold: true, fontFamily: "Inter" }
                   }
                 },
-                fields: "userEnteredFormat.horizontalAlignment"
+                fields: "userEnteredFormat(backgroundColor,textFormat)"
               }
             },
-            // Alignment: Column B (center)
+            // Column B: width 200px, light gray, medium font (except B1)
+            {
+              updateDimensionProperties: {
+                range: {
+                  sheetId: 0,
+                  dimension: "COLUMNS",
+                  startIndex: 1,
+                  endIndex: 2
+                },
+                properties: { pixelSize: 200 },
+                fields: "pixelSize"
+              }
+            },
             {
               repeatCell: {
                 range: {
                   sheetId: 0,
-                  startRowIndex: 0,
+                  startRowIndex: 1,
                   endRowIndex: numRows,
                   startColumnIndex: 1,
                   endColumnIndex: 2
                 },
                 cell: {
                   userEnteredFormat: {
-                    horizontalAlignment: "CENTER"
+                    backgroundColor: { red: 0.95, green: 0.95, blue: 0.95 },
+                    textFormat: { bold: false, fontSize: 11, fontFamily: "Inter" }
                   }
                 },
-                fields: "userEnteredFormat.horizontalAlignment"
+                fields: "userEnteredFormat(backgroundColor,textFormat)"
               }
             },
-            // Alignment: Columns C+ (right)
-            {
-              repeatCell: {
+            // Columns C+: width 150px, center align
+            ...(numCols > 2 ? [{
+              updateDimensionProperties: {
                 range: {
                   sheetId: 0,
-                  startRowIndex: 0,
-                  endRowIndex: numRows,
-                  startColumnIndex: 2,
-                  endColumnIndex: numCols
-                },
-                cell: {
-                  userEnteredFormat: {
-                    horizontalAlignment: "RIGHT"
-                  }
-                },
-                fields: "userEnteredFormat.horizontalAlignment"
-              }
-            },
-            // Auto-resize columns
-            {
-              autoResizeDimensions: {
-                dimensions: {
-                  sheetId: 0,
                   dimension: "COLUMNS",
-                  startIndex: 0,
+                  startIndex: 2,
                   endIndex: numCols
-                }
+                },
+                properties: { pixelSize: 150 },
+                fields: "pixelSize"
               }
-            }
+            }] : []),
+            // Set row height to 100px for mainImage row
+            ...(mainImageRow >= 0 ? [{
+              updateDimensionProperties: {
+                range: {
+                  sheetId: 0,
+                  dimension: "ROWS",
+                  startIndex: mainImageRow,
+                  endIndex: mainImageRow + 1
+                },
+                properties: { pixelSize: 100 },
+                fields: "pixelSize"
+              }
+            }] : [])
           ]
         })
       }

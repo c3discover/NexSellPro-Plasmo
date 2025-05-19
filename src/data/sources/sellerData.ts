@@ -220,6 +220,62 @@ let isCompareButtonDebouncing = false;
 let lastCompareButtonClick = 0;
 let graphQLCache: SellerCache | null = null;
 
+// --- Bot protection & safe fetch logic ---
+let consecutive412s = 0;
+let lastBackoff = 0;
+
+function randomDelay(min = 250, max = 1250) {
+  return new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min));
+}
+
+function randomBackoff(min = 60000, max = 90000) {
+  return new Promise((resolve) => setTimeout(resolve, Math.floor(Math.random() * (max - min + 1)) + min));
+}
+
+async function safeGraphQLFetch(url, options) {
+  await randomDelay();
+  let response;
+  try {
+    response = await fetch(url, options);
+  } catch (err) {
+    // Network error, treat as soft fail
+    return { blocked: false, response: null };
+  }
+
+  let blocked = false;
+  let shouldBackoff = false;
+  let status = response.status;
+  let text = await response.clone().text();
+
+  if (status === 412 || (text && text.includes('redirectUrl') && text.includes('/blocked'))) {
+    blocked = true;
+    shouldBackoff = true;
+    consecutive412s++;
+  } else {
+    consecutive412s = 0;
+  }
+
+  if (shouldBackoff) {
+    if (!window.__nsp_logged_sellerData) {
+      logGroup(LogModule.SELLER_DATA, 'Seller Data');
+      logTable(LogModule.SELLER_DATA, '⚠️ Walmart bot protection triggered. Pausing data fetch.');
+      logGroupEnd();
+      window.__nsp_logged_sellerData = true;
+    } else {
+      // Also log to console for devs
+      console.warn('⚠️ Walmart bot protection triggered. Pausing data fetch.');
+    }
+    // Exponential backoff: 60-90s * 2^n for n consecutive 412s
+    let base = Math.pow(2, Math.min(consecutive412s, 4));
+    let backoffMs = (Math.floor(Math.random() * 30000) + 60000) * base;
+    lastBackoff = Date.now();
+    await new Promise((resolve) => setTimeout(resolve, backoffMs));
+    return { blocked: true, response: null };
+  }
+
+  return { blocked: false, response };
+}
+
 // Extract seller elements from container
 const extractSellerElements = (container: Element): RawSellerData => {
 
@@ -453,11 +509,10 @@ const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo[]> => 
     };
 
     const correlationId = Math.random().toString(36).substring(2, 15);
-    
     // Get current page cookies
     const cookies = document.cookie;
-    
-    const response = await fetch(`${GRAPHQL_ENDPOINT}?variables=${encodeURIComponent(JSON.stringify(variables))}`, {
+    const url = `${GRAPHQL_ENDPOINT}?variables=${encodeURIComponent(JSON.stringify(variables))}`;
+    const options = {
       method: 'GET',
       headers: {
         'accept': 'application/json',
@@ -490,7 +545,13 @@ const fetchSellerDataGraphQL = async (itemId: string): Promise<SellerInfo[]> => 
       },
       credentials: 'include',
       mode: 'cors'
-    });
+    };
+
+    const { blocked, response } = await safeGraphQLFetch(url, options);
+    if (blocked || !response) {
+      // Return empty array to avoid crashing UI
+      return [];
+    }
 
     if (!response.ok) {
       const errorText = await response.text();

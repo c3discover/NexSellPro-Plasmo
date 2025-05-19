@@ -168,12 +168,15 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
 
       let fieldsToExport: string[] = [];
       if (exportAll) {
-        // Export all fields in default (alphabetical) order, but group/sort by category/order if possible
-        fieldsToExport = [...allFields];
+        // Export all fields in the order defined by defaultExportFields.order
+        fieldsToExport = defaultExportFields
+          .slice()
+          .sort((a, b) => a.order - b.order)
+          .map(f => f.id);
       } else {
-        // Export only enabled fields, sorted by order
+        // Export only enabled fields, sorted by their order (as rearranged in UI)
         const enabledFields = exportSettingsFields.filter(f => f.enabled).sort((a, b) => a.order - b.order);
-        fieldsToExport = enabledFields.map(f => f.id).filter(id => allFields.includes(id));
+        fieldsToExport = enabledFields.map(f => f.id);
         if (fieldsToExport.length === 0) {
           setExportStatus({
             isLoading: false,
@@ -186,10 +189,10 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
         }
       }
 
-      // Build export rows with meta
-      let exportRows = fieldsToExport.map(field => {
-        const meta = getFieldMeta(field);
-        let value = productData[field];
+      // Build export rows with meta, in the correct order
+      let exportRows = fieldsToExport.map(fieldId => {
+        const meta = getFieldMeta(fieldId);
+        let value = productData[fieldId];
         let formattedValue = "";
         if (value === undefined || value === null) {
           formattedValue = "";
@@ -203,26 +206,19 @@ export const ListingExport: React.FC<ListingExportProps> = ({ areSectionsOpen })
           formattedValue = String(value);
         }
         // Special handling for mainImage field: embed image using Google Sheets IMAGE formula if valid URL
-        if (field === "mainImage" && typeof formattedValue === "string" && /^https?:\/\//.test(formattedValue)) {
+        if (fieldId === "mainImage" && typeof formattedValue === "string" && /^https?:\/\//.test(formattedValue)) {
           formattedValue = `=IMAGE("${formattedValue}", 4, 75, 75)`;
         }
         return {
           category: meta.category || 'General',
-          label: meta.label || field,
+          label: meta.label || fieldId,
           value: formattedValue,
           order: meta.order || 999,
-          id: field
+          id: fieldId
         };
       });
 
-      // Group by category, then sort by order within each group, then flatten
-      exportRows = exportRows.sort((a, b) => {
-        if (a.category < b.category) return -1;
-        if (a.category > b.category) return 1;
-        if (a.order < b.order) return -1;
-        if (a.order > b.order) return 1;
-        return 0;
-      });
+      // No further sorting/grouping; rows are already in correct order
 
       // Add header row for three columns (multi-product ready)
       const productHeaders = ["Product 1"];
